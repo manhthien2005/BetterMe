@@ -1,4 +1,5 @@
-// TODO: Compose the settings and theme screen during T-017.
+import { SettingsForm } from "../../components/layout/settings-form";
+
 export default function SettingsPage() {
-  return null;
+  return <SettingsForm />;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, createElement, useCallback, useEffect, useMemo, useReducer, type ReactNode } from "react";
+import { createContext, createElement, useCallback, useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
 
 import type { Habit, HabitConfig, ISODateString, StorageAdapter, TrackerSettings } from "@/types";
 import { DEFAULT_HABIT_CONFIGS } from "../data/default-habits";
@@ -27,21 +27,22 @@ export interface TrackerStoreApi {
 
 export const TrackerStoreContext = createContext<TrackerStoreApi | null>(null);
 
-export function TrackerStoreProvider({ children, adapter, now = new Date() }: { children: ReactNode; adapter?: StorageAdapter; now?: Date }) {
+export function TrackerStoreProvider({ children, adapter, now }: { children: ReactNode; adapter?: StorageAdapter; now?: Date }) {
+  const [stableNow] = useState(() => now ?? new Date());
   const storage = useMemo(() => adapter ?? new LocalStorageAdapter(), [adapter]);
-  const [state, dispatch] = useReducer(trackerReducer, { data: null, hydrated: false, saving: false, persistenceError: null, now });
+  const [state, dispatch] = useReducer(trackerReducer, { data: null, hydrated: false, saving: false, persistenceError: null, now: stableNow });
 
   useEffect(() => {
     let active = true;
     void storage.load().then(async (loaded) => {
-      const data = loaded ?? createDefaultData(now);
+      const data = loaded ?? createDefaultData(stableNow);
       if (!loaded) await storage.save(data);
       if (active) dispatch({ type: "hydrate", data });
     }).catch((error: unknown) => {
       if (active) dispatch({ type: "save-failed", message: error instanceof Error ? error.message : "Unable to load local data" });
     });
     return () => { active = false; };
-  }, [storage, now]);
+  }, [storage, stableNow]);
 
   const persist = useCallback((action: TrackerAction) => {
     const next = trackerReducer(state, action);
@@ -70,7 +71,7 @@ export function TrackerStoreProvider({ children, adapter, now = new Date() }: { 
     removeHabit: (habitId) => persist({ type: "remove-habit", habitId }),
     reset: async () => {
       await storage.clear();
-      const data = createDefaultData(now);
+      const data = createDefaultData(stableNow);
       await storage.save(data);
       dispatch({ type: "hydrate", data });
     },
@@ -80,7 +81,7 @@ export function TrackerStoreProvider({ children, adapter, now = new Date() }: { 
       try { await storage.save(state.data); dispatch({ type: "saved" }); }
       catch (error) { dispatch({ type: "save-failed", message: error instanceof Error ? error.message : "Unable to save local data" }); }
     }
-  }), [now, persist, state, storage]);
+  }), [stableNow, persist, state, storage]);
 
   return createElement(TrackerStoreContext.Provider, { value: api }, children);
 }

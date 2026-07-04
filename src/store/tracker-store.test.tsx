@@ -1,3 +1,4 @@
+import { act } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
@@ -15,7 +16,28 @@ describe("TrackerStoreProvider", () => {
     await waitFor(async () => expect((await adapter.load())?.habitEntries[0].habitCompletions.h1).toBe(true));
     expect(screen.getByTestId("status").textContent).toBe("Good");
   });
+
+  it("hydrates once when using the default clock", async () => {
+    const adapter = new CountingMemoryStorageAdapter(data());
+    render(<TrackerStoreProvider adapter={adapter}><Probe /></TrackerStoreProvider>);
+
+    await screen.findByText("ready");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+
+    expect(adapter.loadCount).toBe(1);
+  });
 });
+
+class CountingMemoryStorageAdapter extends MemoryStorageAdapter {
+  loadCount = 0;
+
+  override async load() {
+    this.loadCount += 1;
+    return super.load();
+  }
+}
 
 function Probe() {
   const tracker = useTracker();
