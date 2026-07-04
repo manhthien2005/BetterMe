@@ -1,11 +1,35 @@
-import type { ThemeId } from "@/types";
+"use client";
+
+import { createContext, useContext, useLayoutEffect, useMemo, type ReactNode } from "react";
+
+import type { ThemeDefinition, ThemeId } from "@/types";
+import { getTheme } from "../../themes";
 
 export interface ThemeProviderProps {
   themeId: ThemeId;
-  children: unknown;
+  onThemeChange?: (themeId: ThemeId) => void;
+  children: ReactNode;
 }
 
-// TODO: Resolve semantic tokens and provide theme state during T-010.
-export function ThemeProvider(_props: ThemeProviderProps) {
-  return null;
+export interface ThemeContextValue {
+  themeId: ThemeId;
+  theme: ThemeDefinition;
+  setThemeId(themeId: ThemeId): void;
+}
+
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+export function ThemeProvider({ themeId, onThemeChange, children }: ThemeProviderProps) {
+  useLayoutEffect(() => {
+    document.documentElement.dataset.theme = themeId;
+    document.documentElement.style.colorScheme = "light";
+  }, [themeId]);
+  const value = useMemo(() => ({ themeId, theme: getTheme(themeId), setThemeId: (next: ThemeId) => onThemeChange?.(next) }), [onThemeChange, themeId]);
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+
+export function useTheme(): ThemeContextValue {
+  const value = useContext(ThemeContext);
+  if (!value) throw new Error("useTheme must be used within ThemeProvider");
+  return value;
 }

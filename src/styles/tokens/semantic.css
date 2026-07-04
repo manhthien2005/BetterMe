@@ -1,1 +1,15 @@
-/* TODO: Map product semantics to raw theme tokens during T-009. */
+:root {
+  --color-background: #fff8f1; --color-background-accent: #fce2ec;
+  --color-surface: #fff; --color-surface-muted: #fcece7;
+  --color-text: #30232b; --color-text-muted: #67545a; --color-on-primary: #fff;
+  --color-primary: #873653; --color-primary-hover: #b8547a; --color-accent: #6759a8;
+  --color-border: #d9c1bc; --color-focus: #6759a8; --color-selection: #fce2ec;
+  --status-good-surface: #ddf3e5; --status-good-text: #195c35;
+  --status-okay-surface: #fff0c2; --status-okay-text: #6d4a00;
+  --status-bad-surface: #ffe0de; --status-bad-text: #8a2424;
+  --status-planned-surface: #e9e5f4; --status-planned-text: #4c416d;
+  --chart-series-1: #873653; --chart-series-2: #6759a8; --chart-series-3: #b8547a;
+  --chart-grid: #d9c1bc; --chart-axis: #67545a; --chart-tooltip: #fff;
+  --radius-control: .625rem; --radius-card: 1.25rem; --radius-panel: .875rem;
+  --card-shadow: 0 14px 36px rgb(48 35 43 / .12); --card-border-width: 1px;
+}

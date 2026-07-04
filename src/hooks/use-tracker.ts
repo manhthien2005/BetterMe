@@ -1,6 +1,10 @@
-import type { TrackerStoreApi } from "@/store/tracker-store";
+"use client";
 
-// TODO: Bind the tracker context to typed selectors/actions during T-007.
+import { useContext } from "react";
+import { TrackerStoreContext, type TrackerStoreApi } from "../store/tracker-store";
+
 export function useTracker(): TrackerStoreApi {
-  throw new Error("not implemented");
+  const value = useContext(TrackerStoreContext);
+  if (!value) throw new Error("useTracker must be used within TrackerStoreProvider");
+  return value;
 }
