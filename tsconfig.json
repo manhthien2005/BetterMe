@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["DOM", "ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "preserve",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "src/types/**/*.ts",
+    "src/data/**/*.ts",
+    "src/lib/scoring/**/*.ts",
+    "src/lib/date/**/*.ts",
+    "src/lib/storage/**/*.ts",
+    "src/lib/utils/**/*.ts",
+    "src/charts/**/*.ts",
+    "src/themes/**/*.ts",
+    "src/store/**/*.ts",
+    "src/hooks/**/*.ts",
+    "src/features/**/*.ts",
+    "src/components/layout/**/*.tsx",
+    "src/components/tracker/**/*.tsx",
+    "src/components/calendar/**/*.tsx",
+    "src/components/habits/**/*.tsx",
+    "src/components/charts/**/*.tsx",
+    "src/components/theme/**/*.tsx",
+    "src/components/feedback/**/*.tsx",
+    "src/components/dashboard/dashboard-client.tsx",
+    "src/components/dashboard/dashboard-overview.tsx",
+    "src/app/tracker/page.tsx",
+    "src/app/calendar/page.tsx",
+    "src/app/habits/page.tsx",
+    "src/app/settings/page.tsx"
+  ]
+}

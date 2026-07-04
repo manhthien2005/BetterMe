@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 48 56% 96%;
+    --foreground: 222 48% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 48% 12%;
+    --primary: 172 66% 31%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 206 87% 94%;
+    --secondary-foreground: 203 68% 27%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 18% 43%;
+    --accent: 8 86% 67%;
+    --accent-foreground: 222 48% 12%;
+    --destructive: 0 75% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 88%;
+    --input: 214 32% 88%;
+    --ring: 172 66% 31%;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    min-height: 100vh;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    letter-spacing: 0;
+  }
+
+  ::selection {
+    background: rgb(125 211 252 / 0.55);
+  }
+}
+
+@layer utilities {
+  .note-grid {
+    background:
+      linear-gradient(135deg, rgb(20 184 166 / 0.10), transparent 34%),
+      linear-gradient(315deg, rgb(251 113 133 / 0.10), transparent 32%),
+      linear-gradient(rgb(15 23 42 / 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(15 23 42 / 0.045) 1px, transparent 1px),
+      hsl(var(--background));
+    background-size: 100% 100%, 100% 100%, 26px 26px, 26px 26px, auto;
+  }
+
+  .soft-panel {
+    @apply border border-white/70 bg-white/82 shadow-note backdrop-blur-xl;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-teal-700 via-sky-600 to-rose-500 bg-clip-text text-transparent;
+  }
+
+  .scrollbar-soft {
+    scrollbar-color: rgb(20 184 166 / 0.45) transparent;
+    scrollbar-width: thin;
+  }
+}
