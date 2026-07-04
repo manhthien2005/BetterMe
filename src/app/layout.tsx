@@ -2,9 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import "@/app/globals.css";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryProvider } from "@/components/query-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,12 +30,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="vi">
       <body className={`${geistSans.variable} ${geistMono.variable} note-grid min-h-screen`}>
-        <QueryProvider>
-          <TooltipProvider delayDuration={160}>
-            {children}
-            <Toaster />
-          </TooltipProvider>
-        </QueryProvider>
+        {children}
       </body>
     </html>
   );
