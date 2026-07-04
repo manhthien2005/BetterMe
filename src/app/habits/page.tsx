@@ -1,4 +1,5 @@
-// TODO: Compose the habit configuration screen during T-016.
+import { HabitConfigPanel } from "../../components/habits/habit-config-panel";
+
 export default function HabitsPage() {
-  return null;
+  return <HabitConfigPanel />;
 }

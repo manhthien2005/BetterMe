@@ -1,4 +1,5 @@
-// TODO: Compose the calendar and selected-day screen during T-015.
+import { CalendarView } from "../../components/calendar/calendar-view";
+
 export default function CalendarPage() {
-  return null;
+  return <CalendarView />;
 }

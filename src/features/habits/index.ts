@@ -5,10 +5,20 @@ export interface HabitValidationResult {
   errors: string[];
 }
 
-// TODO: Validate editable habit commands during T-016.
 export function validateHabitConfig(
-  _config: HabitConfig,
-  _existing: readonly Habit[]
+  config: HabitConfig,
+  existing: readonly Habit[]
 ): HabitValidationResult {
-  throw new Error("not implemented");
+  const errors: string[] = [];
+
+  if (!config.name.trim()) errors.push("Name is required");
+  if (!config.key.trim()) errors.push("Key is required");
+  if (config.maxScore < 0 || !Number.isFinite(config.maxScore)) errors.push("Max score must be non-negative");
+  if (existing.some((habit) => habit.key === config.key)) errors.push("Key must be unique");
+
+  return { valid: errors.length === 0, errors };
+}
+
+export function habitKeyFromName(name: string): string {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "habit";
 }
