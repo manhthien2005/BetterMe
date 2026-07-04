@@ -42,23 +42,683 @@
   body {
     @apply bg-background text-foreground antialiased;
     min-height: 100vh;
+    color: var(--color-text);
+    font-family: var(--font-body);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     letter-spacing: 0;
   }
 
+  h1,
+  h2,
+  h3,
+  legend {
+    color: var(--color-text);
+    font-family: var(--font-display);
+    letter-spacing: -0.035em;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
   ::selection {
-    background: rgb(125 211 252 / 0.55);
+    background: var(--color-selection);
+  }
+}
+
+@layer components {
+  .app-shell {
+    min-height: 100vh;
+    padding: clamp(var(--space-4), 2vw, var(--space-8));
+  }
+
+  .app-shell__header,
+  .app-navigation,
+  .app-shell__main {
+    margin-inline: auto;
+    width: min(100%, 1180px);
+  }
+
+  .app-shell__header {
+    align-items: center;
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--color-surface) 92%, transparent), color-mix(in srgb, var(--color-background-accent) 28%, var(--color-surface))),
+      var(--color-surface);
+    border: var(--card-border-width) solid color-mix(in srgb, var(--color-border) 72%, transparent);
+    border-radius: var(--radius-card);
+    box-shadow: var(--card-shadow);
+    display: flex;
+    gap: var(--space-4);
+    justify-content: space-between;
+    padding: var(--space-4);
+    position: sticky;
+    top: var(--space-4);
+    z-index: 20;
+  }
+
+  .app-shell__brand {
+    align-items: center;
+    color: var(--color-primary);
+    display: inline-flex;
+    font-family: var(--font-display);
+    font-size: clamp(1.25rem, 2vw, 1.75rem);
+    font-weight: 900;
+    gap: var(--space-2);
+    letter-spacing: -0.04em;
+  }
+
+  .app-shell__brand::before {
+    align-items: center;
+    background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+    border-radius: var(--radius-control);
+    content: "✦";
+    display: inline-flex;
+    height: 2.25rem;
+    justify-content: center;
+    width: 2.25rem;
+  }
+
+  .theme-field {
+    align-items: center;
+    color: var(--color-text-muted);
+    display: inline-flex;
+    font-size: 0.875rem;
+    font-weight: 800;
+    gap: var(--space-2);
+  }
+
+  .theme-field select,
+  .app-shell input,
+  .app-shell select,
+  .app-shell textarea {
+    background: color-mix(in srgb, var(--color-surface) 94%, var(--color-background-accent));
+    border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+    border-radius: var(--radius-control);
+    color: var(--color-text);
+    outline: none;
+    padding: 0.72rem 0.85rem;
+    transition:
+      border-color var(--duration-fast) var(--ease-gentle),
+      box-shadow var(--duration-fast) var(--ease-gentle),
+      transform var(--duration-fast) var(--ease-gentle);
+  }
+
+  .app-shell textarea {
+    min-height: 7rem;
+    resize: vertical;
+  }
+
+  .theme-field select:focus-visible,
+  .app-shell input:focus-visible,
+  .app-shell select:focus-visible,
+  .app-shell textarea:focus-visible,
+  .app-shell button:focus-visible,
+  .app-navigation__link:focus-visible {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-focus) 20%, transparent);
+    outline: 2px solid transparent;
+  }
+
+  .app-navigation {
+    align-items: center;
+    background: color-mix(in srgb, var(--color-surface) 76%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+    border-radius: calc(var(--radius-card) + 0.25rem);
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--color-text) 7%, transparent);
+    display: flex;
+    gap: var(--space-2);
+    margin-block: var(--space-4) var(--space-6);
+    overflow-x: auto;
+    padding: var(--space-2);
+    scrollbar-width: thin;
+  }
+
+  .app-navigation__link {
+    border-radius: var(--radius-control);
+    color: var(--color-text-muted);
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 0.92rem;
+    font-weight: 850;
+    padding: 0.72rem 0.95rem;
+    transition:
+      background var(--duration-fast) var(--ease-gentle),
+      color var(--duration-fast) var(--ease-gentle),
+      transform var(--duration-fast) var(--ease-gentle);
+  }
+
+  .app-navigation__link:hover {
+    background: color-mix(in srgb, var(--color-primary) 11%, var(--color-surface));
+    color: var(--color-primary);
+    transform: translateY(-1px);
+  }
+
+  .app-shell__main {
+    padding-bottom: var(--space-12);
+  }
+
+  .dashboard-overview,
+  .weekly-quest-board,
+  .calendar-view,
+  .habit-config-panel,
+  .settings-form {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .dashboard-overview > header,
+  .weekly-quest-board,
+  .calendar-view,
+  .habit-config-panel,
+  .settings-form {
+    background:
+      radial-gradient(circle at top right, color-mix(in srgb, var(--color-background-accent) 50%, transparent), transparent 38%),
+      color-mix(in srgb, var(--color-surface) 92%, transparent);
+    border: var(--card-border-width) solid color-mix(in srgb, var(--color-border) 70%, transparent);
+    border-radius: var(--radius-card);
+    box-shadow: var(--card-shadow);
+    padding: clamp(var(--space-4), 3vw, var(--space-8));
+  }
+
+  .dashboard-overview > header {
+    min-height: 14rem;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .dashboard-overview > header::after {
+    background:
+      radial-gradient(circle, color-mix(in srgb, var(--color-primary) 22%, transparent) 0 12%, transparent 13%),
+      radial-gradient(circle, color-mix(in srgb, var(--color-accent) 18%, transparent) 0 10%, transparent 11%);
+    background-position:
+      0 0,
+      1.25rem 1.25rem;
+    background-size: 2.5rem 2.5rem;
+    content: "";
+    inset: auto -2rem -3rem auto;
+    opacity: 0.75;
+    position: absolute;
+    transform: rotate(-8deg);
+    width: min(34vw, 18rem);
+    height: min(34vw, 18rem);
+  }
+
+  .dashboard-overview > header > p:first-child,
+  .chart-card figcaption span,
+  .settings-form > p,
+  .habit-editor-row legend + label,
+  .selected-day-detail-copy {
+    color: var(--color-text-muted);
+  }
+
+  .dashboard-overview > header > p:first-child {
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .dashboard-overview h1,
+  .weekly-quest-board h1,
+  .calendar-view h1,
+  .habit-config-panel h1,
+  .settings-form h1 {
+    font-size: clamp(2.2rem, 7vw, 4.8rem);
+    font-weight: 950;
+    line-height: 0.92;
+    margin-top: var(--space-3);
+    max-width: 11ch;
+  }
+
+  .dashboard-overview > header > p:last-child {
+    color: var(--color-text-muted);
+    font-size: clamp(1rem, 1.6vw, 1.2rem);
+    line-height: 1.7;
+    margin-top: var(--space-4);
+    max-width: 38rem;
+  }
+
+  .dashboard-overview__metrics {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  }
+
+  .dashboard-overview__metrics .soft-panel {
+    border-color: color-mix(in srgb, var(--color-border) 64%, transparent);
+    border-radius: var(--radius-card);
+    min-height: 11rem;
+    position: relative;
+  }
+
+  .dashboard-overview__metrics .soft-panel::after {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 12%, transparent), transparent);
+    border-radius: inherit;
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+  }
+
+  .motivation-card {
+    align-items: center;
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 13%, var(--color-surface)), color-mix(in srgb, var(--color-accent) 12%, var(--color-surface))),
+      var(--color-surface);
+    border: 1px solid color-mix(in srgb, var(--color-border) 65%, transparent);
+    border-radius: var(--radius-card);
+    box-shadow: var(--card-shadow);
+    display: flex;
+    gap: var(--space-4);
+    padding: clamp(var(--space-4), 2vw, var(--space-6));
+  }
+
+  .motivation-card::before {
+    align-items: center;
+    background: var(--color-surface);
+    border-radius: 999px;
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--color-text) 10%, transparent);
+    color: var(--color-primary);
+    content: "🐾";
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 1.35rem;
+    height: 3rem;
+    justify-content: center;
+    width: 3rem;
+  }
+
+  .motivation-card p {
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: clamp(1.05rem, 2vw, 1.45rem);
+    font-weight: 850;
+    line-height: 1.35;
+  }
+
+  .dashboard-overview__quest,
+  .weekly-quest-board__days,
+  .chart-values {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .dashboard-overview__quest {
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
+  }
+
+  .dashboard-overview__quest li,
+  .weekly-quest-board__days button {
+    background: color-mix(in srgb, var(--color-surface) 88%, var(--color-background-accent));
+    border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+    border-radius: var(--radius-panel);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--color-text) 6%, transparent);
+  }
+
+  .dashboard-overview__quest li {
+    display: grid;
+    gap: var(--space-1);
+    padding: var(--space-4);
+  }
+
+  .dashboard-overview__quest span,
+  .weekly-quest-board__days span,
+  .month-grid strong,
+  .chart-values span {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+  }
+
+  .dashboard-overview__quest strong,
+  .weekly-quest-board__days strong {
+    color: var(--color-primary);
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 900;
+  }
+
+  .dashboard-overview__charts {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+  }
+
+  .chart-card {
+    background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+    border-radius: var(--radius-card);
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+    padding: clamp(var(--space-4), 2vw, var(--space-6));
+  }
+
+  .chart-card figcaption {
+    align-items: start;
+    display: grid;
+    gap: var(--space-1);
+    margin-bottom: var(--space-4);
+  }
+
+  .chart-card figcaption strong {
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 900;
+  }
+
+  .chart-card figcaption span {
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .chart-canvas {
+    background:
+      linear-gradient(color-mix(in srgb, var(--color-background-accent) 24%, transparent), transparent),
+      var(--color-surface);
+    border: 1px solid color-mix(in srgb, var(--color-border) 48%, transparent);
+    border-radius: var(--radius-panel);
+    padding: var(--space-3);
+  }
+
+  .chart-values {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
+  .week-navigation {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    justify-content: space-between;
+  }
+
+  .week-navigation span {
+    color: var(--color-text-muted);
+    font-weight: 850;
+  }
+
+  .app-shell button {
+    align-items: center;
+    background: var(--color-primary);
+    border: 0;
+    border-radius: var(--radius-control);
+    color: var(--color-on-primary);
+    cursor: pointer;
+    display: inline-flex;
+    font-weight: 850;
+    justify-content: center;
+    padding: 0.75rem 1rem;
+    transition:
+      background var(--duration-fast) var(--ease-gentle),
+      opacity var(--duration-fast) var(--ease-gentle),
+      transform var(--duration-fast) var(--ease-gentle);
+  }
+
+  .app-shell button:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+    transform: translateY(-1px);
+  }
+
+  .app-shell button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .weekly-quest-board__days {
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  }
+
+  .weekly-quest-board__days button {
+    align-items: start;
+    background: color-mix(in srgb, var(--color-surface) 88%, var(--color-background-accent));
+    color: var(--color-text);
+    display: grid;
+    gap: var(--space-2);
+    min-height: 7rem;
+    padding: var(--space-4);
+    text-align: left;
+    width: 100%;
+  }
+
+  .weekly-quest-board__days button[aria-pressed="true"],
+  .month-grid button[aria-pressed="true"] {
+    border-color: color-mix(in srgb, var(--color-primary) 70%, var(--color-border));
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--color-primary) 15%, transparent),
+      var(--card-shadow);
+  }
+
+  [aria-label="Selected day"] {
+    background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-border) 68%, transparent);
+    border-radius: var(--radius-card);
+    box-shadow: 0 12px 28px color-mix(in srgb, var(--color-text) 7%, transparent);
+    display: grid;
+    gap: var(--space-5);
+    padding: clamp(var(--space-4), 2vw, var(--space-6));
+  }
+
+  [aria-label="Selected day"] h2 {
+    font-size: clamp(1.5rem, 3vw, 2.25rem);
+    font-weight: 920;
+  }
+
+  [aria-label="Selected day"] dl {
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+    margin: 0;
+  }
+
+  [aria-label="Selected day"] dl > div {
+    background: var(--color-surface-muted);
+    border-radius: var(--radius-panel);
+    padding: var(--space-3);
+  }
+
+  [aria-label="Selected day"] dt {
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    font-weight: 850;
+    text-transform: uppercase;
+  }
+
+  [aria-label="Selected day"] dd {
+    color: var(--color-text);
+    font-size: 1.1rem;
+    font-weight: 900;
+    margin: var(--space-1) 0 0;
+  }
+
+  .app-shell fieldset,
+  .app-shell form {
+    border: 0;
+    display: grid;
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+  }
+
+  .app-shell legend {
+    font-size: 1.15rem;
+    font-weight: 900;
+    margin-bottom: var(--space-3);
+  }
+
+  [aria-label="Daily habits"] > div {
+    display: grid;
+    gap: var(--space-3);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  }
+
+  [aria-label="Daily habits"] label {
+    align-items: center;
+    background: color-mix(in srgb, var(--color-surface-muted) 70%, var(--color-surface));
+    border: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
+    border-radius: var(--radius-panel);
+    display: flex;
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  .app-shell input[type="checkbox"] {
+    accent-color: var(--color-primary);
+    height: 1.1rem;
+    width: 1.1rem;
+  }
+
+  [aria-label="Daily reflection"] label,
+  .habit-config-panel label,
+  .settings-form label {
+    color: var(--color-text-muted);
+    display: grid;
+    font-size: 0.9rem;
+    font-weight: 850;
+    gap: var(--space-2);
+  }
+
+  [aria-label="Daily reflection"] button,
+  .settings-form button,
+  .habit-config-panel button {
+    justify-self: start;
+  }
+
+  .month-grid {
+    display: grid;
+    gap: var(--space-2);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .month-grid [role="gridcell"] {
+    min-width: 0;
+  }
+
+  .month-grid button {
+    background: color-mix(in srgb, var(--color-surface) 86%, var(--color-background-accent));
+    border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+    color: var(--color-text);
+    display: grid;
+    gap: var(--space-1);
+    min-height: clamp(4.8rem, 10vw, 6.5rem);
+    padding: var(--space-2);
+    text-align: left;
+    width: 100%;
+  }
+
+  .month-grid button span:first-child {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 920;
+  }
+
+  .habit-config-panel > div {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .habit-editor-row,
+  [aria-label="New habit"],
+  [aria-label="Theme preview"] {
+    background: color-mix(in srgb, var(--color-surface) 90%, var(--color-background-accent));
+    border: 1px solid color-mix(in srgb, var(--color-border) 62%, transparent);
+    border-radius: var(--radius-panel);
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-4);
+  }
+
+  .habit-editor-row > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .habit-editor-row legend {
+    font-size: 1.2rem;
+  }
+
+  .settings-form form {
+    background: color-mix(in srgb, var(--color-surface) 88%, var(--color-background-accent));
+    border: 1px solid color-mix(in srgb, var(--color-border) 58%, transparent);
+    border-radius: var(--radius-panel);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    padding: var(--space-4);
+  }
+
+  .settings-form form button,
+  .settings-form form [role="alert"] {
+    grid-column: 1 / -1;
+  }
+
+  [aria-label="Theme preview"] {
+    max-width: 28rem;
+  }
+
+  [aria-label="Theme preview"] p:first-child {
+    color: var(--color-primary);
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 900;
+  }
+
+  [role="alert"] {
+    background: var(--status-bad-surface);
+    border-radius: var(--radius-control);
+    color: var(--status-bad-text);
+    font-weight: 750;
+    padding: var(--space-3);
+  }
+
+  .empty-state {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--card-shadow);
+    display: grid;
+    gap: var(--space-3);
+    justify-items: start;
+    padding: var(--space-6);
+  }
+
+  .empty-state__mark {
+    align-items: center;
+    background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+    border-radius: 999px;
+    color: var(--color-primary);
+    display: inline-flex;
+    height: 3rem;
+    justify-content: center;
+    width: 3rem;
   }
 }
 
 @layer utilities {
   .note-grid {
     background:
-      linear-gradient(135deg, rgb(20 184 166 / 0.10), transparent 34%),
-      linear-gradient(315deg, rgb(251 113 133 / 0.10), transparent 32%),
-      linear-gradient(rgb(15 23 42 / 0.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(15 23 42 / 0.045) 1px, transparent 1px),
-      hsl(var(--background));
+      radial-gradient(circle at 9% 8%, color-mix(in srgb, var(--color-background-accent) 72%, transparent), transparent 24rem),
+      radial-gradient(circle at 92% 2%, color-mix(in srgb, var(--color-primary) 12%, transparent), transparent 22rem),
+      linear-gradient(color-mix(in srgb, var(--color-text) 5%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in srgb, var(--color-text) 5%, transparent) 1px, transparent 1px),
+      var(--color-background);
     background-size: 100% 100%, 100% 100%, 26px 26px, 26px 26px, auto;
   }
 
