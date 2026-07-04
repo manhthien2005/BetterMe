@@ -1,7 +1,5 @@
 import type { LucideIcon } from "lucide-react";
 
-import { cn } from "@/lib/utils";
-
 export function MetricCard({
   title,
   value,
@@ -32,10 +30,7 @@ export function MetricCard({
           <p className="mt-2 text-2xl font-black tracking-normal text-slate-950">{value}</p>
         </div>
         <div
-          className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br",
-            toneClass
-          )}
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${toneClass}`}
         >
           <Icon className="h-5 w-5" />
         </div>

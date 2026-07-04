@@ -1,4 +1,5 @@
-// TODO: Compose the weekly tracker screen during T-014.
+import { WeeklyQuestBoard } from "../../components/tracker/weekly-quest-board";
+
 export default function TrackerPage() {
-  return null;
+  return <WeeklyQuestBoard />;
 }
