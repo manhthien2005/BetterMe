@@ -83,17 +83,21 @@ Goal: Create the minimal pinned pnpm/Next.js/TypeScript/Vitest/Testing Library/P
 Files:
   - Create: `package.json`
   - Create: `pnpm-lock.yaml`
+  - Create: `pnpm-workspace.yaml`
   - Modify: `tsconfig.json:1`
   - Create: `next-env.d.ts`
   - Create: `next.config.ts`
   - Create: `vitest.config.ts`
   - Create: `playwright.config.ts`
+  - Create: `eslint.config.mjs`
+  - Create: `postcss.config.mjs`
+  - Create: `tailwind.config.ts`
   - Modify: `.gitignore:1`
   - Create: `tests/smoke/toolchain.test.ts`
 Interfaces:
   - Consumes: Node.js `>=20.9`; Next.js `>=15`; React `>=19`; TypeScript `>=5.7`; canonical exports from `src/types/index.ts`
   - Produces: scripts `dev`, `build`, `lint`, `typecheck`, `test`, `test:e2e`; deterministic `pnpm-lock.yaml`; `@/*` mapped to `src/*`; project-wide Next.js TypeScript includes for `next-env.d.ts`, `.next/types/**/*.ts`, `**/*.ts`, and `**/*.tsx` with `node_modules` excluded
-Verification: `pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run test -- tests/smoke/toolchain.test.ts && pnpm run build`
+Verification: `pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run lint && pnpm run test -- tests/smoke/toolchain.test.ts && pnpm run build`
 Dependencies: none
 
 ### T-002: Enforce canonical/prototype boundary

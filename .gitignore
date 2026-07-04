@@ -10,3 +10,4 @@ test-results
 vercel-debug.log
 .claude/settings.local.json
 .worktrees/
+.eslintcache

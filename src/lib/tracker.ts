@@ -185,7 +185,7 @@ export function buildTrackerSnapshot({
     };
   });
   const selectedMonth = parseIsoDate(selectedDate).getMonth();
-  const calendar = getMonthGrid(selectedDate).map((date) => {
+  const calendar: TrackerSnapshot["calendar"] = getMonthGrid(selectedDate).map((date) => {
     const record = recordsByDate.get(date);
 
     return {

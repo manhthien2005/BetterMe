@@ -123,6 +123,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
+        Relationships: [];
       };
       habits: {
         Row: {
@@ -152,6 +153,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["habits"]["Insert"]>;
+        Relationships: [];
       };
       daily_entries: {
         Row: {
@@ -173,6 +175,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["daily_entries"]["Insert"]>;
+        Relationships: [];
       };
       habit_logs: {
         Row: {
@@ -192,6 +195,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["habit_logs"]["Insert"]>;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
