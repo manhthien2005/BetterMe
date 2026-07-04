@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import "@/app/globals.css";
+import { AppShell } from "../components/layout/app-shell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,7 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="vi">
       <body className={`${geistSans.variable} ${geistMono.variable} note-grid min-h-screen`}>
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

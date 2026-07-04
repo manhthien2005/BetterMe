@@ -1,6 +1,6 @@
 import type { BetterMeData, DailyRecord } from "@/types";
+import { buildDailyRecords } from "../../lib/scoring";
 
-// TODO: Assemble tracking read models during T-007 and T-011.
-export function buildTrackingView(_data: BetterMeData, _now: Date): DailyRecord[] {
-  throw new Error("not implemented");
+export function buildTrackingView(data: BetterMeData, now: Date): DailyRecord[] {
+  return buildDailyRecords(data, now);
 }

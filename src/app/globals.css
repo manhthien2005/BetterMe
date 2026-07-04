@@ -1,3 +1,10 @@
+@import "../styles/tokens/raw.css";
+@import "../styles/tokens/semantic.css";
+@import "../styles/themes/cute-cat.css";
+@import "../styles/themes/study-corner.css";
+@import "../styles/themes/modern-focus.css";
+@import "../styles/themes/minimal-calm.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

@@ -1,6 +1,6 @@
 import type { ScoreSummary } from "@/types";
 
-// TODO: Format domain score summaries for presentation during T-011.
-export function formatScoreSummary(_summary: ScoreSummary): string {
-  throw new Error("not implemented");
+export function formatScoreSummary(summary: ScoreSummary): string {
+  if (summary.completionRate === null) return `${summary.totalScore}/${summary.maxScore}`;
+  return `${summary.totalScore}/${summary.maxScore} · ${Math.round(summary.completionRate * 100)}%`;
 }
