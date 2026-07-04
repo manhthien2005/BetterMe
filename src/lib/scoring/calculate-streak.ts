@@ -1,6 +1,14 @@
 import type { DailyRecord } from "@/types";
 
-// TODO: Implement chronological Good-day streaks under TDD during T-005.
-export function applyStreaks(_records: readonly DailyRecord[]): DailyRecord[] {
-  throw new Error("not implemented");
+export function applyStreaks(records: readonly DailyRecord[]): DailyRecord[] {
+  let running = 0;
+  return [...records]
+    .sort((left, right) => left.date.localeCompare(right.date))
+    .map((record) => {
+      if (record.status === null || record.status === "Planned") {
+        return { ...record, streak: null };
+      }
+      running = record.status === "Good" ? running + 1 : 0;
+      return { ...record, streak: running };
+    });
 }

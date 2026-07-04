@@ -1,16 +1,21 @@
 import type { BetterMeData, StorageAdapter } from "@/types";
 
-// TODO: Implement deep-cloned in-memory persistence during T-006.
 export class MemoryStorageAdapter implements StorageAdapter {
-  async load(): Promise<BetterMeData | null> {
-    throw new Error("not implemented");
+  private data: BetterMeData | null = null;
+
+  constructor(initialData: BetterMeData | null = null) {
+    this.data = initialData === null ? null : structuredClone(initialData);
   }
 
-  async save(_data: BetterMeData): Promise<void> {
-    throw new Error("not implemented");
+  async load(): Promise<BetterMeData | null> {
+    return this.data === null ? null : structuredClone(this.data);
+  }
+
+  async save(data: BetterMeData): Promise<void> {
+    this.data = structuredClone(data);
   }
 
   async clear(): Promise<void> {
-    throw new Error("not implemented");
+    this.data = null;
   }
 }
