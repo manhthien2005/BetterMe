@@ -1,10 +1,13 @@
 import type { ChartData, DailyRecord, ISODateString } from "@/types";
+import type { Dictionary } from "../i18n/dictionary";
+import { en } from "../i18n/locales/en";
 import { addDays } from "../lib/date/index";
 
 export function buildThirtyDayProgress(
   records: readonly DailyRecord[],
   selectedDate: ISODateString,
-  today: ISODateString
+  today: ISODateString,
+  copy: Dictionary["charts"] = en.charts
 ): ChartData {
   const anchor = selectedDate < today ? selectedDate : today;
   const byDate = new Map(records.map((record) => [record.date, record]));
@@ -14,11 +17,11 @@ export function buildThirtyDayProgress(
   });
   return {
     id: "thirty-day-progress",
-    title: "30-day progress",
-    description: "Daily completion rate for the 30 days ending at the selected date.",
+    title: copy.thirtyDayProgressTitle,
+    description: copy.thirtyDayProgressDescription,
     kind: "line",
     xAxisLabel: "Date",
-    yAxisLabel: "Completion rate",
-    series: [{ id: "completion", label: "Completion", colorToken: "chart-series-1", points }]
+    yAxisLabel: copy.completionRate,
+    series: [{ id: "completion", label: copy.dailyCompletionRate, colorToken: "chart-series-1", points }]
   };
 }

@@ -29,7 +29,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="vi">
+    <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} note-grid min-h-screen`}>
         <AppShell>{children}</AppShell>
       </body>

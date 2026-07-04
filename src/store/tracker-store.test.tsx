@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { MemoryStorageAdapter } from "../lib/storage/memory-storage-adapter";
 import type { BetterMeData } from "@/types";
 import { useTracker } from "../hooks/use-tracker";
-import { TrackerStoreProvider } from "./tracker-store";
+import { createDefaultData, TrackerStoreProvider } from "./tracker-store";
 
 describe("TrackerStoreProvider", () => {
   it("hydrates from an adapter and serializes optimistic saves", async () => {
@@ -28,6 +28,13 @@ describe("TrackerStoreProvider", () => {
 
     expect(adapter.loadCount).toBe(1);
   });
+
+  it("creates Vietnamese first-run default habits when requested", () => {
+    const data = createDefaultData(new Date("2026-01-02T12:00:00Z"), "vi");
+
+    expect(data.settings.locale).toBe("vi");
+    expect(data.habits.map((habit) => habit.name)).toContain("Học tiếng Anh");
+  });
 });
 
 class CountingMemoryStorageAdapter extends MemoryStorageAdapter {
@@ -46,5 +53,5 @@ function Probe() {
 }
 
 function data(): BetterMeData {
-  return { schemaVersion: 1, habits: [{ id: "h1", key: "study", name: "Study", category: "growth", maxScore: 1, active: true, description: "", sortOrder: 0, createdAt: "x", updatedAt: "x" }], habitEntries: [], reflections: [], settings: { timezone: "UTC", startDate: "2026-01-01", selectedDate: "2026-01-02", trackerDays: 7, targetCompletionRate: 1, themeId: "cute-cat" }, updatedAt: "x" };
+  return { schemaVersion: 1, habits: [{ id: "h1", key: "study", name: "Study", category: "growth", maxScore: 1, active: true, description: "", sortOrder: 0, createdAt: "x", updatedAt: "x" }], habitEntries: [], reflections: [], settings: { timezone: "UTC", startDate: "2026-01-01", selectedDate: "2026-01-02", trackerDays: 7, targetCompletionRate: 1, themeId: "cute-cat", locale: "en" }, updatedAt: "x" };
 }

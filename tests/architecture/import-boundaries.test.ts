@@ -128,7 +128,7 @@ describe("canonical/prototype import boundary", () => {
   it("routes the local-first entry directly to the dashboard without auth", () => {
     const page = readFileSync(resolve(root, "src/app/page.tsx"), "utf8");
 
-    expect(page).toContain('redirect("/dashboard")');
+    expect(page).toContain('redirect("/en/dashboard")');
     expect(page).not.toContain("supabase");
     expect(page).not.toContain('"/login"');
   });

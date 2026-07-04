@@ -2,8 +2,10 @@
 
 import { createContext, createElement, useCallback, useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
 
+import type { Locale } from "../i18n/locale";
 import type { Habit, HabitConfig, ISODateString, StorageAdapter, TrackerSettings } from "@/types";
-import { DEFAULT_HABIT_CONFIGS } from "../data/default-habits";
+import { DEFAULT_LOCALE } from "../i18n/locale";
+import { getDefaultHabitConfigs } from "../data/default-habits";
 import { getZonedToday } from "../lib/date/index";
 import { LocalStorageAdapter } from "../lib/storage/local-storage-adapter";
 import { trackerReducer, type TrackerAction, type TrackerState } from "./tracker-reducer";
@@ -86,16 +88,16 @@ export function TrackerStoreProvider({ children, adapter, now }: { children: Rea
   return createElement(TrackerStoreContext.Provider, { value: api }, children);
 }
 
-export function createDefaultData(now: Date = new Date()) {
+export function createDefaultData(now: Date = new Date(), locale: Locale = DEFAULT_LOCALE) {
   const timestamp = now.toISOString();
   const timezone = "Asia/Ho_Chi_Minh";
   const today = getZonedToday(now, timezone);
   return {
     schemaVersion: 1 as const,
-    habits: DEFAULT_HABIT_CONFIGS.map((config) => ({ ...config, id: `habit-${config.key}`, createdAt: timestamp, updatedAt: timestamp })),
+    habits: getDefaultHabitConfigs(locale).map((config) => ({ ...config, id: `habit-${config.key}`, createdAt: timestamp, updatedAt: timestamp })),
     habitEntries: [],
     reflections: [],
-    settings: { timezone, startDate: today, selectedDate: today, trackerDays: 90, targetCompletionRate: 0.8, themeId: "cute-cat" as const },
+    settings: { timezone, startDate: today, selectedDate: today, trackerDays: 90, targetCompletionRate: 0.8, themeId: "cute-cat" as const, locale },
     updatedAt: timestamp
   };
 }

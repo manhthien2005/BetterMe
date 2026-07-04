@@ -2,6 +2,7 @@
 
 import type { ChartData } from "@/types";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useI18n } from "../i18n/locale-provider";
 
 export interface ProgressChartProps {
   data: ChartData;
@@ -14,7 +15,8 @@ export function ProgressChart({ data }: ProgressChartProps) {
 }
 
 export function AccessibleValues({ data }: { data: ChartData }) {
-  return <ul className="chart-values">{data.series.flatMap((series) => series.points.map((point) => <li key={`${series.id}-${point.key}`}><span>{point.label}</span><strong>{point.value === null ? "No data" : percent(point.value)}</strong></li>))}</ul>;
+  const { dictionary } = useI18n();
+  return <ul className="chart-values">{data.series.flatMap((series) => series.points.map((point) => <li key={`${series.id}-${point.key}`}><span>{point.label}</span><strong>{point.value === null ? dictionary.charts.noData : percent(point.value)}</strong></li>))}</ul>;
 }
 
 export function percent(value: number) { return `${Math.round(value * 100)}%`; }

@@ -1,8 +1,10 @@
 "use client";
 
 import type { ISODateString } from "@/types";
+import { localeToIntl } from "../../i18n/locale";
 import { useTracker } from "../../hooks/use-tracker";
 import { formatScoreSummary } from "../../features/scoring";
+import { useI18n } from "../i18n/locale-provider";
 import { DailyTracker } from "./daily-tracker";
 import { ReflectionEditor } from "./reflection-editor";
 
@@ -12,25 +14,26 @@ export interface SelectedDayDetailProps {
 
 export function SelectedDayDetail({ date }: SelectedDayDetailProps) {
   const tracker = useTracker();
+  const { dictionary, locale } = useI18n();
   const record = tracker.records.find((candidate) => candidate.date === date);
 
-  if (!tracker.state.hydrated) return <section aria-label="Selected day"><p>Loading selected day...</p></section>;
-  if (!record) return <section aria-label="Selected day"><h2>{formatDisplayDate(date)}</h2><p>No record for this day.</p></section>;
+  if (!tracker.state.hydrated) return <section aria-label={dictionary.tracker.selectedDay}><p>{dictionary.common.loading}</p></section>;
+  if (!record) return <section aria-label={dictionary.tracker.selectedDay}><h2>{formatDisplayDate(date, locale)}</h2><p>{dictionary.tracker.noRecord}</p></section>;
 
   return (
-    <section aria-label="Selected day">
-      <h2>{formatDisplayDate(date)}</h2>
+    <section aria-label={dictionary.tracker.selectedDay}>
+      <h2>{formatDisplayDate(date, locale)}</h2>
       <dl>
         <div>
-          <dt>Status</dt>
-          <dd>{record.status ?? "Not tracked"}</dd>
+          <dt>{dictionary.tracker.status}</dt>
+          <dd>{record.status ? dictionary.status[record.status] : dictionary.status.none}</dd>
         </div>
         <div>
-          <dt>Score</dt>
+          <dt>{dictionary.tracker.score}</dt>
           <dd>{formatScoreSummary(record)}</dd>
         </div>
         <div>
-          <dt>Streak</dt>
+          <dt>{dictionary.tracker.streak}</dt>
           <dd>{record.streak ?? 0}</dd>
         </div>
       </dl>
@@ -40,6 +43,6 @@ export function SelectedDayDetail({ date }: SelectedDayDetailProps) {
   );
 }
 
-function formatDisplayDate(date: ISODateString) {
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
+function formatDisplayDate(date: ISODateString, locale: ReturnType<typeof useI18n>["locale"]) {
+  return new Intl.DateTimeFormat(localeToIntl(locale), { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
 }

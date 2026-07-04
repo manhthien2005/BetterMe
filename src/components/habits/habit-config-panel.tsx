@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { Habit, HabitConfig } from "@/types";
 import { habitKeyFromName, validateHabitConfig } from "../../features/habits";
 import { useTracker } from "../../hooks/use-tracker";
+import { useI18n } from "../i18n/locale-provider";
 import { HabitEditorRow } from "./habit-editor-row";
 
 export interface HabitConfigPanelProps {
@@ -13,20 +14,21 @@ export interface HabitConfigPanelProps {
 
 export function HabitConfigPanel({ habits }: HabitConfigPanelProps) {
   const tracker = useTracker();
+  const { dictionary } = useI18n();
   const sourceHabits = [...(habits ?? tracker.state.data?.habits ?? [])].sort((first, second) => first.sortOrder - second.sortOrder || first.id.localeCompare(second.id));
 
   if (!tracker.state.hydrated && !habits) {
     return (
-      <section aria-label="Habit configuration">
-        <h1>Habit configuration</h1>
-        <p>Loading habits...</p>
+      <section aria-label={dictionary.habits.title}>
+        <h1>{dictionary.habits.title}</h1>
+        <p>{dictionary.habits.loading}</p>
       </section>
     );
   }
 
   return (
-    <section aria-label="Habit configuration" className="habit-config-panel">
-      <h1>Habit configuration</h1>
+    <section aria-label={dictionary.habits.title} className="habit-config-panel">
+      <h1>{dictionary.habits.title}</h1>
       <div>
         {sourceHabits.map((habit) => (
           <HabitEditorRow
@@ -45,6 +47,7 @@ export function HabitConfigPanel({ habits }: HabitConfigPanelProps) {
 }
 
 function NewHabitForm({ existing, onAdd }: { existing: readonly Habit[]; onAdd(config: HabitConfig): void }) {
+  const { dictionary } = useI18n();
   const [name, setName] = useState("");
   const [category, setCategory] = useState("growth");
   const [score, setScore] = useState("1");
@@ -53,7 +56,7 @@ function NewHabitForm({ existing, onAdd }: { existing: readonly Habit[]; onAdd(c
 
   return (
     <form
-      aria-label="New habit"
+      aria-label={dictionary.habits.addHabit}
       onSubmit={(event) => {
         event.preventDefault();
         const key = habitKeyFromName(name);
@@ -72,13 +75,13 @@ function NewHabitForm({ existing, onAdd }: { existing: readonly Habit[]; onAdd(c
         setDescription("");
       }}
     >
-      <h2>Add habit</h2>
-      <label>New habit name<input aria-label="New habit name" value={name} onChange={(event) => setName(event.target.value)} /></label>
-      <label>New habit category<input aria-label="New habit category" value={category} onChange={(event) => setCategory(event.target.value)} /></label>
-      <label>New habit score<input aria-label="New habit score" min="0" type="number" value={score} onChange={(event) => setScore(event.target.value)} /></label>
-      <label>New habit description<textarea aria-label="New habit description" value={description} onChange={(event) => setDescription(event.target.value)} /></label>
+      <h2>{dictionary.habits.addHabit}</h2>
+      <label>{dictionary.habits.newHabitName}<input aria-label={dictionary.habits.newHabitName} value={name} onChange={(event) => setName(event.target.value)} /></label>
+      <label>{dictionary.habits.newHabitCategory}<input aria-label={dictionary.habits.newHabitCategory} value={category} onChange={(event) => setCategory(event.target.value)} /></label>
+      <label>{dictionary.habits.newHabitScore}<input aria-label={dictionary.habits.newHabitScore} min="0" type="number" value={score} onChange={(event) => setScore(event.target.value)} /></label>
+      <label>{dictionary.habits.newHabitDescription}<textarea aria-label={dictionary.habits.newHabitDescription} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
       {errors.length ? <p role="alert">{errors.join(", ")}</p> : null}
-      <button type="submit">Add habit</button>
+      <button type="submit">{dictionary.habits.addHabit}</button>
     </form>
   );
 }

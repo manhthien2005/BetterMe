@@ -1,8 +1,10 @@
 "use client";
 
 import type { ISODateString } from "@/types";
+import { localeToIntl } from "../../i18n/locale";
 import { addDays, getWeekEnd, getWeekStart } from "../../lib/date/index";
 import { useTracker } from "../../hooks/use-tracker";
+import { useI18n } from "../i18n/locale-provider";
 import { SelectedDayDetail } from "./selected-day-detail";
 import { WeekNavigation } from "./week-navigation";
 
@@ -12,14 +14,15 @@ export interface WeeklyQuestBoardProps {
 
 export function WeeklyQuestBoard({ weekStart }: WeeklyQuestBoardProps) {
   const tracker = useTracker();
+  const { dictionary, locale } = useI18n();
   const selectedDate = tracker.state.data?.settings.selectedDate;
   const currentWeekStart = weekStart ?? (selectedDate ? getWeekStart(selectedDate) : null);
 
   if (!tracker.state.hydrated || !tracker.state.data || !selectedDate || !currentWeekStart) {
     return (
-      <section aria-label="Weekly tracker">
-        <h1>Weekly quest board</h1>
-        <p>Loading weekly tracker...</p>
+      <section aria-label={dictionary.tracker.weeklyTrackerLabel}>
+        <h1>{dictionary.tracker.title}</h1>
+        <p>{dictionary.tracker.loading}</p>
       </section>
     );
   }
@@ -28,25 +31,25 @@ export function WeeklyQuestBoard({ weekStart }: WeeklyQuestBoardProps) {
   const records = tracker.records.filter((record) => record.date >= currentWeekStart && record.date <= weekEnd);
 
   return (
-    <section aria-label="Weekly tracker" className="weekly-quest-board">
-      <h1>Weekly quest board</h1>
+    <section aria-label={dictionary.tracker.weeklyTrackerLabel} className="weekly-quest-board">
+      <h1>{dictionary.tracker.title}</h1>
       <WeekNavigation
         weekStart={currentWeekStart}
         onPrevious={() => tracker.setSelectedDate(addDays(currentWeekStart, -7))}
         onNext={() => tracker.setSelectedDate(addDays(currentWeekStart, 7))}
       />
-      <ul aria-label="Weekly quest days" className="weekly-quest-board__days">
+      <ul aria-label={dictionary.tracker.weeklyQuestDays} className="weekly-quest-board__days">
         {records.map((record) => (
           <li key={record.date}>
             <button
-              aria-label={formatDateButton(record.date)}
+              aria-label={formatDateButton(record.date, locale)}
               aria-pressed={record.date === selectedDate}
               onClick={() => tracker.setSelectedDate(record.date)}
               type="button"
             >
               <span>{record.dayLabel}</span>
-              <strong>{record.status ?? "Not tracked"}</strong>
-              <span>{formatRate(record.completionRate)}</span>
+              <strong>{record.status ? dictionary.status[record.status] : dictionary.status.none}</strong>
+              <span>{formatRate(record.completionRate, dictionary)}</span>
             </button>
           </li>
         ))}
@@ -56,10 +59,10 @@ export function WeeklyQuestBoard({ weekStart }: WeeklyQuestBoardProps) {
   );
 }
 
-function formatDateButton(date: ISODateString) {
-  return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
+function formatDateButton(date: ISODateString, locale: ReturnType<typeof useI18n>["locale"]) {
+  return new Intl.DateTimeFormat(localeToIntl(locale), { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
 }
 
-function formatRate(rate: number | null) {
-  return rate === null ? "Planned" : `${Math.round(rate * 100)}%`;
+function formatRate(rate: number | null, dictionary: ReturnType<typeof useI18n>["dictionary"]) {
+  return rate === null ? dictionary.common.planned : `${Math.round(rate * 100)}%`;
 }

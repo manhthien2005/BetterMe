@@ -11,6 +11,6 @@ describe("HomePage", () => {
   it("routes the app entry to the dashboard", () => {
     HomePage();
 
-    expect(redirect).toHaveBeenCalledWith("/dashboard");
+    expect(redirect).toHaveBeenCalledWith("/en/dashboard");
   });
 });

@@ -5,6 +5,7 @@ import type { BetterMeData } from "@/types";
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const timestamp = z.string();
 const themeId = z.enum(["cute-cat", "study-corner", "modern-focus", "minimal-calm"]);
+const locale = z.enum(["en", "vi"]);
 
 const habit = z.object({
   id: z.string().min(1), key: z.string().min(1), name: z.string().min(1), category: z.string(),
@@ -21,7 +22,8 @@ const reflection = z.object({
 }).strict();
 const settings = z.object({
   timezone: z.string().min(1), startDate: isoDate, selectedDate: isoDate,
-  trackerDays: z.number().int().positive(), targetCompletionRate: z.number().min(0).max(1), themeId
+  trackerDays: z.number().int().positive(), targetCompletionRate: z.number().min(0).max(1), themeId,
+  locale: locale.default("en")
 }).strict();
 const betterMeDataSchema = z.object({
   schemaVersion: z.literal(1), habits: z.array(habit), habitEntries: z.array(habitEntry),

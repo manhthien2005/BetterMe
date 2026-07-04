@@ -1,3 +1,5 @@
+import type { Locale } from "../i18n/locale";
+
 export type ISODateString = `${number}-${number}-${number}`;
 export type ISODateTimeString = string;
 
@@ -27,6 +29,7 @@ export interface TrackerSettings {
   trackerDays: number;
   targetCompletionRate: number;
   themeId: ThemeId;
+  locale: Locale;
 }
 
 export interface ReflectionEntry {

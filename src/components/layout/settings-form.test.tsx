@@ -29,7 +29,7 @@ describe("SettingsForm", () => {
   });
 
   it("rejects invalid tracker settings", () => {
-    const invalid: TrackerSettings = { timezone: "", startDate: "2026-01-01", selectedDate: "2026-01-02", trackerDays: 0, targetCompletionRate: 1.25, themeId: "cute-cat" };
+    const invalid: TrackerSettings = { timezone: "", startDate: "2026-01-01", selectedDate: "2026-01-02", trackerDays: 0, targetCompletionRate: 1.25, themeId: "cute-cat", locale: "en" };
 
     expect(validateTrackerSettings(invalid)).toEqual({ valid: false, errors: ["Timezone is required", "Tracking days must be at least 1", "Target completion rate must be between 0 and 100"] });
   });
@@ -41,7 +41,7 @@ function data(): BetterMeData {
     habits: [],
     habitEntries: [],
     reflections: [],
-    settings: { timezone: "UTC", startDate: "2026-01-01", selectedDate: "2026-01-02", trackerDays: 14, targetCompletionRate: 1, themeId: "cute-cat" },
+    settings: { timezone: "UTC", startDate: "2026-01-01", selectedDate: "2026-01-02", trackerDays: 14, targetCompletionRate: 1, themeId: "cute-cat", locale: "en" },
     updatedAt: "x"
   };
 }

@@ -127,6 +127,14 @@
     width: 2.25rem;
   }
 
+  .app-shell__controls {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    justify-content: flex-end;
+  }
+
   .theme-field {
     align-items: center;
     color: var(--color-text-muted);

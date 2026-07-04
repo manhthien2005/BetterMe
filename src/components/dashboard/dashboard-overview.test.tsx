@@ -23,7 +23,7 @@ describe("DashboardOverview", () => {
     expect(screen.getByText("Current streak")).toBeTruthy();
     expect(screen.getByText("Keep the promise tiny; tiny promises compound.")).toBeTruthy();
     expect(screen.getByRole("img", { name: /30-day progress/i })).toBeTruthy();
-    expect(screen.getByRole("img", { name: /Habit consistency/i })).toBeTruthy();
+    expect(screen.getByRole("img", { name: /Selected-week habits/i })).toBeTruthy();
     expect(screen.getByRole("list", { name: "Weekly quest preview" })).toBeTruthy();
   });
 
@@ -69,7 +69,7 @@ function data(): BetterMeData {
       { date: "2026-01-03", habitCompletions: { study: true, move: false }, updatedAt: "x" }
     ],
     reflections: [],
-    settings: { timezone: "UTC", startDate: "2026-01-01", selectedDate: "2026-01-03", trackerDays: 14, targetCompletionRate: 0.8, themeId: "cute-cat" },
+    settings: { timezone: "UTC", startDate: "2026-01-01", selectedDate: "2026-01-03", trackerDays: 14, targetCompletionRate: 0.8, themeId: "cute-cat", locale: "en" },
     updatedAt: "x"
   };
 }

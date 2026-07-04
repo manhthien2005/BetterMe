@@ -1,4 +1,5 @@
 import type { ISODateString } from "@/types";
+import { useI18n } from "../i18n/locale-provider";
 
 export interface WeekNavigationProps {
   weekStart: ISODateString;
@@ -7,11 +8,13 @@ export interface WeekNavigationProps {
 }
 
 export function WeekNavigation({ weekStart, onPrevious, onNext }: WeekNavigationProps) {
+  const { dictionary } = useI18n();
+
   return (
     <div aria-label="Week navigation" className="week-navigation">
-      <button onClick={onPrevious} type="button">Previous week</button>
+      <button onClick={onPrevious} type="button">{dictionary.common.previousWeek}</button>
       <span>{formatWeekLabel(weekStart)}</span>
-      <button onClick={onNext} type="button">Next week</button>
+      <button onClick={onNext} type="button">{dictionary.common.nextWeek}</button>
     </div>
   );
 }

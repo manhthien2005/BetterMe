@@ -10,7 +10,7 @@ describe("buildDailyRecords", () => {
       habits: [habit()],
       habitEntries: [{ date: "2026-01-02", habitCompletions: { h1: true }, updatedAt: "x" }],
       reflections: [{ date: "2026-01-02", dailyNote: "Solid", problemToday: "None", tomorrowFocus: "Repeat", updatedAt: "x" }],
-      settings: { timezone: "UTC", startDate: "2026-01-01", selectedDate: "2026-01-02", trackerDays: 3, targetCompletionRate: 1, themeId: "cute-cat" },
+      settings: { timezone: "UTC", startDate: "2026-01-01", selectedDate: "2026-01-02", trackerDays: 3, targetCompletionRate: 1, themeId: "cute-cat", locale: "en" },
       updatedAt: "x"
     };
     const records = buildDailyRecords(data, new Date("2026-01-02T12:00:00.000Z"));

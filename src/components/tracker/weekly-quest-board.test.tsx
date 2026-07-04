@@ -32,7 +32,7 @@ function data(): BetterMeData {
     habits: [{ id: "study", key: "study", name: "Study", category: "growth", maxScore: 1, active: true, description: "", sortOrder: 0, createdAt: "x", updatedAt: "x" }],
     habitEntries: [],
     reflections: [],
-    settings: { timezone: "UTC", startDate: "2026-01-01", selectedDate: "2026-01-02", trackerDays: 14, targetCompletionRate: 1, themeId: "cute-cat" },
+    settings: { timezone: "UTC", startDate: "2026-01-01", selectedDate: "2026-01-02", trackerDays: 14, targetCompletionRate: 1, themeId: "cute-cat", locale: "en" },
     updatedAt: "x"
   };
 }

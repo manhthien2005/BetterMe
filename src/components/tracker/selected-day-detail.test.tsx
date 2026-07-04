@@ -16,5 +16,5 @@ describe("SelectedDayDetail", () => {
 });
 
 function data() {
-  return { schemaVersion: 1 as const, habits: [{ id: "h1", key: "study", name: "Study", category: "growth", maxScore: 1, active: true, description: "Practice", sortOrder: 0, createdAt: "x", updatedAt: "x" }], habitEntries: [], reflections: [], settings: { timezone: "UTC", startDate: "2026-01-01" as const, selectedDate: "2026-01-02" as const, trackerDays: 7, targetCompletionRate: 1, themeId: "cute-cat" as const }, updatedAt: "x" };
+  return { schemaVersion: 1 as const, habits: [{ id: "h1", key: "study", name: "Study", category: "growth", maxScore: 1, active: true, description: "Practice", sortOrder: 0, createdAt: "x", updatedAt: "x" }], habitEntries: [], reflections: [], settings: { timezone: "UTC", startDate: "2026-01-01" as const, selectedDate: "2026-01-02" as const, trackerDays: 7, targetCompletionRate: 1, themeId: "cute-cat" as const, locale: "en" as const }, updatedAt: "x" };
 }

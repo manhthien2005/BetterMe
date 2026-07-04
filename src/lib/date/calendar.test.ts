@@ -16,7 +16,8 @@ const settings: TrackerSettings = {
   selectedDate: "2026-01-15",
   trackerDays: 30,
   targetCompletionRate: 0.8,
-  themeId: "cute-cat"
+  themeId: "cute-cat",
+  locale: "en"
 };
 
 describe("calendar primitives", () => {

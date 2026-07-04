@@ -7,7 +7,15 @@ import { THEMES } from "../../themes";
 import { notify } from "../feedback/themed-toaster";
 import { ConfirmResetDialog } from "../feedback/confirm-reset-dialog";
 import { useTracker } from "../../hooks/use-tracker";
+import { useI18n } from "../i18n/locale-provider";
 import { ThemePreview } from "../theme/theme-preview";
+
+const THEME_LABEL_KEYS: Record<ThemeId, "cuteCat" | "studyCorner" | "modernFocus" | "minimalCalm"> = {
+  "cute-cat": "cuteCat",
+  "study-corner": "studyCorner",
+  "modern-focus": "modernFocus",
+  "minimal-calm": "minimalCalm"
+};
 
 export interface SettingsValidationResult {
   valid: boolean;
@@ -16,6 +24,7 @@ export interface SettingsValidationResult {
 
 export function SettingsForm() {
   const tracker = useTracker();
+  const { dictionary } = useI18n();
   const settings = tracker.state.data?.settings;
   const [timezone, setTimezone] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -40,17 +49,17 @@ export function SettingsForm() {
 
   if (!tracker.state.hydrated || !settings || !synced) {
     return (
-      <section aria-label="Settings">
-        <h1>Settings</h1>
-        <p>Loading settings...</p>
+      <section aria-label={dictionary.settings.title}>
+        <h1>{dictionary.settings.title}</h1>
+        <p>{dictionary.settings.loading}</p>
       </section>
     );
   }
 
   return (
-    <section aria-label="Settings" className="settings-form">
-      <h1>Settings</h1>
-      <p>BetterMe is local-only in Phase 1. Your data is stored on this device until a future backend is added.</p>
+    <section aria-label={dictionary.settings.title} className="settings-form">
+      <h1>{dictionary.settings.title}</h1>
+      <p>{dictionary.settings.localOnlyNote}</p>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -60,7 +69,8 @@ export function SettingsForm() {
             selectedDate: selectedDate as TrackerSettings["selectedDate"],
             trackerDays: Number(trackerDays),
             targetCompletionRate: Number(targetCompletionRate) / 100,
-            themeId
+            themeId,
+            locale: settings.locale
           };
           const result = validateTrackerSettings(next);
           if (!result.valid) {
@@ -69,32 +79,32 @@ export function SettingsForm() {
           }
           setErrors([]);
           tracker.updateSettings(next);
-          notify("success", "Settings saved");
+          notify("success", dictionary.settings.settingsSaved);
         }}
       >
-        <label>Timezone<input aria-label="Timezone" value={timezone} onChange={(event) => setTimezone(event.target.value)} /></label>
-        <label>Start date<input aria-label="Start date" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label>
-        <label>Selected date<input aria-label="Selected date" type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} /></label>
-        <label>Tracking days<input aria-label="Tracking days" min="1" type="number" value={trackerDays} onChange={(event) => setTrackerDays(event.target.value)} /></label>
-        <label>Target completion rate<input aria-label="Target completion rate" min="0" max="100" type="number" value={targetCompletionRate} onChange={(event) => setTargetCompletionRate(event.target.value)} /></label>
+        <label>{dictionary.settings.timezone}<input aria-label={dictionary.settings.timezone} value={timezone} onChange={(event) => setTimezone(event.target.value)} /></label>
+        <label>{dictionary.settings.startDate}<input aria-label={dictionary.settings.startDate} type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label>
+        <label>{dictionary.settings.selectedDate}<input aria-label={dictionary.settings.selectedDate} type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} /></label>
+        <label>{dictionary.settings.trackingDays}<input aria-label={dictionary.settings.trackingDays} min="1" type="number" value={trackerDays} onChange={(event) => setTrackerDays(event.target.value)} /></label>
+        <label>{dictionary.settings.targetCompletionRate}<input aria-label={dictionary.settings.targetCompletionRate} min="0" max="100" type="number" value={targetCompletionRate} onChange={(event) => setTargetCompletionRate(event.target.value)} /></label>
         <label>
-          Theme
-          <select aria-label="Theme" value={themeId} onChange={(event) => setThemeId(event.target.value as ThemeId)}>
-            {Object.values(THEMES).map((theme) => <option key={theme.id} value={theme.id}>{theme.name}</option>)}
+          {dictionary.settings.theme}
+          <select aria-label={dictionary.settings.theme} value={themeId} onChange={(event) => setThemeId(event.target.value as ThemeId)}>
+            {Object.values(THEMES).map((theme) => <option key={theme.id} value={theme.id}>{dictionary.theme[THEME_LABEL_KEYS[theme.id]]}</option>)}
           </select>
         </label>
         {errors.length ? <p role="alert">{errors.join(", ")}</p> : null}
-        <button type="submit">Save settings</button>
+        <button type="submit">{dictionary.settings.saveSettings}</button>
       </form>
       <ThemePreview themeId={themeId} />
-      <button onClick={() => setConfirmOpen(true)} type="button">Clear local data</button>
+      <button onClick={() => setConfirmOpen(true)} type="button">{dictionary.common.clearLocalData}</button>
       <ConfirmResetDialog
         open={confirmOpen}
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => {
           void tracker.reset().then(() => {
             setConfirmOpen(false);
-            notify("info", "Local data reset");
+            notify("info", dictionary.settings.localDataReset);
           });
         }}
       />

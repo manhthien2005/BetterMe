@@ -30,7 +30,7 @@ describe("trackerReducer", () => {
 });
 
 function data(): BetterMeData {
-  return { schemaVersion: 1, habits: [habit()], habitEntries: [], reflections: [], settings: { timezone: "UTC", startDate: "2026-01-01", selectedDate: "2026-01-02", trackerDays: 7, targetCompletionRate: 0.8, themeId: "cute-cat" }, updatedAt: "2026-01-01T00:00:00Z" };
+  return { schemaVersion: 1, habits: [habit()], habitEntries: [], reflections: [], settings: { timezone: "UTC", startDate: "2026-01-01", selectedDate: "2026-01-02", trackerDays: 7, targetCompletionRate: 0.8, themeId: "cute-cat", locale: "en" }, updatedAt: "2026-01-01T00:00:00Z" };
 }
 
 function habit(): Habit {
