@@ -29,12 +29,17 @@
   }
 
   html {
+    max-width: 100%;
+    overflow-x: hidden;
     scroll-behavior: smooth;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
+    max-width: 100%;
     min-height: 100vh;
+    overflow-x: hidden;
+    font-family: "Inter", sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     letter-spacing: 0;
   }
@@ -56,7 +61,8 @@
   }
 
   .soft-panel {
-    @apply border border-white/70 bg-white/82 shadow-note backdrop-blur-xl;
+    @apply border border-white/70 shadow-note backdrop-blur-xl;
+    background-color: rgb(255 255 255 / 0.82);
   }
 
   .gradient-text {
@@ -66,5 +72,57 @@
   .scrollbar-soft {
     scrollbar-color: rgb(20 184 166 / 0.45) transparent;
     scrollbar-width: thin;
+  }
+
+  .weather-hero {
+    background:
+      radial-gradient(circle at 16% 14%, rgb(255 255 255 / 0.36), transparent 24%),
+      linear-gradient(135deg, #0f766e 0%, #0ea5e9 48%, #fb7185 100%);
+  }
+
+  .weather-hero__motion {
+    position: absolute;
+    inset: -34%;
+    background:
+      radial-gradient(circle at 20% 30%, rgb(255 255 255 / 0.26), transparent 16%),
+      radial-gradient(circle at 76% 22%, rgb(254 240 138 / 0.28), transparent 14%),
+      radial-gradient(circle at 62% 76%, rgb(125 211 252 / 0.24), transparent 16%);
+    animation: weather-drift 12s ease-in-out infinite alternate;
+  }
+
+  .weather-hero__emoji {
+    display: inline-flex;
+    font-size: 4rem;
+    line-height: 1;
+    filter: drop-shadow(0 14px 24px rgb(15 23 42 / 0.2));
+    animation: weather-emoji-clear 3.6s ease-in-out infinite;
+  }
+
+  @keyframes weather-drift {
+    from {
+      transform: translate3d(-3%, -2%, 0) rotate(0deg) scale(1);
+    }
+
+    to {
+      transform: translate3d(3%, 2%, 0) rotate(8deg) scale(1.04);
+    }
+  }
+
+  @keyframes weather-emoji-clear {
+    0%,
+    100% {
+      transform: translateY(0) scale(1);
+    }
+
+    50% {
+      transform: translateY(-8px) scale(1.04);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .weather-hero__motion,
+    .weather-hero__emoji {
+      animation: none;
+    }
   }
 }
