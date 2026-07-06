@@ -4,7 +4,7 @@
   "description": "Habit tracker hiện đại cho một tuần tốt hơn.",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#f8f5ea",
-  "theme_color": "#0f766e",
+  "background_color": "#fdf5f1",
+  "theme_color": "#4c7a43",
   "icons": []
 }

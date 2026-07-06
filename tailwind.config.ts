@@ -5,7 +5,8 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Inter"', "sans-serif"]
+        sans: ["var(--font-body)", "Nunito", "sans-serif"],
+        display: ["var(--font-display)", "Baloo 2", "sans-serif"]
       },
       colors: {
         border: "hsl(var(--border))",
@@ -36,16 +37,38 @@ const config: Config = {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))"
+        },
+        // Nếp's Garden palette — pastels are fills, deep tones carry text.
+        rice: "#FDF5F1",
+        mochi: "#FFFDFC",
+        plum: "#4A3D46",
+        mauve: "#6F6069",
+        wafer: "#F5E6E0",
+        matcha: {
+          DEFAULT: "#7FB069",
+          deep: "#4C7A43"
+        },
+        sakura: {
+          DEFAULT: "#F6C6CE",
+          deep: "#B14B66"
+        },
+        butter: "#FFD98E",
+        honey: "#F2B04C",
+        dawn: {
+          DEFAULT: "#A9C6E8",
+          deep: "#38678F"
         }
       },
       borderRadius: {
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)"
+        md: "calc(var(--radius) - 6px)",
+        sm: "calc(var(--radius) - 12px)"
       },
       boxShadow: {
-        soft: "0 14px 36px rgb(15 23 42 / 0.10)",
-        note: "0 18px 48px rgb(15 23 42 / 0.13)"
+        mochi: "0 2px 6px rgb(74 61 70 / 0.05), 0 10px 30px rgb(74 61 70 / 0.06)",
+        "mochi-lift": "0 4px 10px rgb(74 61 70 / 0.07), 0 16px 40px rgb(74 61 70 / 0.10)",
+        soft: "0 10px 26px rgb(74 61 70 / 0.08)",
+        note: "0 2px 6px rgb(74 61 70 / 0.05), 0 10px 30px rgb(74 61 70 / 0.06)"
       }
     }
   },

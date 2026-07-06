@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  addHabitToState,
   buildDashboardViewModel,
   createInitialDashboardState,
+  removeHabitFromState,
   toggleHabitForDate
 } from "@/components/dashboard/dashboard-data";
 
@@ -46,5 +48,62 @@ describe("dashboard habit data", () => {
 
     expect(nextViewModel.today.completedHabits).toBe(7);
     expect(nextViewModel.today.completionRate).toBe(1);
+  });
+
+  it("exposes a rolling seven day rhythm", () => {
+    const state = createInitialDashboardState(today);
+    const viewModel = buildDashboardViewModel(state, today);
+
+    expect(viewModel.streak.rhythm).toBeGreaterThan(0);
+    expect(viewModel.streak.rhythm).toBeLessThanOrEqual(1);
+  });
+
+  it("adds a custom habit with a stable slug id", () => {
+    const state = createInitialDashboardState(today);
+    const nextState = addHabitToState(state, {
+      name: "Uống nước",
+      category: "Health"
+    });
+
+    expect(nextState.habits).toHaveLength(state.habits.length + 1);
+
+    const added = nextState.habits[nextState.habits.length - 1];
+
+    expect(added.id).toBe("custom_uong_nuoc");
+    expect(added.name).toBe("Uống nước");
+    expect(added.category).toBe("Health");
+    expect(added.maxScore).toBe(1);
+
+    const viewModel = buildDashboardViewModel(nextState, today);
+
+    expect(viewModel.today.totalHabits).toBe(8);
+    expect(
+      viewModel.habits.find((habit) => habit.id === added.id)?.completed
+    ).toBe(false);
+  });
+
+  it("does not add blank habits and avoids id collisions", () => {
+    const state = createInitialDashboardState(today);
+
+    expect(addHabitToState(state, { name: "   ", category: "Health" })).toBe(state);
+
+    const once = addHabitToState(state, { name: "Read", category: "Learning" });
+    const twice = addHabitToState(once, { name: "Read", category: "Learning" });
+    const ids = twice.habits.map((habit) => habit.id);
+
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("removes a habit and recalculates today's totals", () => {
+    const state = createInitialDashboardState(today);
+    const target = state.habits[0];
+    const nextState = removeHabitFromState(state, target.id);
+
+    expect(nextState.habits.some((habit) => habit.id === target.id)).toBe(false);
+
+    const viewModel = buildDashboardViewModel(nextState, today);
+
+    expect(viewModel.today.totalHabits).toBe(state.habits.length - 1);
+    expect(removeHabitFromState(nextState, "missing-id")).toBe(nextState);
   });
 });

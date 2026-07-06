@@ -78,6 +78,7 @@ export type DashboardViewModel = {
   streak: {
     current: number;
     best: number;
+    rhythm: number;
     chain: Array<{
       date: string;
       label: string;
@@ -150,6 +151,55 @@ export function createInitialDashboardState(today = getDashboardToday()): Dashbo
   };
 }
 
+export function addHabitToState(
+  state: DashboardState,
+  input: { name: string; category: string }
+): DashboardState {
+  const name = input.name.trim();
+
+  if (!name) return state;
+
+  const slug = name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const existingIds = new Set(state.habits.map((habit) => habit.id));
+  let id = `custom_${slug || "habit"}`;
+  let suffix = 2;
+
+  while (existingIds.has(id)) {
+    id = `custom_${slug || "habit"}_${suffix}`;
+    suffix += 1;
+  }
+
+  const habit: DashboardHabit = {
+    id,
+    key: id,
+    name,
+    category: input.category,
+    maxScore: 1,
+    description: "",
+    iconName: habitIcon(id, input.category)
+  };
+
+  return {
+    ...state,
+    habits: [...state.habits, habit]
+  };
+}
+
+export function removeHabitFromState(state: DashboardState, habitId: string): DashboardState {
+  if (!state.habits.some((habit) => habit.id === habitId)) return state;
+
+  return {
+    ...state,
+    habits: state.habits.filter((habit) => habit.id !== habitId)
+  };
+}
+
 export function toggleHabitForDate(
   state: DashboardState,
   date: string,
@@ -183,6 +233,7 @@ export function buildDashboardViewModel(
   const month = parseIsoDate(today).getMonth();
   const currentStreak = calculateCurrentStreak(state, today);
   const bestStreak = Math.max(state.bestStreakFloor, calculateBestStreak(state));
+  const rhythm = calculateRollingRhythm(state, today);
   const analytics = buildAnalytics(state, today);
   const monthDays = getMonthGrid(today).map((date) => {
     const score = scoreDate(state, date);
@@ -214,14 +265,15 @@ export function buildDashboardViewModel(
       monthLabel: formatEnglishMonthLabel(today)
     },
     greeting: buildGreeting(),
-    motivation: buildMotivation(todayScore.status, todayScore.completionRate),
+    motivation: buildMotivation(todayScore, rhythm),
     habits: habitViews,
     today: todayScore,
     streak: {
       current: currentStreak,
       best: bestStreak,
+      rhythm,
       chain: buildStreakChain(state, today),
-      protectionMessage: buildProtectionMessage(currentStreak, todayScore.completionRate)
+      protectionMessage: buildProtectionMessage(todayScore.completionRate, rhythm)
     },
     calendar: {
       monthCompletionRate: average(monthScores),
@@ -449,23 +501,55 @@ function formatEnglishTrendLabel(date: string) {
   }).format(parseIsoDate(date));
 }
 
-function buildMotivation(status: DashboardStatus, completionRate: number) {
-  if (status === "Good" && completionRate === 1) return "Clean sweep. Keep the day light.";
-  if (status === "Good") return "You are above target. One small finish makes it cleaner.";
-  if (status === "Okay") return "You are close. Pick the easiest remaining habit first.";
-  return "Restart gently. One honest check-in is enough to regain momentum.";
+function calculateRollingRhythm(state: DashboardState, today: string) {
+  const lastSevenDays = Array.from({ length: 7 }, (_, index) =>
+    addDaysIso(today, index - 6)
+  );
+
+  return average(
+    lastSevenDays.map((date) => scoreDate(state, date).completionRate)
+  );
 }
 
-function buildProtectionMessage(currentStreak: number, completionRate: number) {
+// Nếp speaks here: gentle roommate voice, never guilt. Misses are rest days,
+// and progress is anchored to the rolling 7-day rhythm, not a fragile streak.
+function buildMotivation(
+  todayScore: { completedHabits: number; completionRate: number },
+  rhythm: number
+) {
+  if (todayScore.completionRate >= 1) {
+    return "GIỎI QUÁ, Thiên! All done — my flower bloomed 🌸";
+  }
+
+  if (todayScore.completionRate >= TARGET_COMPLETION_RATE) {
+    return "So close to a perfect day. One tiny habit left?";
+  }
+
+  if (todayScore.completedHabits > 0) {
+    return "We're on our way. Pick the easiest one next?";
+  }
+
+  if (rhythm >= 0.5) {
+    return `Our 7-day rhythm is ${Math.round(rhythm * 100)}%. One tiny habit to wake me up? ☀️`;
+  }
+
+  return "Chào Thiên! I saved your spot — today we start soft 🌱";
+}
+
+function buildProtectionMessage(completionRate: number, rhythm: number) {
   if (completionRate >= TARGET_COMPLETION_RATE) {
-    return "Protected for today";
+    return "Today is safe and cozy — the sprout is watered";
   }
 
-  if (currentStreak > 0) {
-    return "Finish one more habit to protect the streak";
+  if (completionRate > 0) {
+    return "One more habit keeps our rhythm going";
   }
 
-  return "Start a new streak with one completed habit";
+  if (rhythm >= 0.5) {
+    return "Yesterday counts as rest. Today we start soft";
+  }
+
+  return "One tiny check-in is enough to begin again";
 }
 
 function average(values: number[]) {

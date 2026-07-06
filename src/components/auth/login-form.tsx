@@ -45,16 +45,16 @@ export function LoginForm({ devAuthBypassEnabled = false }: { devAuthBypassEnabl
   return (
     <form className="w-full space-y-6" onSubmit={handleSubmit}>
       <div className="space-y-2">
-        <div className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-teal-50 text-teal-700">
+        <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-matcha/20 text-matcha-deep">
           <Sparkles className="h-5 w-5" />
         </div>
-        <h2 className="text-2xl font-bold tracking-normal text-slate-950">Vào BetterMe</h2>
-        <p className="max-w-sm text-sm leading-6 text-muted-foreground">
+        <h2 className="font-display text-2xl font-bold text-plum">Vào BetterMe</h2>
+        <p className="max-w-sm text-sm font-semibold leading-6 text-mauve">
           Nhập email để nhận magic link. Không cần mật khẩu, dữ liệu của bạn vẫn được tách
           riêng theo tài khoản.
         </p>
       </div>
-      <label className="grid gap-2 text-sm font-semibold text-slate-700">
+      <label className="grid gap-2 text-sm font-bold text-plum">
         Email
         <Input
           autoComplete="email"
@@ -75,7 +75,7 @@ export function LoginForm({ devAuthBypassEnabled = false }: { devAuthBypassEnabl
           <Link href="/dashboard">Continue as dev</Link>
         </Button>
       ) : null}
-      <p className="text-xs leading-5 text-muted-foreground">
+      <p className="text-xs font-semibold leading-5 text-mauve/80">
         Khi deploy Vercel, nhớ thêm URL production vào Supabase Auth redirect URLs.
       </p>
     </form>

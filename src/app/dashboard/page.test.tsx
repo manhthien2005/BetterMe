@@ -90,8 +90,8 @@ describe("dashboard route", () => {
     expect(screen.queryByLabelText("Add widget")).toBeNull();
     expect(screen.queryByText("Deep work")).toBeNull();
     expect(screen.getByRole("heading", { name: "Bangkok weather" })).toBeTruthy();
-    expect(screen.getByText("31 C")).toBeTruthy();
-    expect(screen.getByText("Feels like 34 C")).toBeTruthy();
+    expect(screen.getByText("31°C")).toBeTruthy();
+    expect(screen.getByText("Feels like 34°C")).toBeTruthy();
     expect(screen.getByText("Humidity")).toBeTruthy();
     expect(screen.getByText("Wind")).toBeTruthy();
     expect(screen.getByText("Rain")).toBeTruthy();
@@ -113,16 +113,26 @@ describe("dashboard route", () => {
     expect(screen.getByLabelText("Exercise / sports emoji icon").textContent).toBe("💪");
     expect(container.innerHTML).not.toContain("font-black");
 
+    // Nếp the companion lives in the hero with a speech bubble, and the old
+    // placeholder-page navigation is gone — the dashboard is the whole app now.
+    expect(screen.getByLabelText(/Nếp the companion/)).toBeTruthy();
+    expect(screen.getByText("7-day rhythm")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /add a habit/i })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Tracker" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Habits" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
+
     // Partially-filled calendar cells render a radial-gradient "donut" with an
     // 82% hole; fully-complete cells are a solid color. Target a partial cell so
     // the 82% assertion is deterministic. (JSDOM keeps the radial-gradient but
-    // drops the sibling conic-gradient it cannot parse.)
+    // drops the sibling conic-gradient it cannot parse.) Cells are read-only
+    // role="img" now — the calendar is data, not controls.
     const calendarDay = screen
-      .getAllByRole("button")
+      .getAllByRole("img")
       .find(
-        (button) =>
-          button.getAttribute("aria-label")?.includes("habits") &&
-          button.getAttribute("style")?.includes("radial-gradient")
+        (cell) =>
+          cell.getAttribute("aria-label")?.includes("habits") &&
+          cell.getAttribute("style")?.includes("radial-gradient")
       );
     expect(calendarDay).toBeTruthy();
     expect(calendarDay?.className).toContain("rounded-full");

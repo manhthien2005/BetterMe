@@ -4,24 +4,25 @@
 
 @layer base {
   :root {
-    --background: 48 56% 96%;
-    --foreground: 222 48% 12%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 48% 12%;
-    --primary: 172 66% 31%;
+    /* Nếp's Garden — rice paper, mochi white, warm plum ink. */
+    --background: 14 60% 97%;
+    --foreground: 305 10% 26%;
+    --card: 20 33% 99%;
+    --card-foreground: 305 10% 26%;
+    --primary: 110 29% 37%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 206 87% 94%;
-    --secondary-foreground: 203 68% 27%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 18% 43%;
-    --accent: 8 86% 67%;
-    --accent-foreground: 222 48% 12%;
-    --destructive: 0 75% 58%;
+    --secondary: 350 63% 87%;
+    --secondary-foreground: 341 42% 37%;
+    --muted: 18 51% 92%;
+    --muted-foreground: 306 7% 41%;
+    --accent: 341 42% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62% 52%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 88%;
-    --input: 214 32% 88%;
-    --ring: 172 66% 31%;
-    --radius: 0.5rem;
+    --border: 17 51% 92%;
+    --input: 17 51% 92%;
+    --ring: 110 29% 37%;
+    --radius: 1.5rem;
   }
 
   * {
@@ -39,90 +40,280 @@
     max-width: 100%;
     min-height: 100vh;
     overflow-x: hidden;
-    font-family: "Inter", sans-serif;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: var(--font-body), "Nunito", sans-serif;
     letter-spacing: 0;
   }
 
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display), "Baloo 2", sans-serif;
+  }
+
   ::selection {
-    background: rgb(125 211 252 / 0.55);
+    background: rgb(246 198 206 / 0.6);
   }
 }
 
 @layer utilities {
-  .note-grid {
-    background:
-      linear-gradient(135deg, rgb(20 184 166 / 0.10), transparent 34%),
-      linear-gradient(315deg, rgb(251 113 133 / 0.10), transparent 32%),
-      linear-gradient(rgb(15 23 42 / 0.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(15 23 42 / 0.045) 1px, transparent 1px),
-      hsl(var(--background));
-    background-size: 100% 100%, 100% 100%, 26px 26px, 26px 26px, auto;
+  /* Rice-paper meadow: sakura mist top-right, matcha mist left, rice-grain dots. */
+  .meadow {
+    background-color: #fdf5f1;
+    background-image:
+      radial-gradient(900px 520px at 88% -8%, rgb(246 198 206 / 0.32), transparent 62%),
+      radial-gradient(760px 460px at -6% 24%, rgb(127 176 105 / 0.14), transparent 58%),
+      radial-gradient(rgb(74 61 70 / 0.05) 1px, transparent 1.4px);
+    background-size: auto, auto, 26px 26px;
+    background-attachment: fixed;
   }
 
   .soft-panel {
-    @apply border border-white/70 shadow-note backdrop-blur-xl;
-    background-color: rgb(255 255 255 / 0.82);
+    background-color: #fffdfc;
+    border: 1px solid #f5e6e0;
+    box-shadow: 0 2px 6px rgb(74 61 70 / 0.05), 0 10px 30px rgb(74 61 70 / 0.06);
   }
 
-  .gradient-text {
-    @apply bg-gradient-to-r from-teal-700 via-sky-600 to-rose-500 bg-clip-text text-transparent;
+  .card-lift {
+    transition: transform 180ms ease-out, box-shadow 220ms ease-out;
+  }
+
+  .card-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgb(74 61 70 / 0.07), 0 16px 40px rgb(74 61 70 / 0.10);
+  }
+
+  /* Everything pressable squishes like mochi. */
+  .squishy {
+    transition: transform 80ms ease-out;
+  }
+
+  .squishy:active {
+    transform: scale(0.95) translateY(1px);
   }
 
   .scrollbar-soft {
-    scrollbar-color: rgb(20 184 166 / 0.45) transparent;
+    scrollbar-color: rgb(127 176 105 / 0.45) transparent;
     scrollbar-width: thin;
   }
 
-  .weather-hero {
-    background:
-      radial-gradient(circle at 16% 14%, rgb(255 255 255 / 0.36), transparent 24%),
-      linear-gradient(135deg, #0f766e 0%, #0ea5e9 48%, #fb7185 100%);
+  /* Habit check circle pops with a spring overshoot. */
+  .check-pop {
+    animation: check-pop 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
-  .weather-hero__motion {
-    position: absolute;
-    inset: -34%;
-    background:
-      radial-gradient(circle at 20% 30%, rgb(255 255 255 / 0.26), transparent 16%),
-      radial-gradient(circle at 76% 22%, rgb(254 240 138 / 0.28), transparent 14%),
-      radial-gradient(circle at 62% 76%, rgb(125 211 252 / 0.24), transparent 16%);
-    animation: weather-drift 12s ease-in-out infinite alternate;
+  @keyframes check-pop {
+    0% {
+      transform: scale(0.6);
+    }
+
+    60% {
+      transform: scale(1.12);
+    }
+
+    100% {
+      transform: scale(1);
+    }
   }
 
-  .weather-hero__emoji {
-    display: inline-flex;
-    font-size: 4rem;
-    line-height: 1;
-    filter: drop-shadow(0 14px 24px rgb(15 23 42 / 0.2));
-    animation: weather-emoji-clear 3.6s ease-in-out infinite;
+  /* Crayon strike: a soft line draws left-to-right over a done habit. */
+  .crayon-strike {
+    background-image: linear-gradient(#6f6069, #6f6069);
+    background-repeat: no-repeat;
+    background-position: 0 55%;
+    background-size: 100% 2px;
+    animation: crayon-strike 300ms ease-out;
   }
 
-  @keyframes weather-drift {
+  @keyframes crayon-strike {
     from {
-      transform: translate3d(-3%, -2%, 0) rotate(0deg) scale(1);
+      background-size: 0% 2px;
     }
 
     to {
-      transform: translate3d(3%, 2%, 0) rotate(8deg) scale(1.04);
+      background-size: 100% 2px;
     }
   }
 
-  @keyframes weather-emoji-clear {
-    0%,
-    100% {
-      transform: translateY(0) scale(1);
+  /* Nếp the companion. */
+  .nep-idle {
+    animation: nep-breathe 3.2s ease-in-out infinite alternate;
+    transform-origin: bottom center;
+  }
+
+  @keyframes nep-breathe {
+    from {
+      transform: scaleY(1);
     }
 
-    50% {
-      transform: translateY(-8px) scale(1.04);
+    to {
+      transform: scaleY(1.025);
     }
+  }
+
+  .nep-squash {
+    animation: nep-squash 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: bottom center;
+  }
+
+  @keyframes nep-squash {
+    0% {
+      transform: scale(1.1, 0.9);
+    }
+
+    45% {
+      transform: scale(0.96, 1.05);
+    }
+
+    100% {
+      transform: scale(1, 1);
+    }
+  }
+
+  .nep-zzz {
+    animation: nep-zzz 4s linear infinite;
+    opacity: 0;
+  }
+
+  @keyframes nep-zzz {
+    0% {
+      opacity: 0;
+      transform: translateY(0);
+    }
+
+    30% {
+      opacity: 0.8;
+    }
+
+    70% {
+      opacity: 0.3;
+    }
+
+    100% {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+  }
+
+  .nep-bloom {
+    animation: nep-bloom 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+
+  @keyframes nep-bloom {
+    0% {
+      transform: scale(0);
+    }
+
+    70% {
+      transform: scale(1.25);
+    }
+
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .bubble-in {
+    animation: bubble-in 220ms ease-out;
+  }
+
+  @keyframes bubble-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* One-shot celebration confetti; direction set per piece via CSS vars. */
+  .confetti-piece {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 7px;
+    height: 7px;
+    border-radius: 9999px;
+    background: var(--clr);
+    pointer-events: none;
+    opacity: 0;
+    animation: confetti-pop 700ms ease-out var(--delay) forwards;
+  }
+
+  @keyframes confetti-pop {
+    0% {
+      opacity: 1;
+      transform: translate(0, 0) scale(1);
+    }
+
+    100% {
+      opacity: 0;
+      transform: translate(var(--dx), var(--dy)) scale(0.6);
+    }
+  }
+
+  /* Analytics bars settle in from the floor. */
+  .bar-grow {
+    animation: bar-grow 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--bar-delay, 0ms);
+    transform-origin: bottom;
+  }
+
+  @keyframes bar-grow {
+    from {
+      transform: scaleY(0);
+    }
+
+    to {
+      transform: scaleY(1);
+    }
+  }
+
+  /* Weather card wears a dawn-blue morning band instead of a full tint. */
+  .dawn-band {
+    background-image:
+      radial-gradient(circle at 82% 12%, rgb(255 217 142 / 0.4), transparent 30%),
+      linear-gradient(rgb(169 198 232 / 0.38), rgb(169 198 232 / 0.08) 55%, transparent 80%);
+  }
+
+  .weather-emoji {
+    display: inline-flex;
+    font-size: 2.5rem;
+    line-height: 1;
+    filter: drop-shadow(0 2px 4px rgb(74 61 70 / 0.14));
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .weather-hero__motion,
-    .weather-hero__emoji {
+    .card-lift,
+    .card-lift:hover,
+    .squishy,
+    .squishy:active {
+      transform: none;
+      transition: none;
+    }
+
+    .check-pop,
+    .crayon-strike,
+    .nep-idle,
+    .nep-squash,
+    .nep-zzz,
+    .nep-bloom,
+    .bubble-in,
+    .confetti-piece,
+    .bar-grow {
       animation: none;
+    }
+
+    .nep-zzz {
+      opacity: 0.5;
+    }
+
+    .confetti-piece {
+      display: none;
     }
   }
 }
