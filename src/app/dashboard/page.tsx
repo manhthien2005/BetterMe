@@ -1,23 +1,28 @@
 import { redirect } from "next/navigation";
 
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
-import { ensureUserBootstrap, getTrackerSnapshot } from "@/lib/server/actions";
+import { ensureUserBootstrap } from "@/lib/server/actions";
+import { isDevAuthBypassEnabled } from "@/lib/dev-auth";
 import { createClient } from "@/lib/supabase/server";
 
-export const dynamic = "force-dynamic";
-
 export default async function DashboardPage() {
+  const devAuthBypassEnabled = isDevAuthBypassEnabled();
   const supabase = await createClient();
   const {
-    data: { user }
+    data: { user },
+    error
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (error || !user) {
+    if (devAuthBypassEnabled) {
+      return <DashboardClient userEmail="dev@betterme.local" />;
+    }
+
     redirect("/login");
+    return null;
   }
 
   await ensureUserBootstrap();
-  const snapshot = await getTrackerSnapshot();
 
-  return <DashboardClient initialSnapshot={snapshot} userEmail={user.email || "BetterMe"} />;
+  return <DashboardClient userEmail={user.email ?? "BetterMe"} />;
 }

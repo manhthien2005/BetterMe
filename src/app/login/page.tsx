@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/components/auth/login-form";
+import { isDevAuthBypassEnabled } from "@/lib/dev-auth";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function LoginPage() {
+  const devAuthBypassEnabled = isDevAuthBypassEnabled();
   const supabase = await createClient();
   const {
     data: { user }
@@ -11,6 +13,7 @@ export default async function LoginPage() {
 
   if (user) {
     redirect("/dashboard");
+    return null;
   }
 
   return (
@@ -23,7 +26,7 @@ export default async function LoginPage() {
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-white/78">
                 Weekly Tracker
               </p>
-              <h1 className="mt-4 max-w-md text-4xl font-black tracking-normal sm:text-5xl">
+              <h1 className="mt-4 max-w-md text-4xl font-bold tracking-normal sm:text-5xl">
                 BetterMe
               </h1>
               <p className="mt-5 max-w-md text-base leading-7 text-white/84">
@@ -42,7 +45,7 @@ export default async function LoginPage() {
           </div>
         </div>
         <div className="flex items-center p-6 sm:p-10">
-          <LoginForm />
+          <LoginForm devAuthBypassEnabled={devAuthBypassEnabled} />
         </div>
       </section>
     </main>

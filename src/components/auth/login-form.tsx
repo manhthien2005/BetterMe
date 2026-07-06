@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Mail, Sparkles } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -8,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 
-export function LoginForm() {
+export function LoginForm({ devAuthBypassEnabled = false }: { devAuthBypassEnabled?: boolean }) {
   const [email, setEmail] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -47,7 +48,7 @@ export function LoginForm() {
         <div className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-teal-50 text-teal-700">
           <Sparkles className="h-5 w-5" />
         </div>
-        <h2 className="text-2xl font-black tracking-normal text-slate-950">Vào BetterMe</h2>
+        <h2 className="text-2xl font-bold tracking-normal text-slate-950">Vào BetterMe</h2>
         <p className="max-w-sm text-sm leading-6 text-muted-foreground">
           Nhập email để nhận magic link. Không cần mật khẩu, dữ liệu của bạn vẫn được tách
           riêng theo tài khoản.
@@ -69,6 +70,11 @@ export function LoginForm() {
         <Mail className="h-4 w-4" />
         {isPending ? "Đang gửi..." : "Gửi magic link"}
       </Button>
+      {devAuthBypassEnabled ? (
+        <Button asChild className="w-full" type="button" variant="outline">
+          <Link href="/dashboard">Continue as dev</Link>
+        </Button>
+      ) : null}
       <p className="text-xs leading-5 text-muted-foreground">
         Khi deploy Vercel, nhớ thêm URL production vào Supabase Auth redirect URLs.
       </p>

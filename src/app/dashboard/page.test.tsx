@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,6 +8,9 @@ import HomePage from "@/app/page";
 const authMocks = vi.hoisted(() => ({
   ensureUserBootstrap: vi.fn(),
   getUser: vi.fn()
+}));
+const envMocks = vi.hoisted(() => ({
+  devBypass: vi.fn()
 }));
 
 vi.mock("next/navigation", () => ({
@@ -26,9 +29,14 @@ vi.mock("@/lib/server/actions", () => ({
   ensureUserBootstrap: authMocks.ensureUserBootstrap
 }));
 
+vi.mock("@/lib/dev-auth", () => ({
+  isDevAuthBypassEnabled: envMocks.devBypass
+}));
+
 describe("dashboard route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    envMocks.devBypass.mockReturnValue(false);
   });
 
   it("redirects guests to login", async () => {
@@ -42,6 +50,21 @@ describe("dashboard route", () => {
     expect(redirect).toHaveBeenCalledWith("/login");
     expect(result).toBeNull();
     expect(authMocks.ensureUserBootstrap).not.toHaveBeenCalled();
+  });
+
+  it("renders the dashboard for a dev bypass guest", async () => {
+    envMocks.devBypass.mockReturnValue(true);
+    authMocks.getUser.mockResolvedValue({
+      data: { user: null },
+      error: null
+    });
+
+    render(await DashboardPage());
+
+    expect(redirect).not.toHaveBeenCalled();
+    expect(authMocks.ensureUserBootstrap).not.toHaveBeenCalled();
+    expect(screen.getByText("dev@betterme.local")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Bangkok weather" })).toBeTruthy();
   });
 
   it("renders the habit dashboard for authenticated users", async () => {
@@ -73,6 +96,9 @@ describe("dashboard route", () => {
     expect(screen.getByText("Wind")).toBeTruthy();
     expect(screen.getByText("Rain")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Focus session" })).toBeTruthy();
+    const rightRail = screen.getByLabelText("Weather and Spotify highlights");
+    expect(within(rightRail).getByRole("heading", { name: "Bangkok weather" })).toBeTruthy();
+    expect(within(rightRail).getByRole("heading", { name: "Focus session" })).toBeTruthy();
     const spotifyFrame = screen.getByTitle("Spotify Deep Focus playlist");
     expect(spotifyFrame.getAttribute("src")).toContain(
       "https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKCadgRdKQ"
@@ -87,9 +113,18 @@ describe("dashboard route", () => {
     expect(screen.getByLabelText("Exercise / sports emoji icon").textContent).toBe("💪");
     expect(container.innerHTML).not.toContain("font-black");
 
+    // Partially-filled calendar cells render a radial-gradient "donut" with an
+    // 82% hole; fully-complete cells are a solid color. Target a partial cell so
+    // the 82% assertion is deterministic. (JSDOM keeps the radial-gradient but
+    // drops the sibling conic-gradient it cannot parse.)
     const calendarDay = screen
       .getAllByRole("button")
-      .find((button) => button.getAttribute("aria-label")?.includes("habits"));
+      .find(
+        (button) =>
+          button.getAttribute("aria-label")?.includes("habits") &&
+          button.getAttribute("style")?.includes("radial-gradient")
+      );
+    expect(calendarDay).toBeTruthy();
     expect(calendarDay?.className).toContain("rounded-full");
     expect(calendarDay?.getAttribute("style")).toContain("82%");
   });

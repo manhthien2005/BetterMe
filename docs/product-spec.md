@@ -2,11 +2,11 @@
 
 ## Product intent
 
-BetterMe is a private, single-user self-improvement companion for planning a week, completing daily habits, reflecting honestly, and seeing progress without turning life into a spreadsheet. The experience should feel like a calm personal study corner: quick enough for a thirty-second check-in, useful enough for a weekly review, and playful without becoming noisy.
+BetterMe is a private, single-user self-improvement companion for planning a week, completing daily habits, reflecting honestly, and seeing progress without turning life into a spreadsheet. The dashboard direction is the approved Playful Soft-Bento Productivity Dashboard: warm, personal, modern, focused, lightly playful, spacious, and premium but friendly. It should be quick enough for a thirty-second check-in, useful enough for a weekly review, and expressive without becoming noisy.
 
 ## Scope assessment
 
-BetterMe Phase 1 is one cohesive product and should use a single specification-to-plan cycle. Dashboard metrics, daily tracking, the weekly quest board, calendar selection, habit configuration, reflections, charts, motivation, and theming all read or update the same habit/settings/daily-record model; splitting them into independent sub-projects would create artificial integration boundaries and duplicate state decisions. Implementation remains phased and task-sized, but the product contract is unified.
+BetterMe Phase 1 is one cohesive product and should use a single specification-to-plan cycle. The Bento dashboard, daily tracking, the weekly quest board, calendar selection, upcoming events, habit configuration, reflections, charts, motivation, and theming all read or update the same habit/settings/daily-record model; splitting them into independent sub-projects would create artificial integration boundaries and duplicate state decisions. Widget and future integration seams are planned as interfaces, not as production network features. Implementation remains phased and task-sized, but the product contract is unified.
 
 ## Assumptions & Resolved Questions
 
@@ -42,7 +42,7 @@ These are the questions the brainstorming workflow would normally ask one at a t
 
 ### 8. What theme direction is canonical?
 
-**Answer:** Ship four selectable light themes—Cute Cat, Study Corner, Modern Focus, and Minimal Calm—under one full theme contract. Each changes semantic color, typography, radii, frames, icons, illustrations, background, motion, toasts, charts, empty states, and micro-interactions. Dark-mode-compatible token structure is planned, but dark themes are not built in Phase 1.
+**Answer:** Ship four selectable light themes: Cute Cat, Study Corner, Modern Focus, and Minimal Calm. They share one full theme contract. Each changes semantic color, typography, radii, frames, icons, illustrations, background, motion, toasts, charts, empty states, widgets, calendar fills, and micro-interactions. All themes preserve the same dashboard information architecture. Dark-mode-compatible token structure is planned, but dark themes are not built in Phase 1.
 
 ### 9. Which library strategy should be used?
 
@@ -68,11 +68,20 @@ These are the questions the brainstorming workflow would normally ask one at a t
 
 **Answer:** No. The brief already fixes the four theme concepts and this session produces a UI-system contract rather than selecting between visual mockups. No unresolved visual comparison would benefit from opening a companion.
 
+### 15. What dashboard information architecture is approved?
+
+**Answer:** The dashboard uses a 12-column Soft-Bento layout. The first row is a full-width Greeting Hero with contextual greeting, date, motivational message, current streak, best streak, seven-day streak chain, and a contextual streak-protection message. The main desktop row allocates Calendar 4/12, Today's Habits 5/12, and Personal Widgets 3/12. The insight row allocates Upcoming Events 4/12 below the calendar and Analytics 8/12. Tablet uses an intentional two-column layout, and mobile orders sections as Greeting Hero, Today's Habits, Calendar, Upcoming Events, Personal Widgets, then Analytics.
+
+### 16. What integration scope is allowed in Phase 1?
+
+**Answer:** The dashboard plans a reusable widget registry and includes Weather and Spotify as initial widget types with loading, disconnected, permission-denied, unavailable, and error states. Phase 1 does not require production Weather, Spotify, or Google Calendar API integrations. Weather remains a concise daily-planning widget and Spotify behaves as a compact focus-music controller when connected later.
+
 ## User goals
 
 - Know what to do today and how today is going at a glance.
 - Complete habits from a daily or weekly context with minimal friction.
 - Plan or review any date from a calendar.
+- See concise upcoming events and personal widgets without turning the dashboard into an admin console.
 - Capture a note, challenge, and tomorrow focus without opening a separate journal.
 - Understand streaks, completion status, missed habits, and trends without interpreting raw tables.
 - Adjust habits, weights, target rate, timezone, start date, and theme safely.
@@ -81,17 +90,17 @@ These are the questions the brainstorming workflow would normally ask one at a t
 ## Core flows
 
 1. **First run:** seed default habits and settings, choose the current date, show a short local-data explanation, and land on the dashboard.
-2. **Daily check-in:** open today, toggle habits, see score/status/streak update, write reflections, and receive restrained themed feedback.
+2. **Daily check-in:** open the dashboard, read the greeting/streak context, toggle habits in the central Today's Habits surface, see score/status/streak update, write reflections from the detailed flow when needed, and receive restrained themed feedback.
 3. **Weekly planning/review:** move between weeks, view all active habits across Monday–Sunday, plan future notes, and inspect daily statuses and missed items.
 4. **Calendar review:** browse a month, identify status by accessible color-plus-label treatment, select a date, and open its detail.
 5. **Habit configuration:** add, rename, reorder, activate/deactivate, describe, and weight habits while preserving historical references by stable ID/key.
-6. **Progress review:** view the 30-day completion line and selected-week per-habit completion bars, including honest empty states.
+6. **Progress review:** view dashboard analytics for 7D, 30D, and 90D periods, including completion trend, Good-day count, completed-habit total, most consistent habit, habit needing attention, and honest empty states.
 7. **Personalization:** choose one of four themes; semantic tokens update the full experience, including charts and feedback.
 
 ## Screens and pages
 
 - `/`: minimal entry route that leads to `/dashboard` without authentication.
-- `/dashboard`: today metrics, selected-week summary, compact quest board, motivation, and progress previews.
+- `/dashboard`: Playful Soft-Bento dashboard with Greeting Hero + streak, calendar day-progress visualization, central Today's Habits controls, reusable Personal Widgets, Upcoming Events, and Analytics.
 - `/tracker`: full weekly quest board plus selected-day habit controls and reflection editor.
 - `/calendar`: month grid and selected-day detail.
 - `/habits`: habit configuration, ordering, activation, descriptions, and weights.
@@ -101,11 +110,11 @@ Selected-day detail is a reusable component shown in tracker and calendar contex
 
 ## Phase 1 feature boundaries
 
-Phase 1 includes dashboard overview, Boolean daily tracking, Monday-based weekly planning, month calendar selection, selected-day detail, habit configuration, three reflection fields, 30-day and selected-week charts, weighted scoring, completion status, streaks, motivation messages, four complete themes, and local/mock persistence behind an adapter.
+Phase 1 includes the Playful Soft-Bento dashboard overview, Boolean daily tracking, Monday-based weekly planning, month calendar selection, selected-day detail, habit configuration, three reflection fields, dashboard analytics for 7D/30D/90D, weighted scoring, completion status, streaks, motivation messages, internal BetterMe upcoming events, reusable widget contracts with initial Weather and Spotify state-only connection states, four complete themes, and local/mock persistence behind an adapter.
 
 Completion status uses the legacy labels exactly: `Good` at or above the configured target, `Okay` from 50% up to the target, `Bad` below 50%, and `Planned` for future dates. Dates before tracking starts have no status.
 
-Phase 1 does not include remote synchronization, notifications, analytics telemetry, custom chart ranges, partial habit completion, recurring schedules by weekday, custom theme authoring, dark mode, data import from Google Sheets, or production-grade export/reset unless promoted by a later approved scope decision.
+Phase 1 does not include remote synchronization, notifications, analytics telemetry, custom chart ranges beyond 7D/30D/90D, partial habit completion, recurring schedules by weekday, custom theme authoring, dark mode, data import from Google Sheets, production Weather/Spotify/Google Calendar API integrations, or production-grade export/reset unless promoted by a later approved scope decision.
 
 ## Explicitly out of scope
 
@@ -117,6 +126,7 @@ Phase 1 does not include remote synchronization, notifications, analytics teleme
 - Social accountability
 - Public sharing
 - Promotional, referral, or growth features
+- Production external integrations for Weather, Spotify, or Google Calendar
 
 ## Acceptance summary
 
@@ -124,5 +134,7 @@ Phase 1 does not include remote synchronization, notifications, analytics teleme
 - Core daily and weekly flows work with keyboard and pointer input.
 - Refreshing restores source data and theme through the storage adapter.
 - Score, status, missed habits, and streak match the legacy formulas exactly.
-- No component contains timezone math, chart transformation, persistence calls, or hardcoded theme values.
-- The four themes visibly affect every contract category and meet contrast/focus requirements.
+- The dashboard preserves the approved Bento hierarchy on desktop, tablet, and mobile.
+- Calendar cells communicate completion through semantic status color plus proportional fill, never per-cell percentage text.
+- No component contains timezone math, chart transformation, persistence calls, production integration calls, or hardcoded theme values.
+- The four themes visibly affect every contract category, including charts, widgets, toasts, calendar states, and micro-interactions, while preserving the same information architecture.

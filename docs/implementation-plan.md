@@ -2,7 +2,7 @@
 
 ## Goal
 
-Deliver a local-first, themeable BetterMe web app that preserves legacy score/streak behavior while replacing spreadsheet mechanics with pure domain modules, accessible web flows, and a replaceable persistence adapter.
+Deliver a local-first, themeable BetterMe web app that preserves legacy score/streak behavior while replacing spreadsheet mechanics with pure domain modules, an accessible Playful Soft-Bento Productivity Dashboard, and a replaceable persistence adapter.
 
 ## Phase 0 — Establish an executable baseline
 
@@ -27,7 +27,7 @@ Deliver a local-first, themeable BetterMe web app that preserves legacy score/st
 
 **Dependencies:** Phase 0.
 
-**Work:** Follow red-green-refactor for date/week boundaries, score edge cases, target thresholds, planned/pre-start dates, chronological streak resets, weekly aggregates, 30-day series, and selected-week habit rates.
+**Work:** Follow red-green-refactor for date/week boundaries, score edge cases, target thresholds, planned/pre-start dates, chronological streak resets, weekly aggregates, 7D/30D/90D dashboard progress series, selected-week habit rates, calendar day visualization values, and dashboard summary metrics.
 
 **Verification gate:** Focused unit suites pass in multiple timezones and have no React/Next/browser imports.
 
@@ -57,11 +57,11 @@ Deliver a local-first, themeable BetterMe web app that preserves legacy score/st
 
 ## Phase 3 — Theme and accessible UI foundation
 
-**Goal:** Implement the complete theme contract and shared interaction/feedback primitives before product screens.
+**Goal:** Implement the complete dashboard-aware theme contract and shared interaction/feedback primitives before product screens.
 
 **Dependencies:** Phases 0 and 2; chart color validation also consumes Phase 1 chart types.
 
-**Work:** Define four themes, validate token completeness/contrast, compile semantic CSS variables, implement provider/switcher, theme-aware Sonner wrapper, chart renderer shells, app layout/navigation, and shared empty/error/loading states.
+**Work:** Define four themes, validate token completeness/contrast, compile semantic CSS variables, implement provider/switcher, reusable card primitives, theme-aware Sonner wrapper, chart renderer shells, app layout/navigation, and shared empty/error/loading states. The token contract covers application background, surfaces, elevated surfaces, text hierarchy, borders, shadows, accents, Good/Okay/Bad/Planned states, focus rings, calendar fill/empty states, chart colors, widget states, toast states, radius, spacing, typography, and motion.
 
 **Verification gate:** Theme schema and contrast tests pass for all four definitions; component tests cover keyboard focus, reduced motion, and semantic-token-only styling.
 
@@ -69,7 +69,7 @@ Deliver a local-first, themeable BetterMe web app that preserves legacy score/st
 
 - Every theme supplies every contract category.
 - No product component contains raw theme literals.
-- Toasts and charts resolve semantic theme tokens.
+- Cards, toasts, widgets, calendar states, and charts resolve semantic theme tokens.
 - Focus, contrast, and reduced-motion requirements pass automated checks plus manual keyboard review.
 
 ## Phase 4 — Product flows and screens
@@ -78,13 +78,18 @@ Deliver a local-first, themeable BetterMe web app that preserves legacy score/st
 
 **Dependencies:** Phases 1–3.
 
-**Work:** Implement entry routing, dashboard, tracker/selected-day/reflections, calendar, habit configuration, settings, motivation, and responsive navigation in the dependency order in `docs/task-breakdown.md`.
+**Work:** Implement entry routing, the approved Soft-Bento dashboard, tracker/selected-day/reflections, calendar, habit configuration, settings, motivation, and responsive navigation in the dependency order in `docs/task-breakdown.md`.
 
 **Verification gate:** Each page has a focused interaction/accessibility suite; one end-to-end flow completes habits and reflections, and another proves persistence after reload.
 
 **Acceptance criteria:**
 
-- The dashboard communicates today, selected week, missed habits, streak, motivation, and progress.
+- The dashboard preserves the approved desktop 12-column Bento allocation, tablet two-column behavior, and mobile section order.
+- The Greeting Hero communicates contextual greeting, current date, motivation, current streak, best streak, seven-day streak chain, and streak-protection copy.
+- The Calendar communicates completion with semantic status color and proportional fill, plus today/selected/focus/no-data/future states.
+- Today's Habits is the visually central interaction surface and includes loading, no-habits, partial, all-completed, error, and inactive states.
+- Personal Widgets use a registry/config/slot model with Weather and Spotify state-only adapters and connection/error states, without production integrations.
+- Upcoming Events and Analytics use reusable read models, including 7D/30D/90D trend charts and habit performance without duplicating hero streak metrics.
 - The tracker supports keyboard/pointer daily and weekly updates.
 - Calendar, habits, and settings update the same canonical dataset.
 - All pages have loading, empty, planned, pre-start, validation, and storage-error behavior where relevant.
@@ -95,7 +100,7 @@ Deliver a local-first, themeable BetterMe web app that preserves legacy score/st
 
 **Dependencies:** Phases 0–4.
 
-**Work:** Run the full unit/component/end-to-end suite, strict type-check, lint, production build, import-boundary check, theme contrast scan, keyboard/manual flow checklist, and cross-timezone fixtures.
+**Work:** Run the full unit/component/end-to-end suite, strict type-check, lint, production build, import-boundary check, theme contrast scan, keyboard/manual flow checklist, dashboard desktop/tablet/mobile layout review, visual/theme verification, reduced-motion review, and cross-timezone fixtures.
 
 **Verification gate:** Every command is rerun from a clean dependency install and current outputs are captured before completion is claimed.
 
@@ -104,12 +109,13 @@ Deliver a local-first, themeable BetterMe web app that preserves legacy score/st
 - All automated gates pass.
 - Legacy scoring/streak fixtures match expected results.
 - No auth/backend/social dependency is required.
+- No production Weather, Spotify, Google Calendar, or analytics telemetry dependency is required.
 - No raw theme values exist in components.
 - Known non-blocking limitations are documented with owners and future task candidates.
 
 ## Open questions and risks
 
-These are explicitly logged rather than left as placeholders:
+These are explicitly logged rather than left unresolved:
 
 1. **Prototype disposition:** Some existing UI may be reusable, but it is coupled to Supabase types and missing `dashboard-client.tsx`. Default: quarantine it behind the import-boundary test, then adapt only pieces whose characterization tests make reuse cheaper than replacement.
 2. **Exact dependency pins:** No manifest/lockfile exists, so versions cannot be audited today. Default: Phase 0 selects current mutually compatible stable releases satisfying the documented floors, records the decision, and commits the pnpm lockfile; no floating ranges in CI.

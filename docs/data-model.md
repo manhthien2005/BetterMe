@@ -10,6 +10,29 @@ export type ISODateTimeString = string;
 
 export type CompletionStatus = "Good" | "Okay" | "Bad" | "Planned";
 export type ThemeId = "cute-cat" | "study-corner" | "modern-focus" | "minimal-calm";
+export type AnalyticsPeriod = "7D" | "30D" | "90D";
+export type EventCategory = "habit" | "planning" | "reflection" | "personal" | "external";
+export type EventSource = "betterme" | "google-calendar";
+export type IntegrationConnectionState =
+  | "connected"
+  | "disconnected"
+  | "loading"
+  | "permission-denied"
+  | "unavailable"
+  | "error";
+export type DashboardWidgetType =
+  | "weather"
+  | "spotify"
+  | "pomodoro"
+  | "google-calendar"
+  | "focus-timer"
+  | "sleep-summary"
+  | "water-tracking"
+  | "countdown"
+  | "quick-notes";
+export type DashboardWidgetStatus = "ready" | IntegrationConnectionState;
+export type WidgetSlotId = "personal";
+export type CalendarDayDataState = "tracked" | "future" | "pre-start" | "no-data";
 
 export interface HabitConfig {
   key: string;
@@ -34,6 +57,7 @@ export interface TrackerSettings {
   trackerDays: number;
   targetCompletionRate: number;
   themeId: ThemeId;
+  dashboardWidgets: DashboardWidgetConfig[];
 }
 
 export interface ReflectionEntry {
@@ -82,6 +106,86 @@ export interface WeekSummary {
   endingStreak: number | null;
 }
 
+export interface StreakDayIndicator {
+  date: ISODateString;
+  status: CompletionStatus | null;
+  completionRate: number | null;
+  isProtected: boolean;
+}
+
+export interface CalendarDayVisualization {
+  date: ISODateString;
+  status: CompletionStatus | null;
+  completionRate: number | null;
+  fillRatio: number;
+  completedHabitCount: number;
+  totalHabitCount: number;
+  dataState: CalendarDayDataState;
+  isToday: boolean;
+  isSelected: boolean;
+}
+
+export interface UpcomingEvent {
+  id: string;
+  title: string;
+  startsAt: ISODateTimeString;
+  endsAt?: ISODateTimeString;
+  category: EventCategory;
+  source: EventSource;
+  relatedHabitId?: string;
+}
+
+export interface DashboardSummary {
+  date: ISODateString;
+  greeting: string;
+  motivationalMessage: string;
+  currentStreak: number;
+  bestStreak: number;
+  streakProtectionMessage: string;
+  streakChain: StreakDayIndicator[];
+  todaysCompletedHabits: number;
+  todaysTotalHabits: number;
+  todayCompletionRate: number | null;
+  period: AnalyticsPeriod;
+  averageCompletionRate: number | null;
+  changeFromPreviousPeriod: number | null;
+  goodDayCount: number;
+  totalCompletedHabits: number;
+  mostConsistentHabitName: string | null;
+  habitNeedingAttentionName: string | null;
+}
+
+export interface WidgetSlot {
+  id: WidgetSlotId;
+  label: string;
+  desktopColumns: 3 | 12;
+  order: number;
+}
+
+export interface DashboardWidgetDefinition {
+  type: DashboardWidgetType;
+  title: string;
+  defaultSlotId: WidgetSlotId;
+  supportsCompact: boolean;
+  requiresConnection: boolean;
+}
+
+export interface DashboardWidgetConfig {
+  id: string;
+  type: DashboardWidgetType;
+  slotId: WidgetSlotId;
+  enabled: boolean;
+  order: number;
+}
+
+export interface DashboardWidget {
+  definition: DashboardWidgetDefinition;
+  config: DashboardWidgetConfig;
+  status: DashboardWidgetStatus;
+  connectionState: IntegrationConnectionState;
+  updatedAt?: ISODateTimeString;
+}
+
 export type ChartKind = "line" | "bar";
 export type ChartColorToken =
   | "chart-series-1"
@@ -107,7 +211,7 @@ export interface ChartSeries {
 }
 
 export interface ChartData {
-  id: "thirty-day-progress" | "selected-week-habits";
+  id: "dashboard-progress-trend" | "thirty-day-progress" | "selected-week-habits";
   title: string;
   description: string;
   kind: ChartKind;
@@ -160,15 +264,20 @@ export interface SemanticColorTokens {
   background: RawColorToken;
   backgroundAccent: RawColorToken;
   surface: RawColorToken;
+  surfaceElevated: RawColorToken;
   surfaceMuted: RawColorToken;
+  surfaceAccent: RawColorToken;
   text: RawColorToken;
   textMuted: RawColorToken;
   textOnPrimary: RawColorToken;
+  textOnAccent: RawColorToken;
   primary: RawColorToken;
   primaryHover: RawColorToken;
   accent: RawColorToken;
   border: RawColorToken;
+  borderSubtle: RawColorToken;
   focus: RawColorToken;
+  focusRing: RawColorToken;
   disabled: RawColorToken;
   selection: RawColorToken;
   statusGoodSurface: RawColorToken;
@@ -179,6 +288,27 @@ export interface SemanticColorTokens {
   statusBadText: RawColorToken;
   statusPlannedSurface: RawColorToken;
   statusPlannedText: RawColorToken;
+  calendarEmptySurface: RawColorToken;
+  calendarEmptyBorder: RawColorToken;
+  calendarFill: RawColorToken;
+  calendarTodayRing: RawColorToken;
+  calendarSelectedRing: RawColorToken;
+  chartGrid: RawColorToken;
+  chartAxis: RawColorToken;
+  chartTooltipSurface: RawColorToken;
+  widgetSurface: RawColorToken;
+  widgetBorder: RawColorToken;
+  widgetConnected: RawColorToken;
+  widgetDisconnected: RawColorToken;
+  widgetError: RawColorToken;
+  toastSuccessSurface: RawColorToken;
+  toastSuccessText: RawColorToken;
+  toastInfoSurface: RawColorToken;
+  toastInfoText: RawColorToken;
+  toastWarningSurface: RawColorToken;
+  toastWarningText: RawColorToken;
+  toastErrorSurface: RawColorToken;
+  toastErrorText: RawColorToken;
 }
 
 export interface SemanticTypographyTokens {
@@ -205,7 +335,7 @@ export interface ThemeDefinition {
   semantic: {
     colors: SemanticColorTokens;
     typography: SemanticTypographyTokens;
-    radius: Record<"control" | "card" | "panel" | "pill" | "illustration", RawRadiusToken>;
+    radius: Record<"control" | "card" | "panel" | "pill" | "illustration" | "bento", RawRadiusToken>;
     cardFrame: {
       style: "soft" | "notebook" | "crisp" | "quiet";
       borderWidth: string;
@@ -302,9 +432,14 @@ export interface StorageAdapter {
 - `ReflectionEntry` is one date’s source reflection. A derived `DailyRecord` embeds the matching reflection so UI consumers do not perform joins.
 - `DailyRecord` is a derived read model joining one completion entry, an optional matching reflection, settings, active habits, date metadata, score, missed habits, status, and streak. `reflection` is `null` when that date has no persisted reflection; form components create transient empty field values without fabricating an `updatedAt` timestamp.
 - `WeekSummary` aggregates seven `DailyRecord` values for a Monday–Sunday window.
+- `StreakDayIndicator` is the Greeting Hero's seven-day streak-chain read model. It is derived from daily records and is not persisted.
+- `CalendarDayVisualization` is the calendar-cell read model. `fillRatio` is a normalized `0` through `1` value used for proportional progress-ring or `conic-gradient` fills; semantic status color supplies the second completion cue.
+- `UpcomingEvent` is a display-ready event row. Phase 1 events may come from internal BetterMe planning data; `source: "google-calendar"` is reserved so a future adapter can feed the same UI without changing component contracts.
+- `DashboardSummary` is a dashboard read model for greeting, motivational copy, streak summary, today's habit counts, and analytics metrics. It excludes the chart series themselves, which remain `ChartData`.
+- `WidgetSlot`, `DashboardWidgetDefinition`, `DashboardWidgetConfig`, and `DashboardWidget` separate registry metadata, persisted ordering preference, and transient connection/runtime state. `TrackerSettings.dashboardWidgets` stores only the enabled/order configuration.
 - `ChartData` is a renderer-neutral projection of daily/weekly read models. `colorToken` names are semantic chart references, not raw colors.
 - `ThemeDefinition` separates raw theme values from semantic product mappings. `TrackerSettings.themeId` selects one definition.
-- `BetterMeData` is the only persisted root. It excludes `DailyRecord`, `ScoreSummary`, `WeekSummary`, and `ChartData` because they are derived.
+- `BetterMeData` is the only persisted root. It excludes `DailyRecord`, `ScoreSummary`, `WeekSummary`, `CalendarDayVisualization`, `UpcomingEvent`, `DashboardSummary`, runtime `DashboardWidget` status, and `ChartData` because they are derived or adapter-provided read models.
 
 ## Legacy field mapping
 
@@ -317,6 +452,7 @@ export interface StorageAdapter {
 | `selected_date` | `TrackerSettings.selectedDate` |
 | `tracker_days` | `TrackerSettings.trackerDays` |
 | `target_completion_rate` | `TrackerSettings.targetCompletionRate` |
+| dashboard widget preferences | `TrackerSettings.dashboardWidgets` |
 | `week_start` | `DailyRecord.weekStart` |
 | `day_label` | `DailyRecord.dayLabel` |
 | habit Boolean columns | `HabitCompletionEntry.habitCompletions` |
@@ -345,7 +481,10 @@ completionRate = maxScore > 0 ? totalScore / maxScore : 0
 - Sort eligible records ascending by ISO date. Initialize running streak to zero; for each record, increment for `Good`, otherwise reset to zero. Store the running value. Planned and pre-start records have null streak and do not extend it.
 - `WeekSummary.averageCompletionRate` averages only non-null daily rates. It is null when no eligible day exists.
 - `WeekSummary.endingStreak` is the final eligible record’s streak, or `null` when the week contains no eligible record.
-- The selected-week habit chart denominator is the count of eligible selected-week records, matching the legacy behavior. The 30-day chart is anchored to the earlier of selected date and zoned today.
+- `CalendarDayVisualization.fillRatio` is `0` for null/zero completion, the daily completion rate for partial eligible days, and `1` for complete eligible days. Future dates use neutral planned styling, and no-data dates use a neutral outline.
+- `DashboardSummary.currentStreak` is the current eligible day's running Good-day streak, or `0` when no current eligible streak exists. `bestStreak` is the maximum historical eligible Good-day streak in the available records. Streak-protection copy is derived from today's active habit count, completion count, target rate, and milestone state; it is never persisted.
+- The dashboard progress trend supports `AnalyticsPeriod` values `7D`, `30D`, and `90D`. Each period uses completion rate by date and compares against the immediately preceding period with the same day count.
+- The selected-week habit chart denominator is the count of eligible selected-week records, matching the legacy behavior. The dashboard progress chart is anchored to the earlier of selected date and zoned today for its selected `AnalyticsPeriod`.
 
 ## Timezone and date rules
 
@@ -353,7 +492,7 @@ ISO date strings represent calendar dates, not instants. “Today” is derived 
 
 ## Local/mock storage shape
 
-The browser key is `betterme:data`. Its JSON value is exactly one `BetterMeData` envelope with `schemaVersion: 1`. Writes replace the envelope atomically from the app’s perspective. The memory adapter stores a deep-cloned envelope so tests cannot mutate adapter state by reference.
+The browser key is `betterme:data`. Its JSON value is exactly one `BetterMeData` envelope with `schemaVersion: 1`, including `TrackerSettings.dashboardWidgets` as source preference data. Writes replace the envelope atomically from the app’s perspective. The memory adapter stores a deep-cloned envelope so tests cannot mutate adapter state by reference.
 
 On a missing key, `load()` returns `null` and the store seeds defaults. On invalid JSON or schema mismatch, the adapter raises a classified validation error; the store exposes recovery rather than silently treating corruption as an empty Bad day.
 

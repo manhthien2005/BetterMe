@@ -1,5 +1,7 @@
 # BetterMe Repository Audit
 
+> **Superseded historical snapshot (2026-07-04).** This audit reflects a planning session when no `package.json` and no populated `.git/` existed. Both are now present, the project is a working Next.js app, and the "canonical Phase 1 scaffold" it references was removed on 2026-07-06. Kept for provenance only — do not treat its "does not exist" claims as current. For the current state see `docs/superpowers/specs/2026-07-06-repo-cleanup-rearchitecture-design.md`.
+
 Audit date: 2026-07-04
 
 ## Framework state

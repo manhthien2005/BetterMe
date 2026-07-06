@@ -131,14 +131,23 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[repeat(24,minmax(0,1fr))]">
+      <div className="grid grid-cols-1 gap-5">
         <GreetingHero viewModel={viewModel} />
-        <CalendarPanel days={viewModel.calendar.days} viewModel={viewModel} />
-        <TodaysHabits habits={viewModel.habits} onToggle={toggleHabit} viewModel={viewModel} />
-        <WeatherHeroBanner />
-        <SpotifyHeroBanner />
-        <UpcomingEvents viewModel={viewModel} />
-        <AnalyticsPanel viewModel={viewModel} />
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,18fr)_minmax(320px,6fr)] xl:items-start">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[repeat(18,minmax(0,1fr))]">
+            <CalendarPanel days={viewModel.calendar.days} viewModel={viewModel} />
+            <TodaysHabits habits={viewModel.habits} onToggle={toggleHabit} viewModel={viewModel} />
+            <UpcomingEvents viewModel={viewModel} />
+            <AnalyticsPanel viewModel={viewModel} />
+          </div>
+          <aside
+            aria-label="Weather and Spotify highlights"
+            className="grid gap-5 xl:sticky xl:top-5"
+          >
+            <WeatherHeroBanner />
+            <SpotifyHeroBanner />
+          </aside>
+        </div>
       </div>
     </main>
   );
@@ -448,7 +457,7 @@ function WeatherHeroBanner() {
   ];
 
   return (
-    <section className="weather-hero relative order-5 overflow-hidden rounded-lg p-4 text-white shadow-note sm:p-5 xl:order-4 xl:[grid-column:span_10/span_10]">
+    <section className="weather-hero relative overflow-hidden rounded-lg p-4 text-white shadow-note sm:p-5">
       <div aria-hidden="true" className="weather-hero__motion" />
       <div className="relative z-10 flex min-h-[280px] flex-col justify-between gap-6">
         <div className="flex items-start justify-between gap-4">
@@ -482,7 +491,7 @@ function WeatherHeroBanner() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2">
           {metricItems.map(([label, value]) => (
             <div className="rounded-lg border border-white/20 bg-white/15 p-3 backdrop-blur" key={label}>
               <p className="text-xs font-bold uppercase tracking-normal text-white/60">{label}</p>
@@ -497,9 +506,9 @@ function WeatherHeroBanner() {
 
 function SpotifyHeroBanner() {
   return (
-    <section className="order-6 overflow-hidden rounded-lg bg-[#121212] p-4 text-white shadow-note sm:p-5 xl:order-5 xl:[grid-column:span_14/span_14]">
-      <div className="grid min-h-[280px] gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(320px,1.1fr)] lg:items-center">
-        <div className="flex h-full flex-col justify-between gap-6">
+    <section className="overflow-hidden rounded-lg bg-[#121212] p-4 text-white shadow-note sm:p-5">
+      <div className="grid gap-4">
+        <div className="flex flex-col gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-normal text-[#1db954]">Spotify</p>
             <h2 className="mt-2 text-2xl font-bold tracking-normal text-white">Focus session</h2>
@@ -561,7 +570,7 @@ function UpcomingEvents({ viewModel }: { viewModel: DashboardViewModel }) {
 
 function AnalyticsPanel({ viewModel }: { viewModel: DashboardViewModel }) {
   return (
-    <section className="soft-panel order-6 rounded-lg p-4 sm:p-5 xl:[grid-column:span_17/span_17]">
+    <section className="soft-panel order-6 rounded-lg p-4 sm:p-5 xl:[grid-column:span_11/span_11]">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex items-center gap-2">

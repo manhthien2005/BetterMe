@@ -22,7 +22,8 @@ import type {
   HabitRatePoint,
   ProfileSettings,
   TrackerRecord,
-  TrackerSnapshot
+  TrackerSnapshot,
+  TrackerStatus
 } from "@/lib/types";
 import { formatPercent } from "@/lib/utils";
 
@@ -187,12 +188,13 @@ export function buildTrackerSnapshot({
   const selectedMonth = parseIsoDate(selectedDate).getMonth();
   const calendar = getMonthGrid(selectedDate).map((date) => {
     const record = recordsByDate.get(date);
+    const status: TrackerStatus = record?.status || "";
 
     return {
       date,
       day: parseIsoDate(date).getDate(),
       inCurrentMonth: parseIsoDate(date).getMonth() === selectedMonth,
-      status: record?.status || "",
+      status,
       completionRate: record?.completionRate ?? null
     };
   });

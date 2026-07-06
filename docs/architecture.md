@@ -1,8 +1,10 @@
 # BetterMe Phase 1 Architecture
 
+> **Status (updated 2026-07-06): ROADMAP, not current code.** The "canonical Phase 1" scaffold described below (pure-domain `src/lib/scoring`, `src/lib/storage`, `src/store`, `src/features/*`, `src/charts`, `src/themes`, `src/styles/**`, canonical `src/types`, etc.) was **removed** in the 2026-07-06 repo cleanup because every module was an unwired `throw new Error("not implemented")` stub. The application that actually ships today is **Supabase auth + a localStorage-backed dashboard**: `src/app/**` routes, `src/components/dashboard/{dashboard-client,dashboard-data}.tsx` (renders from `localStorage`, key `betterme.dashboard.v1`), and the Supabase backend under `src/lib/{server,supabase,tracker,types,defaults,date,utils}.ts` (implemented; only `ensureUserBootstrap` is wired — the CRUD actions await a future dashboard-to-Supabase wiring task). Treat the sections below as the intended target architecture to build toward, not a description of the present tree. See `docs/superpowers/specs/2026-07-06-repo-cleanup-rearchitecture-design.md`.
+
 ## Architecture outcome
 
-Phase 1 is a local-first Next.js App Router application organized around pure domain functions, typed source data, derived read models, and a replaceable persistence adapter. Existing Supabase/auth code remains a preserved prototype until a planned reconciliation task; it is not a dependency of the canonical Phase 1 path.
+Phase 1 is a local-first Next.js App Router application organized around pure domain functions, typed source data, derived read models, a reusable Playful Soft-Bento dashboard, and a replaceable persistence adapter. Existing Supabase/auth code remains a preserved prototype until a planned reconciliation task; it is not a dependency of the canonical Phase 1 path.
 
 ## Global constraints
 
@@ -14,8 +16,10 @@ Phase 1 is a local-first Next.js App Router application organized around pure do
 - Dependency rule: prefer existing prototype choices when suitable; add only `date-fns`, `date-fns-tz`, Recharts, and Zod for uncovered Phase 1 needs.
 - Naming rule: kebab-case filenames, PascalCase React exports/types, camelCase functions/fields, and IANA timezone/ISO `YYYY-MM-DD` date values at module boundaries.
 - Component rule: components consume semantic CSS variables only; raw theme values never appear in component files.
+- Dashboard rule: all themes preserve the same Bento information architecture; theme files may change palette, typography, radius, illustration, icon accents, card decoration, chart styling, toast styling, and motion character only through semantic tokens.
 - Domain rule: scoring, streak, date, and chart transforms are pure TypeScript and do not import React, Next.js, browser APIs, or persistence implementations.
 - Persistence rule: store source inputs only; recompute derived records and summaries.
+- Integration rule: Weather, Spotify, and Google Calendar remain widget/event interface seams in Phase 1; no production network integration, auth scope, or remote sync is required.
 - Scope rule: no login, required backend, multi-user ownership, or social feature in Phase 1.
 
 ## Canonical module boundaries
@@ -34,13 +38,16 @@ Phase 1 is a local-first Next.js App Router application organized around pure do
 | `src/styles/themes/` | CSS variable output for each theme | Token CSS |
 | `src/store/` | Client reducer, actions, selectors, hydration, adapter coordination | Domain/date/storage/themes/types |
 | `src/hooks/` | Narrow client hooks exposing store selectors/actions | `src/store/`, `src/types/` |
+| `src/features/dashboard/` | Dashboard summary, Bento section selectors, calendar visualization, widget registry, and analytics read-model assembly | Store/date/scoring/charts/types |
+| `src/features/events/` | Internal BetterMe event read models and future calendar-source mapping boundary | Store/date/types |
 | `src/features/tracking/` | Daily/weekly tracking orchestration and read-model assembly | Domain/date/store/types |
 | `src/features/habits/` | Habit configuration orchestration | Store/types |
 | `src/features/scoring/` | Score/status presentation orchestration, not formulas | Scoring/types |
 | `src/features/reflections/` | Reflection editing orchestration | Store/types |
 | `src/components/ui/` | Accessible generic primitives | Semantic tokens, Radix where useful |
 | `src/components/layout/` | Server-friendly app shell/navigation | UI primitives |
-| `src/components/dashboard/` | Dashboard sections and metric presentation | Feature read models/UI |
+| `src/components/dashboard/` | Soft-Bento dashboard shell, hero, calendar card, today's habits card, upcoming events, analytics, and section composition | Dashboard/tracking/event/widget read models/UI |
+| `src/components/widgets/` | Reusable dashboard widget slots and compact Weather/Spotify state-only renderers | Dashboard widget types/UI |
 | `src/components/tracker/` | Quest board, daily controls, selected-day detail | Tracking/reflection hooks/UI |
 | `src/components/calendar/` | Month grid and date selection | Date/tracking hooks/UI |
 | `src/components/habits/` | Habit editor and ordering controls | Habit hooks/UI |
@@ -50,13 +57,13 @@ Phase 1 is a local-first Next.js App Router application organized around pure do
 | `src/app/` | Route composition, metadata, server shells, route-level loading/error UI | Components/features only |
 | `public/` | Static/PWA assets; existing manifest retained | None |
 
-Route ownership inside `src/app/` is explicit: `src/app/dashboard/` composes overview read models, `src/app/tracker/` composes weekly and selected-day tracking, `src/app/calendar/` composes month navigation and selected-day detail, `src/app/habits/` composes habit configuration, and `src/app/settings/` composes tracker/theme/local-data settings. The existing `src/app/login/` and `src/app/auth/` routes belong only to the prototype compatibility boundary below.
+Route ownership inside `src/app/` is explicit: `src/app/dashboard/` composes the Bento dashboard shell, Greeting Hero, calendar card, today's habits, widgets, upcoming events, and analytics read models; `src/app/tracker/` composes weekly and selected-day tracking, `src/app/calendar/` composes month navigation and selected-day detail, `src/app/habits/` composes habit configuration, and `src/app/settings/` composes tracker/theme/local-data settings. The existing `src/app/login/` and `src/app/auth/` routes belong only to the prototype compatibility boundary below.
 
 ## Existing prototype compatibility boundary
 
 The following existing paths are documented exceptions, not canonical dependencies: `src/lib/types.ts`, `src/lib/tracker.ts`, `src/lib/date.ts`, `src/lib/defaults.ts`, `src/lib/optimistic.ts`, `src/lib/server/`, `src/lib/supabase/`, `src/components/auth/`, `src/app/login/`, `src/app/auth/`, `src/middleware.ts`, and `supabase/`. They currently mix domain, auth, remote persistence, and UI assumptions. Implementation begins with characterization tests and migration decisions; canonical Phase 1 modules must not import from these paths.
 
-The existing `src/components/query-provider.tsx` and implemented dashboard/UI files are likewise prototype presentation code. Reusable visual primitives may be adapted only after they consume canonical types and semantic tokens. `src/app/dashboard/page.tsx` currently imports a missing `dashboard-client.tsx`; the dashboard task resolves that without reviving authentication scope.
+The existing `src/components/query-provider.tsx` and implemented dashboard/UI files are likewise prototype presentation code. Reusable visual primitives may be adapted only after they consume canonical types and semantic tokens. `src/app/dashboard/page.tsx` currently imports a missing `dashboard-client.tsx`; the dashboard shell task resolves that without reviving authentication scope.
 
 ## Client and server component strategy
 
@@ -66,20 +73,24 @@ Client boundaries should sit at feature leaves rather than at the root layout wh
 
 ## State and data flow
 
-1. A server page renders a route shell and an explicit hydration placeholder.
+1. A server page renders a route shell and an explicit hydration fallback.
 2. The client store calls `StorageAdapter.load()` once. Missing data is seeded; invalid data is validated/migrated or reported and safely replaced.
 3. Source state contains `Habit[]`, `HabitCompletionEntry[]`, `ReflectionEntry[]`, and `TrackerSettings`.
-4. Pure selectors call date/scoring functions to produce `DailyRecord[]`, `ScoreSummary`, `WeekSummary`, and chart transforms.
+4. Pure selectors call date/scoring functions to produce `DailyRecord[]`, `ScoreSummary`, `WeekSummary`, `CalendarDayVisualization[]`, `UpcomingEvent[]`, `DashboardSummary`, dashboard widget state, and chart transforms.
 5. A UI action dispatches a typed reducer action. The UI updates immediately; a serialized adapter save follows.
 6. A failed save leaves the in-memory state intact, marks persistence degraded, and exposes retry through a themed error toast.
 
 React context plus `useReducer` is sufficient for the modest single-user state. Selectors remain pure and memoizable. Zustand/Redux would add a second state abstraction without a demonstrated scale need, and TanStack Query’s cache model is unnecessary while there is no remote server state.
+
+Dashboard selectors assemble presentation-ready read models without mutating source data. `DashboardSummary` owns greeting/streak/progress summary text, `CalendarDayVisualization` owns proportional calendar fill state, `UpcomingEvent` owns event display rows, and `DashboardWidget` owns widget configuration/status. The selector layer may derive these from local BetterMe data and inert state-only adapters; it must not call production Weather, Spotify, or Google Calendar APIs in Phase 1.
 
 ## Persistence abstraction
 
 `StorageAdapter` exposes `load(): Promise<BetterMeData | null>`, `save(data: BetterMeData): Promise<void>`, and `clear(): Promise<void>`. `LocalStorageAdapter` stores one versioned JSON envelope; `MemoryStorageAdapter` provides deterministic tests and mock sessions. Validation occurs only at adapter boundaries, and callers never reference `window.localStorage` directly.
 
 Derived values are deliberately excluded from `BetterMeData`. This prevents stale score/streak/chart data after a habit weight, target, date, or timezone changes. A future remote adapter can satisfy the same contract or a repository-compatible extension without altering domain functions or presentational components.
+
+`TrackerSettings.dashboardWidgets` is source preference data because enabled widgets and ordering are user choices. Widget runtime status, connection state, weather payloads, music playback state, event lists, calendar day visualizations, dashboard summaries, and chart outputs remain derived or adapter-provided read models and are not persisted in `BetterMeData`.
 
 The planning-session `tsconfig.json` intentionally checks only the dependency-free canonical scaffold. T-001 replaces its include list with the standard project-wide Next.js entries (`next-env.d.ts`, `.next/types/**/*.ts`, `**/*.ts`, and `**/*.tsx`, excluding `node_modules`) before the first build gate. Architectural separation is then enforced by T-002’s import-boundary test, not by omitting source files from TypeScript.
 
@@ -91,7 +102,7 @@ The existing `src/lib/date.ts` uses local `Date` operations and does not honor t
 
 ### Charts: Recharts
 
-No chart library is established by a manifest. Recharts fits the two small declarative React charts and supports CSS-variable-driven colors through a thin client renderer; Chart.js is capable but introduces an imperative canvas lifecycle and additional wrapper concerns. Data transformation stays library-neutral so Recharts can be replaced without changing domain code.
+No chart library is established by a manifest. Recharts fits the modest declarative React charts and supports CSS-variable-driven colors through a thin client renderer; Chart.js is capable but introduces an imperative canvas lifecycle and additional wrapper concerns. Data transformation stays library-neutral so Recharts can be replaced without changing domain code. The dashboard progress trend supports 7D, 30D, and 90D periods from the same renderer-neutral `ChartData` contract.
 
 ### Toasts: Sonner
 
