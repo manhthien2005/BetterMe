@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/components/auth/login-form";
+import { Nep } from "@/components/dashboard/nep";
 import { isDevAuthBypassEnabled } from "@/lib/dev-auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -30,18 +31,27 @@ export default async function LoginPage() {
                 BetterMe
               </h1>
               <p className="mt-5 max-w-md text-base font-semibold leading-7 text-mauve">
-                Một khu vườn nhỏ để tick thói quen mỗi ngày. Nếp — bạn cùng phòng bằng
-                xôi nếp — sẽ lớn lên cùng nhịp 7 ngày của bạn.
+                Một khu vườn nhỏ để tick thói quen mỗi ngày. Nhận nuôi một bé cún hoặc
+                mèo — bé sẽ lớn lên, quấn bạn hơn theo từng thói quen bạn hoàn thành.
               </p>
             </div>
-            <div className="grid gap-3 text-sm font-semibold text-plum">
-              <div className="rounded-2xl border border-wafer bg-white/75 p-4 shadow-mochi">
-                🌱 Không có streak đổ vỡ — chỉ có nhịp 7 ngày dịu dàng và những lần bắt
-                đầu lại nhẹ nhàng.
+            <div className="flex items-end justify-between gap-4">
+              <div className="grid flex-1 gap-3 text-sm font-semibold text-plum">
+                <div className="rounded-2xl border border-wafer bg-white/75 p-4 shadow-mochi">
+                  🌱 Không có streak đổ vỡ — lỡ nhịp mấy hôm, bé cưng vẫn để dành quà
+                  đợi bạn về.
+                </div>
+                <div className="rounded-2xl border border-wafer bg-white/75 p-4 shadow-mochi">
+                  🦴 Hoàn thành thói quen để kiếm bánh thưởng, nuôi bé từ sơ sinh tới
+                  trưởng thành. Dữ liệu riêng tư theo tài khoản Supabase.
+                </div>
               </div>
-              <div className="rounded-2xl border border-wafer bg-white/75 p-4 shadow-mochi">
-                🌸 Tick đủ thói quen, mầm cây trên đầu Nếp nở hoa. Dữ liệu riêng tư theo
-                tài khoản Supabase.
+              <div className="hidden shrink-0 md:block">
+                <Nep
+                  completedCount={2}
+                  message="Tớ là Nếp, người giữ vườn! Vào chọn trứng nha 🌱"
+                  totalCount={7}
+                />
               </div>
             </div>
           </div>

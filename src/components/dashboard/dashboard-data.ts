@@ -11,6 +11,25 @@ const TARGET_COMPLETION_RATE = 0.8;
 const BEST_STREAK_FLOOR = 26;
 const HISTORY_DAYS = 45;
 
+// Companion economy — gentle by design: nothing ever decays or is taken away.
+const FOOD_CAP = 21;
+const BOND_PER_FEED = 2;
+const BOND_PER_PETTING = 1;
+const PETTING_CAP_PER_DAY = 3;
+const ALL_DONE_BOND_BONUS = 5;
+const GIFT_FOOD = 3;
+const GIFT_BOND = 3;
+const GIFT_ABSENCE_DAYS = 2;
+const FOOD_LEDGER_RETENTION_DAYS = 30;
+const PET_STAGE_THRESHOLDS = [
+  { stage: "baby", minDays: 0 },
+  { stage: "kid", minDays: 5 },
+  { stage: "junior", minDays: 15 },
+  { stage: "teen", minDays: 30 },
+  { stage: "adult", minDays: 50 }
+] as const;
+const BOND_TIER_THRESHOLDS = [0, 60, 180, 420, 840] as const;
+
 export type DashboardHabit = {
   id: string;
   key: string;
@@ -33,11 +52,39 @@ export type DashboardEvent = {
   category: "habit" | "planning" | "reflection" | "personal";
 };
 
+export type PetSpecies = "dog" | "cat";
+
+export type PetStage = "baby" | "kid" | "junior" | "teen" | "adult";
+
+export type BondTier = 1 | 2 | 3 | 4 | 5;
+
+export type CompanionPetState = {
+  species: PetSpecies;
+  name: string;
+  adoptedOn: string;
+  growthDays: number;
+  bond: number;
+  lastGrowthDate: string | null;
+  petsToday: number;
+  petsTodayDate: string | null;
+};
+
+export type CompanionState = {
+  pets: Partial<Record<PetSpecies, CompanionPetState>>;
+  activeSpecies: PetSpecies | null;
+  food: number;
+  foodGrantedByDate: Record<string, number>;
+  allDoneBonusDates: Record<string, boolean>;
+  lastSeenDate: string | null;
+  pendingGift: boolean;
+};
+
 export type DashboardState = {
   habits: DashboardHabit[];
   records: Record<string, DashboardDayRecord>;
   events: DashboardEvent[];
   bestStreakFloor: number;
+  companion: CompanionState;
 };
 
 export type DashboardStatus = "Good" | "Okay" | "Bad" | "Planned" | "No data";
@@ -111,6 +158,30 @@ export type DashboardViewModel = {
     }>;
   };
   events: DashboardEvent[];
+  companion: CompanionViewModel;
+};
+
+export type CompanionPetView = {
+  species: PetSpecies;
+  name: string;
+  stage: PetStage;
+  bondTier: BondTier;
+  bond: number;
+  bondTierLabel: string;
+  bondProgress: number;
+  growthDays: number;
+  daysToNextStage: number | null;
+  isActive: boolean;
+  canPetToday: boolean;
+};
+
+export type CompanionViewModel = {
+  activePet: CompanionPetView | null;
+  pets: CompanionPetView[];
+  adoptedSpecies: PetSpecies[];
+  food: number;
+  foodCap: number;
+  pendingGift: boolean;
 };
 
 export function getDashboardToday() {
@@ -147,7 +218,8 @@ export function createInitialDashboardState(today = getDashboardToday()): Dashbo
     habits,
     records,
     events: createSeedEvents(),
-    bestStreakFloor: BEST_STREAK_FLOOR
+    bestStreakFloor: BEST_STREAK_FLOOR,
+    companion: createInitialCompanionState()
   };
 }
 
@@ -197,6 +269,360 @@ export function removeHabitFromState(state: DashboardState, habitId: string): Da
   return {
     ...state,
     habits: state.habits.filter((habit) => habit.id !== habitId)
+  };
+}
+
+export function createInitialCompanionState(): CompanionState {
+  return {
+    pets: {},
+    activeSpecies: null,
+    food: 0,
+    foodGrantedByDate: {},
+    allDoneBonusDates: {},
+    lastSeenDate: null,
+    pendingGift: false
+  };
+}
+
+/**
+ * Upgrades a persisted v1 payload (no companion) to the v2 shape.
+ * Nothing is dropped: habits, records, and events pass through untouched.
+ */
+export function migrateDashboardState(raw: unknown): DashboardState | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const candidate = raw as Partial<DashboardState>;
+
+  if (!Array.isArray(candidate.habits) || typeof candidate.records !== "object") {
+    return null;
+  }
+
+  return {
+    habits: candidate.habits,
+    records: candidate.records ?? {},
+    events: Array.isArray(candidate.events) ? candidate.events : [],
+    bestStreakFloor:
+      typeof candidate.bestStreakFloor === "number"
+        ? candidate.bestStreakFloor
+        : BEST_STREAK_FLOOR,
+    companion: normalizeCompanion(candidate.companion)
+  };
+}
+
+function normalizeCompanion(companion: CompanionState | undefined): CompanionState {
+  if (!companion || typeof companion !== "object") {
+    return createInitialCompanionState();
+  }
+
+  const base = createInitialCompanionState();
+
+  return {
+    ...base,
+    ...companion,
+    pets: companion.pets ?? {},
+    food: clamp(companion.food ?? 0, 0, FOOD_CAP),
+    foodGrantedByDate: companion.foodGrantedByDate ?? {},
+    allDoneBonusDates: companion.allDoneBonusDates ?? {}
+  };
+}
+
+const DEFAULT_PET_NAMES: Record<PetSpecies, string> = {
+  dog: "Xoài",
+  cat: "Mochi"
+};
+
+export function adoptPet(
+  state: DashboardState,
+  species: PetSpecies,
+  name: string,
+  today = getDashboardToday()
+): DashboardState {
+  if (state.companion.pets[species]) {
+    return switchActivePet(state, species);
+  }
+
+  const trimmed = name.trim().slice(0, 20);
+  const pet: CompanionPetState = {
+    species,
+    name: trimmed || DEFAULT_PET_NAMES[species],
+    adoptedOn: today,
+    growthDays: 0,
+    bond: 0,
+    lastGrowthDate: null,
+    petsToday: 0,
+    petsTodayDate: null
+  };
+
+  return {
+    ...state,
+    companion: {
+      ...state.companion,
+      pets: { ...state.companion.pets, [species]: pet },
+      activeSpecies: species
+    }
+  };
+}
+
+export function switchActivePet(state: DashboardState, species: PetSpecies): DashboardState {
+  if (!state.companion.pets[species] || state.companion.activeSpecies === species) {
+    return state;
+  }
+
+  return {
+    ...state,
+    companion: { ...state.companion, activeSpecies: species }
+  };
+}
+
+/**
+ * One treat per habit completed today, plus one bonus treat on a 100% day.
+ * The per-day ledger means un-ticking and re-ticking never farms extra food.
+ */
+export function grantFoodForHabitCompletion(
+  state: DashboardState,
+  today: string,
+  completedCountAfter: number,
+  totalCount: number
+): DashboardState {
+  const companion = state.companion;
+  const grantedToday = companion.foodGrantedByDate[today] ?? 0;
+  const dailyCap = totalCount + 1;
+  const isAllDone = totalCount > 0 && completedCountAfter >= totalCount;
+  const wanted = isAllDone ? 2 : 1;
+  const allowed = Math.min(wanted, Math.max(0, dailyCap - grantedToday));
+
+  if (allowed <= 0) return state;
+
+  return {
+    ...state,
+    companion: {
+      ...companion,
+      food: clamp(companion.food + allowed, 0, FOOD_CAP),
+      foodGrantedByDate: pruneDateLedger(
+        { ...companion.foodGrantedByDate, [today]: grantedToday + allowed },
+        today
+      )
+    }
+  };
+}
+
+export function feedActivePet(state: DashboardState, today = getDashboardToday()): DashboardState {
+  const species = state.companion.activeSpecies;
+  const pet = species ? state.companion.pets[species] : undefined;
+
+  if (!species || !pet || state.companion.food <= 0) return state;
+
+  const grown = withGrowthDay(pet, today);
+
+  return {
+    ...state,
+    companion: {
+      ...state.companion,
+      food: state.companion.food - 1,
+      pets: {
+        ...state.companion.pets,
+        [species]: { ...grown, bond: grown.bond + BOND_PER_FEED }
+      }
+    }
+  };
+}
+
+export function petActivePet(state: DashboardState, today = getDashboardToday()): DashboardState {
+  const species = state.companion.activeSpecies;
+  const pet = species ? state.companion.pets[species] : undefined;
+
+  if (!species || !pet) return state;
+
+  const petsToday = pet.petsTodayDate === today ? pet.petsToday : 0;
+
+  if (petsToday >= PETTING_CAP_PER_DAY) return state;
+
+  return {
+    ...state,
+    companion: {
+      ...state.companion,
+      pets: {
+        ...state.companion.pets,
+        [species]: {
+          ...pet,
+          bond: pet.bond + BOND_PER_PETTING,
+          petsToday: petsToday + 1,
+          petsTodayDate: today
+        }
+      }
+    }
+  };
+}
+
+/** A day with any progress counts as one growth day for the active pet. */
+export function recordGrowthDay(state: DashboardState, today = getDashboardToday()): DashboardState {
+  const species = state.companion.activeSpecies;
+  const pet = species ? state.companion.pets[species] : undefined;
+
+  if (!species || !pet || pet.lastGrowthDate === today) return state;
+
+  return {
+    ...state,
+    companion: {
+      ...state.companion,
+      pets: { ...state.companion.pets, [species]: withGrowthDay(pet, today) }
+    }
+  };
+}
+
+export function grantAllDoneBonus(state: DashboardState, today = getDashboardToday()): DashboardState {
+  const species = state.companion.activeSpecies;
+  const pet = species ? state.companion.pets[species] : undefined;
+
+  if (!species || !pet || state.companion.allDoneBonusDates[today]) return state;
+
+  return {
+    ...state,
+    companion: {
+      ...state.companion,
+      allDoneBonusDates: pruneDateLedger(
+        { ...state.companion.allDoneBonusDates, [today]: true },
+        today
+      ),
+      pets: {
+        ...state.companion.pets,
+        [species]: { ...pet, bond: pet.bond + ALL_DONE_BOND_BONUS }
+      }
+    }
+  };
+}
+
+/**
+ * Coming back after days away means the pet saved a present — never a guilt trip.
+ */
+export function checkComebackGift(state: DashboardState, today = getDashboardToday()): DashboardState {
+  const companion = state.companion;
+  const hasPet = companion.activeSpecies !== null;
+  const lastSeen = companion.lastSeenDate;
+  const awayLongEnough =
+    hasPet && lastSeen !== null && today > addDaysIso(lastSeen, GIFT_ABSENCE_DAYS - 1);
+
+  if (lastSeen === today && !awayLongEnough) return state;
+
+  return {
+    ...state,
+    companion: {
+      ...companion,
+      lastSeenDate: today,
+      pendingGift: companion.pendingGift || awayLongEnough
+    }
+  };
+}
+
+export function openGift(state: DashboardState): DashboardState {
+  const companion = state.companion;
+  const species = companion.activeSpecies;
+  const pet = species ? companion.pets[species] : undefined;
+
+  if (!companion.pendingGift || !species || !pet) return state;
+
+  return {
+    ...state,
+    companion: {
+      ...companion,
+      pendingGift: false,
+      food: clamp(companion.food + GIFT_FOOD, 0, FOOD_CAP),
+      pets: {
+        ...companion.pets,
+        [species]: { ...pet, bond: pet.bond + GIFT_BOND }
+      }
+    }
+  };
+}
+
+export function getPetStage(growthDays: number): PetStage {
+  let stage: PetStage = "baby";
+
+  for (const threshold of PET_STAGE_THRESHOLDS) {
+    if (growthDays >= threshold.minDays) stage = threshold.stage;
+  }
+
+  return stage;
+}
+
+export function getBondTier(bond: number): BondTier {
+  let tier: BondTier = 1;
+
+  BOND_TIER_THRESHOLDS.forEach((threshold, index) => {
+    if (bond >= threshold) tier = (index + 1) as BondTier;
+  });
+
+  return tier;
+}
+
+const BOND_TIER_LABELS: Record<BondTier, string> = {
+  1: "Lạ lẫm",
+  2: "Quen mặt",
+  3: "Bạn thân",
+  4: "Tri kỷ",
+  5: "Gia đình"
+};
+
+function withGrowthDay(pet: CompanionPetState, today: string): CompanionPetState {
+  if (pet.lastGrowthDate === today) return pet;
+
+  return { ...pet, growthDays: pet.growthDays + 1, lastGrowthDate: today };
+}
+
+function pruneDateLedger<T>(ledger: Record<string, T>, today: string): Record<string, T> {
+  const cutoff = addDaysIso(today, -FOOD_LEDGER_RETENTION_DAYS);
+  const pruned: Record<string, T> = {};
+
+  Object.keys(ledger).forEach((date) => {
+    if (date >= cutoff) pruned[date] = ledger[date];
+  });
+
+  return pruned;
+}
+
+function buildCompanionViewModel(state: DashboardState, today: string): CompanionViewModel {
+  const companion = state.companion;
+  const pets = (Object.values(companion.pets) as CompanionPetState[]).map((pet) =>
+    buildPetView(pet, companion.activeSpecies, today)
+  );
+
+  return {
+    activePet: pets.find((pet) => pet.isActive) ?? null,
+    pets,
+    adoptedSpecies: pets.map((pet) => pet.species),
+    food: companion.food,
+    foodCap: FOOD_CAP,
+    pendingGift: companion.pendingGift
+  };
+}
+
+function buildPetView(
+  pet: CompanionPetState,
+  activeSpecies: PetSpecies | null,
+  today: string
+): CompanionPetView {
+  const stage = getPetStage(pet.growthDays);
+  const bondTier = getBondTier(pet.bond);
+  const tierBounds: readonly number[] = BOND_TIER_THRESHOLDS;
+  const tierStart = tierBounds[bondTier - 1];
+  const tierEnd = bondTier < 5 ? tierBounds[bondTier] : null;
+  const nextStage = PET_STAGE_THRESHOLDS.find((item) => item.minDays > pet.growthDays);
+  const petsToday = pet.petsTodayDate === today ? pet.petsToday : 0;
+
+  return {
+    species: pet.species,
+    name: pet.name,
+    stage,
+    bondTier,
+    bond: pet.bond,
+    bondTierLabel: BOND_TIER_LABELS[bondTier],
+    bondProgress: tierEnd
+      ? clamp((pet.bond - tierStart) / (tierEnd - tierStart), 0, 1)
+      : 1,
+    growthDays: pet.growthDays,
+    daysToNextStage: nextStage ? nextStage.minDays - pet.growthDays : null,
+    isActive: pet.species === activeSpecies,
+    canPetToday: petsToday < PETTING_CAP_PER_DAY
   };
 }
 
@@ -280,7 +706,8 @@ export function buildDashboardViewModel(
       days: monthDays
     },
     analytics,
-    events: state.events
+    events: state.events,
+    companion: buildCompanionViewModel(state, today)
   };
 }
 

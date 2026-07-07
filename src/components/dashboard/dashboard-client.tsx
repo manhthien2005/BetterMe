@@ -18,23 +18,39 @@ import { toast } from "sonner";
 
 import {
   addHabitToState,
+  adoptPet,
   buildDashboardViewModel,
+  checkComebackGift,
   createInitialDashboardState,
+  feedActivePet,
+  getBondTier,
   getDashboardToday,
+  getPetStage,
+  grantAllDoneBonus,
+  grantFoodForHabitCompletion,
+  migrateDashboardState,
+  openGift,
+  petActivePet,
+  recordGrowthDay,
   removeHabitFromState,
+  switchActivePet,
   toggleHabitForDate,
+  type CompanionPetView,
   type DashboardCalendarDay,
   type DashboardHabitView,
   type DashboardState,
   type DashboardStatus,
-  type DashboardViewModel
+  type DashboardViewModel,
+  type PetSpecies
 } from "@/components/dashboard/dashboard-data";
-import { Nep } from "@/components/dashboard/nep";
+import { GiftBox, Pet, PetAdoption } from "@/components/dashboard/pet";
+import { getPetLine, type PetEvent } from "@/components/dashboard/pet-voice";
 import { Button } from "@/components/ui/button";
 import { cn, formatPercent } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 
-const STORAGE_KEY = "betterme.dashboard.v1";
+const STORAGE_KEY = "betterme.dashboard.v2";
+const LEGACY_STORAGE_KEY = "betterme.dashboard.v1";
 const SPOTIFY_PLAYLIST_URL = "https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ";
 const SPOTIFY_EMBED_URL =
   "https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKCadgRdKQ?utm_source=generator&theme=0";
@@ -62,21 +78,43 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
   );
   const [hydrated, setHydrated] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
+  const [eating, setEating] = useState(false);
+  const [bubble, setBubble] = useState<string | null>(null);
   const viewModel = useMemo(() => buildDashboardViewModel(state, today), [state, today]);
+  const activePet = viewModel.companion.activePet;
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
+    const saved =
+      window.localStorage.getItem(STORAGE_KEY) ??
+      window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    let loaded: DashboardState | null = null;
 
     if (saved) {
       try {
-        setState(JSON.parse(saved) as DashboardState);
+        loaded = migrateDashboardState(JSON.parse(saved));
       } catch {
-        window.localStorage.removeItem(STORAGE_KEY);
+        loaded = null;
+      }
+    }
+
+    if (loaded) {
+      const welcomed = checkComebackGift(loaded, today);
+
+      setState(welcomed);
+
+      const species = welcomed.companion.activeSpecies;
+      const pet = species ? welcomed.companion.pets[species] : undefined;
+
+      if (species && pet) {
+        const hour = new Date().getHours();
+        const event: PetEvent = hour < 12 ? "morning" : hour >= 21 ? "night" : "idle";
+
+        setBubble(getPetLine(species, getBondTier(pet.bond), event));
       }
     }
 
     setHydrated(true);
-  }, []);
+  }, [today]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -84,11 +122,28 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [hydrated, state]);
 
+  /** Applies pet reactions to a state transition and picks the matching line. */
+  function speakAfter(next: DashboardState, before: DashboardState, event: PetEvent) {
+    const species = next.companion.activeSpecies;
+
+    if (!species) return;
+
+    const pet = next.companion.pets[species];
+    const previous = before.companion.pets[species];
+
+    if (!pet) return;
+
+    const evolved =
+      previous && getPetStage(previous.growthDays) !== getPetStage(pet.growthDays);
+
+    setBubble(getPetLine(species, getBondTier(pet.bond), evolved ? "evolve" : event));
+  }
+
   function toggleHabit(habitId: string) {
     const habit = viewModel.habits.find((item) => item.id === habitId);
+    const turningOn = habit ? !habit.completed : false;
     const completesTheDay =
-      habit &&
-      !habit.completed &&
+      turningOn &&
       viewModel.today.completedHabits === viewModel.today.totalHabits - 1;
 
     if (completesTheDay) {
@@ -96,13 +151,90 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
       window.setTimeout(() => setCelebrate(false), 1300);
     }
 
-    setState((current) => toggleHabitForDate(current, today, habitId));
+    let next = toggleHabitForDate(state, today, habitId);
+
+    if (turningOn && state.companion.activeSpecies) {
+      next = grantFoodForHabitCompletion(
+        next,
+        today,
+        viewModel.today.completedHabits + 1,
+        viewModel.today.totalHabits
+      );
+      next = recordGrowthDay(next, today);
+
+      if (completesTheDay) next = grantAllDoneBonus(next, today);
+
+      speakAfter(next, state, completesTheDay ? "allDone" : "habitDone");
+    }
+
+    setState(next);
+  }
+
+  function feedPet() {
+    if (state.companion.food <= 0 || eating) return;
+
+    const next = feedActivePet(state, today);
+
+    if (next === state) return;
+
+    setEating(true);
+    window.setTimeout(() => setEating(false), 1300);
+    speakAfter(next, state, "feeding");
+    setState(next);
+  }
+
+  function petThePet() {
+    const next = petActivePet(state, today);
+
+    speakAfter(next === state ? state : next, state, "petting");
+
+    if (next !== state) setState(next);
+  }
+
+  function handleAdopt(species: PetSpecies, name: string) {
+    const next = adoptPet(state, species, name, today);
+    const adoptedName = next.companion.pets[species]?.name ?? name;
+
+    setState(next);
+    setBubble(getPetLine(species, 1, "morning"));
+    toast.success(`${adoptedName} đã về nhà 💕`, {
+      description:
+        species === "dog"
+          ? "Hoàn thành habit để kiếm bánh thưởng cho bé nhé."
+          : "Hoàn thành habit để kiếm cá cho hoàng thượng nhé."
+    });
+  }
+
+  function handleSwitchPet(species: PetSpecies) {
+    const next = switchActivePet(state, species);
+
+    if (next === state) return;
+
+    const pet = next.companion.pets[species];
+
+    setState(next);
+
+    if (pet) setBubble(getPetLine(species, getBondTier(pet.bond), "idle"));
+  }
+
+  function handleOpenGift() {
+    const next = openGift(state);
+
+    if (next === state) return;
+
+    speakAfter(next, state, "comeback");
+    setState(next);
+    toast.success("Quà để dành! +3 món ăn 🎁", {
+      description: "Đi vắng mấy hôm cũng không sao — bé chỉ mong bạn về thôi."
+    });
   }
 
   function addHabit(name: string, category: string) {
     setState((current) => addHabitToState(current, { name, category }));
     toast.success("New habit planted 🌱", {
-      description: "Nếp will cheer for it starting today."
+      description: activePet
+        ? `${activePet.name} sẽ cổ vũ bạn từ hôm nay.`
+        : "Bé cưng trong vườn sẽ cổ vũ bạn từ hôm nay."
     });
   }
 
@@ -143,7 +275,17 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
       </div>
 
       <div className="grid grid-cols-1 gap-5">
-        <GreetingHero celebrate={celebrate} viewModel={viewModel} />
+        <GreetingHero
+          bubble={bubble}
+          celebrate={celebrate}
+          eating={eating}
+          onAdopt={handleAdopt}
+          onFeed={feedPet}
+          onOpenGift={handleOpenGift}
+          onPet={petThePet}
+          onSwitch={handleSwitchPet}
+          viewModel={viewModel}
+        />
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,18fr)_minmax(320px,6fr)] xl:items-start">
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-[repeat(18,minmax(0,1fr))]">
             <TodaysHabits
@@ -170,10 +312,27 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
   );
 }
 
+type CompanionHandlers = {
+  bubble: string | null;
+  eating: boolean;
+  onAdopt: (species: PetSpecies, name: string) => void;
+  onFeed: () => void;
+  onOpenGift: () => void;
+  onPet: () => void;
+  onSwitch: (species: PetSpecies) => void;
+};
+
 function GreetingHero({
+  bubble,
   celebrate,
+  eating,
+  onAdopt,
+  onFeed,
+  onOpenGift,
+  onPet,
+  onSwitch,
   viewModel
-}: {
+}: CompanionHandlers & {
   celebrate: boolean;
   viewModel: DashboardViewModel;
 }) {
@@ -235,16 +394,228 @@ function GreetingHero({
           </div>
         </div>
 
-        <div className="flex justify-center lg:pr-4">
-          <Nep
+        <div className="flex justify-center lg:pr-2">
+          <CompanionCorner
+            bubble={bubble}
             celebrate={celebrate}
-            completedCount={viewModel.today.completedHabits}
-            message={viewModel.motivation}
-            totalCount={viewModel.today.totalHabits}
+            eating={eating}
+            onAdopt={onAdopt}
+            onFeed={onFeed}
+            onOpenGift={onOpenGift}
+            onPet={onPet}
+            onSwitch={onSwitch}
+            viewModel={viewModel}
           />
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * The pet's home inside the hero: adoption eggs on first run, then the
+ * companion with speech bubble, bond meter, food tray, and pet switcher.
+ */
+function CompanionCorner({
+  bubble,
+  celebrate,
+  eating,
+  onAdopt,
+  onFeed,
+  onOpenGift,
+  onPet,
+  onSwitch,
+  viewModel
+}: CompanionHandlers & {
+  celebrate: boolean;
+  viewModel: DashboardViewModel;
+}) {
+  const companion = viewModel.companion;
+  const pet = companion.activePet;
+  const [adoptionTarget, setAdoptionTarget] = useState<PetSpecies | null>(null);
+
+  if (!pet) {
+    return <PetAdoption onAdopt={onAdopt} />;
+  }
+
+  if (adoptionTarget) {
+    return (
+      <PetAdoption
+        initialSpecies={adoptionTarget}
+        onAdopt={(species, name) => {
+          onAdopt(species, name);
+          setAdoptionTarget(null);
+        }}
+        onCancel={() => setAdoptionTarget(null)}
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      {bubble ? <SpeechBubble key={bubble} text={bubble} /> : null}
+
+      <div className="relative">
+        <Pet
+          bondTier={pet.bondTier}
+          celebrate={celebrate}
+          completedCount={viewModel.today.completedHabits}
+          eating={eating}
+          name={pet.name}
+          onPet={onPet}
+          species={pet.species}
+          stage={pet.stage}
+          totalCount={viewModel.today.totalHabits}
+        />
+        {companion.pendingGift ? (
+          <GiftBox label={`Mở món quà ${pet.name} để dành`} onOpen={onOpenGift} />
+        ) : null}
+      </div>
+
+      <div className="flex w-full min-w-[260px] max-w-[300px] flex-col gap-2">
+        <BondMeter pet={pet} />
+        <div className="flex items-center justify-between gap-2">
+          <FoodTray
+            disabled={companion.food <= 0 || eating}
+            food={companion.food}
+            onFeed={onFeed}
+            species={pet.species}
+          />
+          <PetSwitcher
+            active={pet.species}
+            adopted={companion.adoptedSpecies}
+            onAdoptRequest={setAdoptionTarget}
+            onSwitch={onSwitch}
+          />
+        </div>
+        <p className="text-center text-xs font-bold text-mauve">
+          Ngày chăm: {pet.growthDays}
+          {pet.daysToNextStage !== null
+            ? ` · còn ${pet.daysToNextStage} ngày nữa lớn 🌱`
+            : " · đã trưởng thành 🌸"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function SpeechBubble({ text }: { text: string }) {
+  return (
+    <div className="bubble-in relative max-w-[260px] rounded-2xl border border-wafer bg-mochi px-4 py-2.5 text-center text-sm font-semibold leading-5 text-plum shadow-mochi">
+      {text}
+      <span
+        aria-hidden="true"
+        className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b border-r border-wafer bg-mochi"
+      />
+    </div>
+  );
+}
+
+function BondMeter({ pet }: { pet: CompanionPetView }) {
+  return (
+    <div className="rounded-2xl border border-wafer bg-white/75 px-3 py-2">
+      <div className="flex items-center justify-between text-xs font-bold text-mauve">
+        <span aria-label={`Bond tier ${pet.bondTier} of 5`} className="flex items-center gap-0.5">
+          {[1, 2, 3, 4, 5].map((tier) => (
+            <span
+              aria-hidden="true"
+              className={cn("text-sm", tier > pet.bondTier && "opacity-25 grayscale")}
+              key={tier}
+            >
+              💗
+            </span>
+          ))}
+        </span>
+        <span className="text-plum">{pet.bondTierLabel}</span>
+      </div>
+      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-wafer">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-sakura to-sakura-deep transition-all duration-500"
+          style={{ width: `${Math.max(pet.bondProgress * 100, 4)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function FoodTray({
+  disabled,
+  food,
+  onFeed,
+  species
+}: {
+  disabled: boolean;
+  food: number;
+  onFeed: () => void;
+  species: PetSpecies;
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-2xl border border-wafer bg-white/75 py-1.5 pl-3 pr-1.5">
+      <span aria-label={`${food} treats in the pantry`} className="text-sm font-bold text-plum">
+        {species === "dog" ? "🦴" : "🐟"} ×{food}
+      </span>
+      <Button disabled={disabled} onClick={onFeed} size="sm" type="button">
+        Cho ăn
+      </Button>
+    </div>
+  );
+}
+
+const SWITCHER_PETS: Array<{ species: PetSpecies; emoji: string; label: string }> = [
+  { species: "dog", emoji: "🐶", label: "cún" },
+  { species: "cat", emoji: "🐱", label: "mèo" }
+];
+
+function PetSwitcher({
+  active,
+  adopted,
+  onAdoptRequest,
+  onSwitch
+}: {
+  active: PetSpecies;
+  adopted: PetSpecies[];
+  onAdoptRequest: (species: PetSpecies) => void;
+  onSwitch: (species: PetSpecies) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 rounded-2xl border border-wafer bg-white/75 p-1.5">
+      {SWITCHER_PETS.map((entry) => {
+        const isAdopted = adopted.includes(entry.species);
+        const isActive = entry.species === active;
+
+        return (
+          <button
+            aria-label={
+              isAdopted
+                ? isActive
+                  ? `Bé ${entry.label} đang chơi cùng bạn`
+                  : `Gọi bé ${entry.label} ra chơi`
+                : `Nhận nuôi bé ${entry.label}`
+            }
+            aria-pressed={isActive}
+            className={cn(
+              "squishy flex h-9 w-9 items-center justify-center rounded-full text-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep",
+              isActive ? "bg-matcha/20 ring-1 ring-matcha/50" : "hover:bg-rice",
+              !isAdopted && "opacity-70"
+            )}
+            key={entry.species}
+            onClick={() =>
+              isAdopted ? onSwitch(entry.species) : onAdoptRequest(entry.species)
+            }
+            title={
+              isAdopted
+                ? isActive
+                  ? "Đang ở đây với bạn"
+                  : "Đang ở nhà nghỉ ngơi — bấm để gọi ra"
+                : "Còn một quả trứng đang đợi bạn"
+            }
+            type="button"
+          >
+            {isAdopted ? entry.emoji : "🥚"}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

@@ -273,6 +273,285 @@
     }
   }
 
+  /* ——— Pet companion: everything below animates the dog/cat. ——— */
+
+  /* Dog tail: lazy metronome by default, delighted blur when petted. */
+  .pet-tail-wag {
+    animation: pet-tail-wag 1.6s ease-in-out infinite;
+    transform-origin: 12% 85%;
+    transform-box: fill-box;
+  }
+
+  .pet-tail-wag-fast {
+    animation: pet-tail-wag 280ms ease-in-out infinite;
+    transform-origin: 12% 85%;
+    transform-box: fill-box;
+  }
+
+  @keyframes pet-tail-wag {
+    0%,
+    100% {
+      transform: rotate(-9deg);
+    }
+
+    50% {
+      transform: rotate(14deg);
+    }
+  }
+
+  /* Cat tail: slow, superior sway. */
+  .pet-tail-sway {
+    animation: pet-tail-sway 3.4s ease-in-out infinite;
+    transform-origin: 15% 90%;
+    transform-box: fill-box;
+  }
+
+  @keyframes pet-tail-sway {
+    0%,
+    100% {
+      transform: rotate(-4deg);
+    }
+
+    50% {
+      transform: rotate(7deg);
+    }
+  }
+
+  /* Cat ear flicks once in a while; dog ear bounces subtly. */
+  .pet-ear-twitch {
+    animation: pet-ear-twitch 7s ease-in-out infinite;
+    transform-origin: 50% 100%;
+    transform-box: fill-box;
+  }
+
+  @keyframes pet-ear-twitch {
+    0%,
+    91%,
+    100% {
+      transform: rotate(0deg);
+    }
+
+    93% {
+      transform: rotate(-12deg);
+    }
+
+    96% {
+      transform: rotate(4deg);
+    }
+  }
+
+  /* Eyelids blink every few seconds (lids are body-colored shapes). */
+  .pet-blink {
+    animation: pet-blink 4.6s linear infinite;
+    transform-origin: center;
+    transform-box: fill-box;
+    transform: scaleY(0);
+  }
+
+  @keyframes pet-blink {
+    0%,
+    92%,
+    100% {
+      transform: scaleY(0);
+    }
+
+    94%,
+    97% {
+      transform: scaleY(1);
+    }
+  }
+
+  /* Whole-body fidget: tiny head tilt so the pet never stands statue-still. */
+  .pet-fidget {
+    animation: pet-fidget 9s ease-in-out infinite;
+    transform-origin: bottom center;
+  }
+
+  @keyframes pet-fidget {
+    0%,
+    64%,
+    78%,
+    100% {
+      transform: rotate(0deg);
+    }
+
+    68%,
+    74% {
+      transform: rotate(2.4deg);
+    }
+  }
+
+  /* Morning stretch: one big yawn-and-reach right after sunrise mount. */
+  .pet-stretch {
+    animation: pet-stretch 900ms cubic-bezier(0.34, 1.56, 0.64, 1) 1;
+    transform-origin: bottom center;
+  }
+
+  @keyframes pet-stretch {
+    0% {
+      transform: scale(1, 1);
+    }
+
+    35% {
+      transform: scale(0.92, 1.12) translateY(-2px);
+    }
+
+    70% {
+      transform: scale(1.06, 0.94);
+    }
+
+    100% {
+      transform: scale(1, 1);
+    }
+  }
+
+  /* Treat flies in a little arc toward the mouth, then vanishes. */
+  .pet-food-arc {
+    animation: pet-food-arc 620ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    transform-box: fill-box;
+  }
+
+  @keyframes pet-food-arc {
+    0% {
+      opacity: 1;
+      transform: translate(46px, -54px) rotate(-30deg) scale(1);
+    }
+
+    60% {
+      opacity: 1;
+      transform: translate(14px, -26px) rotate(10deg) scale(1);
+    }
+
+    100% {
+      opacity: 0;
+      transform: translate(0, 0) rotate(24deg) scale(0.55);
+    }
+  }
+
+  /* Cheeks pump twice while chewing. */
+  .pet-chew {
+    animation: pet-chew 360ms ease-in-out 2;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+
+  @keyframes pet-chew {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+
+    50% {
+      transform: scale(1.18, 0.86);
+    }
+  }
+
+  /* Hearts drift up when the pet is petted. */
+  .pet-heart {
+    position: absolute;
+    top: 34%;
+    left: 50%;
+    font-size: 15px;
+    pointer-events: none;
+    opacity: 0;
+    animation: pet-heart 900ms ease-out var(--delay, 0ms) forwards;
+  }
+
+  @keyframes pet-heart {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, 0) scale(0.6);
+    }
+
+    25% {
+      opacity: 1;
+    }
+
+    100% {
+      opacity: 0;
+      transform: translate(calc(-50% + var(--drift, 0px)), -44px) scale(1.1);
+    }
+  }
+
+  /* Evolution: a warm ring blooms outward while the pet springs up. */
+  .pet-evolve-ring {
+    animation: pet-evolve-ring 1000ms ease-out forwards;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+
+  @keyframes pet-evolve-ring {
+    0% {
+      opacity: 0.9;
+      transform: scale(0.4);
+    }
+
+    100% {
+      opacity: 0;
+      transform: scale(1.9);
+    }
+  }
+
+  /* Adoption eggs rock gently until chosen, then crack open. */
+  .egg-wobble {
+    animation: egg-wobble 2.6s ease-in-out infinite;
+    transform-origin: bottom center;
+    transform-box: fill-box;
+  }
+
+  @keyframes egg-wobble {
+    0%,
+    100% {
+      transform: rotate(-3deg);
+    }
+
+    50% {
+      transform: rotate(3deg);
+    }
+  }
+
+  .egg-crack {
+    animation: egg-crack 520ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    transform-origin: bottom center;
+    transform-box: fill-box;
+  }
+
+  @keyframes egg-crack {
+    0% {
+      transform: rotate(0deg) scale(1);
+    }
+
+    30% {
+      transform: rotate(-8deg) scale(1.05);
+    }
+
+    60% {
+      transform: rotate(8deg) scale(1.08);
+    }
+
+    100% {
+      transform: rotate(0deg) scale(0);
+    }
+  }
+
+  /* Saved gift bounces for attention; pops away when opened. */
+  .gift-bounce {
+    animation: gift-bounce 1.4s ease-in-out infinite;
+    transform-origin: bottom center;
+    transform-box: fill-box;
+  }
+
+  @keyframes gift-bounce {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+
   /* Weather card wears a dawn-blue morning band instead of a full tint. */
   .dawn-band {
     background-image:
@@ -304,7 +583,21 @@
     .nep-bloom,
     .bubble-in,
     .confetti-piece,
-    .bar-grow {
+    .bar-grow,
+    .pet-tail-wag,
+    .pet-tail-wag-fast,
+    .pet-tail-sway,
+    .pet-ear-twitch,
+    .pet-blink,
+    .pet-fidget,
+    .pet-stretch,
+    .pet-food-arc,
+    .pet-chew,
+    .pet-heart,
+    .pet-evolve-ring,
+    .egg-wobble,
+    .egg-crack,
+    .gift-bounce {
       animation: none;
     }
 
@@ -312,7 +605,10 @@
       opacity: 0.5;
     }
 
-    .confetti-piece {
+    .confetti-piece,
+    .pet-heart,
+    .pet-evolve-ring,
+    .pet-food-arc {
       display: none;
     }
   }

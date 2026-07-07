@@ -1,9 +1,14 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import DashboardPage from "@/app/dashboard/page";
 import HomePage from "@/app/page";
+import {
+  adoptPet,
+  createInitialDashboardState,
+  getDashboardToday
+} from "@/components/dashboard/dashboard-data";
 
 const authMocks = vi.hoisted(() => ({
   ensureUserBootstrap: vi.fn(),
@@ -36,6 +41,7 @@ vi.mock("@/lib/dev-auth", () => ({
 describe("dashboard route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
     envMocks.devBypass.mockReturnValue(false);
   });
 
@@ -113,9 +119,13 @@ describe("dashboard route", () => {
     expect(screen.getByLabelText("Exercise / sports emoji icon").textContent).toBe("💪");
     expect(container.innerHTML).not.toContain("font-black");
 
-    // Nếp the companion lives in the hero with a speech bubble, and the old
-    // placeholder-page navigation is gone — the dashboard is the whole app now.
-    expect(screen.getByLabelText(/Nếp the companion/)).toBeTruthy();
+    // First run: the hero invites you to adopt a pet — two wobbling eggs.
+    // The old placeholder-page navigation stays gone.
+    expect(
+      screen.getByRole("heading", { name: "Ai sẽ cùng bạn chăm khu vườn?" })
+    ).toBeTruthy();
+    expect(screen.getByLabelText("Chọn trứng Cún con")).toBeTruthy();
+    expect(screen.getByLabelText("Chọn trứng Mèo con")).toBeTruthy();
     expect(screen.getByText("7-day rhythm")).toBeTruthy();
     expect(screen.getByRole("button", { name: /add a habit/i })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Tracker" })).toBeNull();
@@ -137,6 +147,61 @@ describe("dashboard route", () => {
     expect(calendarDay).toBeTruthy();
     expect(calendarDay?.className).toContain("rounded-full");
     expect(calendarDay?.getAttribute("style")).toContain("82%");
+  });
+
+  it("adopts a pet from the egg picker and shows the companion HUD", async () => {
+    authMocks.getUser.mockResolvedValue({
+      data: { user: { id: "user-1", email: "thien@example.com" } },
+      error: null
+    });
+
+    render(await DashboardPage());
+
+    fireEvent.click(screen.getByLabelText("Chọn trứng Cún con"));
+    fireEvent.change(screen.getByLabelText("Pet name"), {
+      target: { value: "Xoài" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Nhận nuôi 💕" }));
+
+    // The pet renders with a baby-stage aria label, plus bond meter + food tray.
+    expect(screen.getByLabelText(/Xoài the dog, baby stage/)).toBeTruthy();
+    expect(screen.getByLabelText("Bond tier 1 of 5")).toBeTruthy();
+    expect(screen.getByText("Lạ lẫm")).toBeTruthy();
+    expect(screen.getByLabelText("0 treats in the pantry")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Cho ăn" })).toBeTruthy();
+    expect(screen.getByText(/Ngày chăm: 0/)).toBeTruthy();
+    // The cat egg still waits in the switcher.
+    expect(screen.getByLabelText("Nhận nuôi bé mèo")).toBeTruthy();
+  });
+
+  it("restores an adopted pet from storage and lets habits feed it", async () => {
+    const today = getDashboardToday();
+    const state = adoptPet(createInitialDashboardState(today), "cat", "Mochi", today);
+
+    window.localStorage.setItem("betterme.dashboard.v2", JSON.stringify(state));
+    authMocks.getUser.mockResolvedValue({
+      data: { user: { id: "user-1", email: "thien@example.com" } },
+      error: null
+    });
+
+    render(await DashboardPage());
+
+    expect(screen.getByLabelText(/Mochi the cat, baby stage/)).toBeTruthy();
+
+    // Seed data sits at 6/7 — completing the last habit finishes the day,
+    // which pays one treat plus the perfect-day bonus treat.
+    const unchecked = screen
+      .getAllByRole("button", { pressed: false })
+      .find((button) => button.className.includes("min-h-16"));
+
+    expect(unchecked).toBeTruthy();
+    fireEvent.click(unchecked!);
+
+    expect(screen.getByLabelText("2 treats in the pantry")).toBeTruthy();
+
+    // Feeding spends one treat.
+    fireEvent.click(screen.getByRole("button", { name: "Cho ăn" }));
+    expect(screen.getByLabelText("1 treats in the pantry")).toBeTruthy();
   });
 
   it("uses the dashboard as the default landing route", () => {
