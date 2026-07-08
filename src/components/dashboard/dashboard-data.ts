@@ -2,6 +2,7 @@ import { DEFAULT_HABITS, habitIcon } from "@/lib/defaults";
 import {
   addDaysIso,
   getMonthGrid,
+  minIsoDate,
   parseIsoDate,
   todayIso
 } from "@/lib/date";
@@ -12,7 +13,7 @@ const BEST_STREAK_FLOOR = 26;
 const HISTORY_DAYS = 45;
 
 // Companion economy — gentle by design: nothing ever decays or is taken away.
-const FOOD_CAP = 21;
+export const FOOD_CAP = 21;
 const BOND_PER_FEED = 2;
 const BOND_PER_PETTING = 1;
 const PETTING_CAP_PER_DAY = 3;
@@ -20,7 +21,7 @@ const ALL_DONE_BOND_BONUS = 5;
 const GIFT_FOOD = 3;
 const GIFT_BOND = 3;
 const GIFT_ABSENCE_DAYS = 2;
-const FOOD_LEDGER_RETENTION_DAYS = 30;
+export const FOOD_LEDGER_RETENTION_DAYS = 30;
 const PET_STAGE_THRESHOLDS = [
   { stage: "baby", minDays: 0 },
   { stage: "kid", minDays: 5 },
@@ -67,16 +68,38 @@ export type CompanionPetState = {
   lastGrowthDate: string | null;
   petsToday: number;
   petsTodayDate: string | null;
+  /** Per-field LWW stamp for `name` (sync §2.1/2.4). null = epoch: always loses to a server-stamped value. */
+  nameUpdatedAt: string | null;
 };
 
 export type CompanionState = {
   pets: Partial<Record<PetSpecies, CompanionPetState>>;
   activeSpecies: PetSpecies | null;
+  /** Per-field LWW stamp for `activeSpecies` (sync §2.1/2.4). null = epoch: always loses to a server-stamped value. */
+  activeSpeciesUpdatedAt: string | null;
+  /**
+   * Derived cache of `deriveFoodBalance` kept in sync by every ledger mutation.
+   * The ledgers (carryover + granted + gifts − spent) are the source of truth;
+   * never merge this field across devices — recompute it after merging ledgers.
+   */
   food: number;
   foodGrantedByDate: Record<string, number>;
+  /** Union-merge ledger keyed "date:visitId" (comeback gift uses "date:comeback"). */
+  foodGiftsReceived: Record<string, number>;
+  /** Append-only spend ledger: date -> unique event ids (one per feed). Deduped on append. */
+  foodSpentEvents: Record<string, string[]>;
+  /** Net balance of ledger days folded away by pruneFoodLedgers. 0..FOOD_CAP. */
+  foodCarryover: number;
+  /** date -> bond granted from gift overflow (Phase 2), capped per day. */
+  giftOverflowBondByDate: Record<string, number>;
   allDoneBonusDates: Record<string, boolean>;
   lastSeenDate: string | null;
   pendingGift: boolean;
+};
+
+export type HabitTombstone = {
+  key: string;
+  deletedAt: string;
 };
 
 export type DashboardState = {
@@ -84,6 +107,13 @@ export type DashboardState = {
   records: Record<string, DashboardDayRecord>;
   events: DashboardEvent[];
   bestStreakFloor: number;
+  /**
+   * Provenance stamp (sync §2.5): records with date <= seedCutoverDate are seed
+   * fiction and must never leave the device. Never inferred from record content.
+   */
+  seedCutoverDate: string;
+  /** Habit tombstones (sync §2.4): a delete beats any state older than deletedAt. */
+  deletedHabits: HabitTombstone[];
   companion: CompanionState;
 };
 
@@ -219,6 +249,8 @@ export function createInitialDashboardState(today = getDashboardToday()): Dashbo
     records,
     events: createSeedEvents(),
     bestStreakFloor: BEST_STREAK_FLOOR,
+    seedCutoverDate: today,
+    deletedHabits: [],
     companion: createInitialCompanionState()
   };
 }
@@ -263,21 +295,84 @@ export function addHabitToState(
   };
 }
 
-export function removeHabitFromState(state: DashboardState, habitId: string): DashboardState {
+export function removeHabitFromState(
+  state: DashboardState,
+  habitId: string,
+  nowIso = new Date().toISOString()
+): DashboardState {
   if (!state.habits.some((habit) => habit.id === habitId)) return state;
+
+  // Prune the habit's completions everywhere: orphan completions must not
+  // survive to be LWW-merged back after a sync (spec §2.4 tombstones).
+  const records: Record<string, DashboardDayRecord> = {};
+
+  Object.keys(state.records).forEach((date) => {
+    const record = state.records[date];
+
+    if (!(habitId in record.completions)) {
+      records[date] = record;
+      return;
+    }
+
+    const completions = { ...record.completions };
+
+    delete completions[habitId];
+    records[date] = { ...record, completions };
+  });
 
   return {
     ...state,
-    habits: state.habits.filter((habit) => habit.id !== habitId)
+    habits: state.habits.filter((habit) => habit.id !== habitId),
+    records,
+    deletedHabits: [...state.deletedHabits, { key: habitId, deletedAt: nowIso }]
   };
+}
+
+/**
+ * Rewrites a habit's id/key everywhere it appears (habit list + every day's
+ * completions). Used by the sync boundary to resolve slug collisions (spec §2.2):
+ * the local habit is re-keyed with a suffix, never silently merged into a
+ * different habit that happens to share the slug.
+ */
+export function rekeyHabit(state: DashboardState, oldKey: string, newKey: string): DashboardState {
+  if (!newKey || oldKey === newKey) return state;
+  if (!state.habits.some((habit) => habit.id === oldKey)) return state;
+  if (state.habits.some((habit) => habit.id === newKey)) return state;
+
+  const habits = state.habits.map((habit) =>
+    habit.id === oldKey ? { ...habit, id: newKey, key: newKey } : habit
+  );
+  const records: Record<string, DashboardDayRecord> = {};
+
+  Object.keys(state.records).forEach((date) => {
+    const record = state.records[date];
+
+    if (!(oldKey in record.completions)) {
+      records[date] = record;
+      return;
+    }
+
+    const completions = { ...record.completions };
+
+    completions[newKey] = completions[oldKey];
+    delete completions[oldKey];
+    records[date] = { ...record, completions };
+  });
+
+  return { ...state, habits, records };
 }
 
 export function createInitialCompanionState(): CompanionState {
   return {
     pets: {},
     activeSpecies: null,
+    activeSpeciesUpdatedAt: null,
     food: 0,
     foodGrantedByDate: {},
+    foodGiftsReceived: {},
+    foodSpentEvents: {},
+    foodCarryover: 0,
+    giftOverflowBondByDate: {},
     allDoneBonusDates: {},
     lastSeenDate: null,
     pendingGift: false
@@ -285,10 +380,15 @@ export function createInitialCompanionState(): CompanionState {
 }
 
 /**
- * Upgrades a persisted v1 payload (no companion) to the v2 shape.
- * Nothing is dropped: habits, records, and events pass through untouched.
+ * Upgrades any persisted payload (v1 without companion, or an older v2 shape)
+ * to the current shape. Nothing is dropped: habits, records, and events pass
+ * through untouched. `today` only feeds backfills (seedCutoverDate) — pass it
+ * explicitly in tests; the default is the call-boundary clock.
  */
-export function migrateDashboardState(raw: unknown): DashboardState | null {
+export function migrateDashboardState(
+  raw: unknown,
+  today = getDashboardToday()
+): DashboardState | null {
   if (!raw || typeof raw !== "object") return null;
 
   const candidate = raw as Partial<DashboardState>;
@@ -296,6 +396,8 @@ export function migrateDashboardState(raw: unknown): DashboardState | null {
   if (!Array.isArray(candidate.habits) || typeof candidate.records !== "object") {
     return null;
   }
+
+  const companion = normalizeCompanion(candidate.companion);
 
   return {
     habits: candidate.habits,
@@ -305,8 +407,26 @@ export function migrateDashboardState(raw: unknown): DashboardState | null {
       typeof candidate.bestStreakFloor === "number"
         ? candidate.bestStreakFloor
         : BEST_STREAK_FLOOR,
-    companion: normalizeCompanion(candidate.companion)
+    seedCutoverDate:
+      typeof candidate.seedCutoverDate === "string"
+        ? candidate.seedCutoverDate
+        : backfillSeedCutoverDate(companion, today),
+    deletedHabits: Array.isArray(candidate.deletedHabits) ? candidate.deletedHabits : [],
+    companion
   };
+}
+
+/**
+ * Older states predate the provenance stamp: the safest honest cutover is the
+ * earliest real signal we have — the first pet adoption — never later than the
+ * day the migration runs (spec §2.5).
+ */
+function backfillSeedCutoverDate(companion: CompanionState, today: string): string {
+  const adoptedDates = (Object.values(companion.pets) as CompanionPetState[])
+    .map((pet) => pet.adoptedOn)
+    .filter((date) => typeof date === "string" && date.length > 0);
+
+  return minIsoDate(...adoptedDates, today);
 }
 
 function normalizeCompanion(companion: CompanionState | undefined): CompanionState {
@@ -315,15 +435,55 @@ function normalizeCompanion(companion: CompanionState | undefined): CompanionSta
   }
 
   const base = createInitialCompanionState();
+  const pets: Partial<Record<PetSpecies, CompanionPetState>> = {};
 
-  return {
+  (Object.values(companion.pets ?? {}) as CompanionPetState[]).forEach((pet) => {
+    pets[pet.species] = { ...pet, nameUpdatedAt: pet.nameUpdatedAt ?? null };
+  });
+
+  const foodGrantedByDate = companion.foodGrantedByDate ?? {};
+  // Payloads written before the ledger economy carried a numeric food counter
+  // and no foodCarryover field. Bank that counter into carryover, and neutralise
+  // the historical grant ledger (already reflected in the counter) with
+  // deterministic "migrated" spend events so the derived balance equals exactly
+  // what the user had — and re-migrating the same payload is a no-op.
+  const isLegacyCounterEconomy = typeof companion.foodCarryover !== "number";
+  const foodCarryover = isLegacyCounterEconomy
+    ? clamp(companion.food ?? 0, 0, FOOD_CAP)
+    : clamp(companion.foodCarryover, 0, FOOD_CAP);
+  const foodSpentEvents = isLegacyCounterEconomy
+    ? synthesizeMigrationSpends(foodGrantedByDate)
+    : companion.foodSpentEvents ?? {};
+
+  return withDerivedFood({
     ...base,
     ...companion,
-    pets: companion.pets ?? {},
-    food: clamp(companion.food ?? 0, 0, FOOD_CAP),
-    foodGrantedByDate: companion.foodGrantedByDate ?? {},
+    pets,
+    activeSpecies: companion.activeSpecies ?? null,
+    activeSpeciesUpdatedAt: companion.activeSpeciesUpdatedAt ?? null,
+    foodGrantedByDate,
+    foodGiftsReceived: companion.foodGiftsReceived ?? {},
+    foodSpentEvents,
+    foodCarryover,
+    giftOverflowBondByDate: companion.giftOverflowBondByDate ?? {},
     allDoneBonusDates: companion.allDoneBonusDates ?? {}
-  };
+  });
+}
+
+function synthesizeMigrationSpends(
+  granted: Record<string, number>
+): Record<string, string[]> {
+  const spends: Record<string, string[]> = {};
+
+  Object.keys(granted).forEach((date) => {
+    const count = Math.floor(granted[date]);
+
+    if (!Number.isFinite(count) || count <= 0) return;
+
+    spends[date] = Array.from({ length: count }, (_, index) => `migrated:${date}:${index}`);
+  });
+
+  return spends;
 }
 
 const DEFAULT_PET_NAMES: Record<PetSpecies, string> = {
@@ -331,14 +491,20 @@ const DEFAULT_PET_NAMES: Record<PetSpecies, string> = {
   cat: "Mochi"
 };
 
+/**
+ * Naming only happens here (there is no separate rename function), so this is
+ * the single place `nameUpdatedAt` gets stamped. Adoption also switches the
+ * active pet, so `activeSpeciesUpdatedAt` is stamped too.
+ */
 export function adoptPet(
   state: DashboardState,
   species: PetSpecies,
   name: string,
-  today = getDashboardToday()
+  today = getDashboardToday(),
+  nowIso = new Date().toISOString()
 ): DashboardState {
   if (state.companion.pets[species]) {
-    return switchActivePet(state, species);
+    return switchActivePet(state, species, nowIso);
   }
 
   const trimmed = name.trim().slice(0, 20);
@@ -350,7 +516,8 @@ export function adoptPet(
     bond: 0,
     lastGrowthDate: null,
     petsToday: 0,
-    petsTodayDate: null
+    petsTodayDate: null,
+    nameUpdatedAt: nowIso
   };
 
   return {
@@ -358,19 +525,28 @@ export function adoptPet(
     companion: {
       ...state.companion,
       pets: { ...state.companion.pets, [species]: pet },
-      activeSpecies: species
+      activeSpecies: species,
+      activeSpeciesUpdatedAt: nowIso
     }
   };
 }
 
-export function switchActivePet(state: DashboardState, species: PetSpecies): DashboardState {
+export function switchActivePet(
+  state: DashboardState,
+  species: PetSpecies,
+  nowIso = new Date().toISOString()
+): DashboardState {
   if (!state.companion.pets[species] || state.companion.activeSpecies === species) {
     return state;
   }
 
   return {
     ...state,
-    companion: { ...state.companion, activeSpecies: species }
+    companion: {
+      ...state.companion,
+      activeSpecies: species,
+      activeSpeciesUpdatedAt: nowIso
+    }
   };
 }
 
@@ -384,7 +560,7 @@ export function grantFoodForHabitCompletion(
   completedCountAfter: number,
   totalCount: number
 ): DashboardState {
-  const companion = state.companion;
+  const companion = foldExpiredFoodDays(state.companion, today);
   const grantedToday = companion.foodGrantedByDate[today] ?? 0;
   const dailyCap = totalCount + 1;
   const isAllDone = totalCount > 0 && completedCountAfter >= totalCount;
@@ -395,36 +571,57 @@ export function grantFoodForHabitCompletion(
 
   return {
     ...state,
-    companion: {
+    companion: withDerivedFood({
       ...companion,
-      food: clamp(companion.food + allowed, 0, FOOD_CAP),
-      foodGrantedByDate: pruneDateLedger(
-        { ...companion.foodGrantedByDate, [today]: grantedToday + allowed },
-        today
-      )
-    }
+      foodGrantedByDate: { ...companion.foodGrantedByDate, [today]: grantedToday + allowed }
+    })
   };
 }
 
-export function feedActivePet(state: DashboardState, today = getDashboardToday()): DashboardState {
-  const species = state.companion.activeSpecies;
-  const pet = species ? state.companion.pets[species] : undefined;
+/**
+ * Feeding appends one spend event to the ledger instead of decrementing a
+ * counter — spends survive every sync order (spec §2.3). Appends are deduped
+ * on eventId, so replaying the same mutation (retry after a flaky flush) is a
+ * no-op: no double spend, no double bond.
+ */
+export function feedActivePet(
+  state: DashboardState,
+  today = getDashboardToday(),
+  eventId?: string
+): DashboardState {
+  const companion = state.companion;
+  const species = companion.activeSpecies;
+  const pet = species ? companion.pets[species] : undefined;
 
-  if (!species || !pet || state.companion.food <= 0) return state;
+  if (!species || !pet) return state;
+
+  const spentToday = companion.foodSpentEvents[today] ?? [];
+  const id = eventId ?? generateSpendEventId();
+
+  if (spentToday.includes(id)) return state;
+  if (deriveFoodBalance(companion) <= 0) return state;
 
   const grown = withGrowthDay(pet, today);
 
   return {
     ...state,
-    companion: {
-      ...state.companion,
-      food: state.companion.food - 1,
+    companion: withDerivedFood({
+      ...companion,
+      foodSpentEvents: { ...companion.foodSpentEvents, [today]: [...spentToday, id] },
       pets: {
-        ...state.companion.pets,
+        ...companion.pets,
         [species]: { ...grown, bond: grown.bond + BOND_PER_FEED }
       }
-    }
+    })
   };
+}
+
+function generateSpendEventId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `feed_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export function petActivePet(state: DashboardState, today = getDashboardToday()): DashboardState {
@@ -514,24 +711,132 @@ export function checkComebackGift(state: DashboardState, today = getDashboardTod
   };
 }
 
-export function openGift(state: DashboardState): DashboardState {
+export function openGift(state: DashboardState, today = getDashboardToday()): DashboardState {
   const companion = state.companion;
   const species = companion.activeSpecies;
   const pet = species ? companion.pets[species] : undefined;
 
   if (!companion.pendingGift || !species || !pet) return state;
 
+  // The comeback gift lands in the gifts ledger (not foodGrantedByDate) so it
+  // never eats into the daily habit-earn cap, and the fixed "date:comeback"
+  // key makes it idempotent under union-merge across devices.
   return {
     ...state,
-    companion: {
+    companion: withDerivedFood({
       ...companion,
       pendingGift: false,
-      food: clamp(companion.food + GIFT_FOOD, 0, FOOD_CAP),
+      foodGiftsReceived: {
+        ...companion.foodGiftsReceived,
+        [`${today}:comeback`]: GIFT_FOOD
+      },
       pets: {
         ...companion.pets,
         [species]: { ...pet, bond: pet.bond + GIFT_BOND }
       }
-    }
+    })
+  };
+}
+
+/**
+ * The displayed food balance is derived from the ledgers — never stored,
+ * never merged (spec §2.3): clamp(carryover + Σgranted + Σgifts − Σ|spent|).
+ */
+export function deriveFoodBalance(companion: CompanionState): number {
+  const granted = Object.values(companion.foodGrantedByDate).reduce(
+    (sum, count) => sum + count,
+    0
+  );
+  const gifts = Object.values(companion.foodGiftsReceived).reduce(
+    (sum, count) => sum + count,
+    0
+  );
+  const spent = Object.values(companion.foodSpentEvents).reduce(
+    (sum, events) => sum + events.length,
+    0
+  );
+
+  return clamp(companion.foodCarryover + granted + gifts - spent, 0, FOOD_CAP);
+}
+
+/** Keeps the cached `food` field equal to the ledger-derived balance. */
+function withDerivedFood(companion: CompanionState): CompanionState {
+  return { ...companion, food: deriveFoodBalance(companion) };
+}
+
+/**
+ * Folds food-ledger days older than FOOD_LEDGER_RETENTION_DAYS into
+ * foodCarryover pair-wise (per day: net = granted + gifts − spent, clamped into
+ * carryover) and then deletes those keys, so the derived balance is unchanged
+ * by pruning. Expired gift-overflow-bond days are dropped too (bond was
+ * already applied; the ledger only exists as a daily cap).
+ */
+export function pruneFoodLedgers(state: DashboardState, today = getDashboardToday()): DashboardState {
+  const folded = foldExpiredFoodDays(state.companion, today);
+
+  if (folded === state.companion) return state;
+
+  return { ...state, companion: withDerivedFood(folded) };
+}
+
+function giftKeyDate(key: string): string {
+  const separator = key.indexOf(":");
+
+  return separator === -1 ? key : key.slice(0, separator);
+}
+
+function foldExpiredFoodDays(companion: CompanionState, today: string): CompanionState {
+  const cutoff = addDaysIso(today, -FOOD_LEDGER_RETENTION_DAYS);
+  const expiredDays = new Set<string>();
+
+  Object.keys(companion.foodGrantedByDate).forEach((date) => {
+    if (date < cutoff) expiredDays.add(date);
+  });
+  Object.keys(companion.foodSpentEvents).forEach((date) => {
+    if (date < cutoff) expiredDays.add(date);
+  });
+  Object.keys(companion.foodGiftsReceived).forEach((key) => {
+    const date = giftKeyDate(key);
+    if (date < cutoff) expiredDays.add(date);
+  });
+
+  const hasExpiredOverflow = Object.keys(companion.giftOverflowBondByDate).some(
+    (date) => date < cutoff
+  );
+
+  if (expiredDays.size === 0 && !hasExpiredOverflow) return companion;
+
+  let foodCarryover = companion.foodCarryover;
+  const foodGrantedByDate = { ...companion.foodGrantedByDate };
+  const foodGiftsReceived = { ...companion.foodGiftsReceived };
+  const foodSpentEvents = { ...companion.foodSpentEvents };
+
+  [...expiredDays].sort().forEach((day) => {
+    const giftKeys = Object.keys(foodGiftsReceived).filter((key) => giftKeyDate(key) === day);
+    const net =
+      (foodGrantedByDate[day] ?? 0) +
+      giftKeys.reduce((sum, key) => sum + foodGiftsReceived[key], 0) -
+      (foodSpentEvents[day]?.length ?? 0);
+
+    foodCarryover = clamp(foodCarryover + net, 0, FOOD_CAP);
+    delete foodGrantedByDate[day];
+    delete foodSpentEvents[day];
+    giftKeys.forEach((key) => delete foodGiftsReceived[key]);
+  });
+
+  const giftOverflowBondByDate: Record<string, number> = {};
+
+  Object.keys(companion.giftOverflowBondByDate).forEach((date) => {
+    if (date >= cutoff) giftOverflowBondByDate[date] = companion.giftOverflowBondByDate[date];
+  });
+
+  return {
+    ...companion,
+    foodCarryover,
+    foodGrantedByDate,
+    foodGiftsReceived,
+    foodSpentEvents,
+    giftOverflowBondByDate
   };
 }
 
@@ -590,7 +895,7 @@ function buildCompanionViewModel(state: DashboardState, today: string): Companio
     activePet: pets.find((pet) => pet.isActive) ?? null,
     pets,
     adoptedSpecies: pets.map((pet) => pet.species),
-    food: companion.food,
+    food: deriveFoodBalance(companion),
     foodCap: FOOD_CAP,
     pendingGift: companion.pendingGift
   };

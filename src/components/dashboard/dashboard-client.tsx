@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChart3,
   CalendarCheck,
@@ -45,7 +45,18 @@ import {
 } from "@/components/dashboard/dashboard-data";
 import { GiftBox, Pet, PetAdoption } from "@/components/dashboard/pet";
 import { getPetLine, type PetEvent } from "@/components/dashboard/pet-voice";
+import {
+  loadSyncOptIn,
+  saveSyncOptIn,
+  shouldAskSyncOptIn,
+  snoozeSyncAsk,
+  SyncOnboarding
+} from "@/components/dashboard/sync-onboarding";
 import { Button } from "@/components/ui/button";
+import { fetchSyncSnapshot, pushMutations } from "@/lib/server/sync-actions";
+import { createSyncEngine, type SyncEngine } from "@/lib/sync/engine";
+import { runSyncOnboarding, type InitialUploadMode } from "@/lib/sync/importer";
+import type { SyncStatus } from "@/lib/sync/types";
 import { cn, formatPercent } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 
@@ -56,6 +67,29 @@ const SPOTIFY_EMBED_URL =
   "https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKCadgRdKQ?utm_source=generator&theme=0";
 
 const HABIT_CATEGORIES = ["Discipline", "Learning", "Work", "Health", "Reflection"];
+
+/** Vietnamese tooltip + emoji per sync status (spec §2.1 — discreet dot). */
+const SYNC_DOT: Record<Exclude<SyncStatus, "disabled">, { emoji: string; label: string }> = {
+  idle: { emoji: "☁️", label: "Đã lưu trên mây" },
+  pending: { emoji: "⏳", label: "Đang đồng bộ…" },
+  error: { emoji: "⚠️", label: "Chưa đồng bộ được — sẽ thử lại" }
+};
+
+/**
+ * True only when a real Supabase browser session exists. Under the dev auth
+ * bypass, in tests (no env vars — createClient throws), or when signed out
+ * this resolves false and the sync layer stays fully disabled.
+ */
+async function hasSupabaseSession(): Promise<boolean> {
+  try {
+    const supabase = createClient();
+    const { data } = await supabase.auth.getSession();
+
+    return data.session !== null;
+  } catch {
+    return false;
+  }
+}
 
 const DASHBOARD_WEATHER = {
   location: "Bangkok",
@@ -80,8 +114,53 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
   const [celebrate, setCelebrate] = useState(false);
   const [eating, setEating] = useState(false);
   const [bubble, setBubble] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("disabled");
+  const [showSyncOnboarding, setShowSyncOnboarding] = useState(false);
+  // The engine reads state through this ref so merges/flushes always see the
+  // latest value synchronously — even mid-flush, before React re-renders.
+  const stateRef = useRef(state);
+  const engineRef = useRef<SyncEngine | null>(null);
   const viewModel = useMemo(() => buildDashboardViewModel(state, today), [state, today]);
   const activePet = viewModel.companion.activePet;
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  /** setState + keep the engine's synchronous view of state in step. */
+  const commitState = useCallback((next: DashboardState) => {
+    stateRef.current = next;
+    setState(next);
+  }, []);
+
+  /** Lazily creates the sync engine (spec §2.1). Idempotent per mount. */
+  const startSyncEngine = useCallback((): SyncEngine => {
+    if (engineRef.current) return engineRef.current;
+
+    const engine = createSyncEngine({
+      getState: () => stateRef.current,
+      // Merged state goes through the exact same path as a user mutation:
+      // setState + the existing localStorage persist effect.
+      applyMerged: commitState,
+      push: pushMutations,
+      fetchSnapshot: fetchSyncSnapshot,
+      onStatus: setSyncStatus
+    });
+
+    engineRef.current = engine;
+    setSyncStatus(engine.getStatus());
+
+    return engine;
+  }, [commitState]);
+
+  /** No-op while sync is disabled — zero behavior change when logged out. */
+  const markSyncDirty = useCallback((mutation: Parameters<SyncEngine["markDirty"]>[0]) => {
+    engineRef.current?.markDirty(mutation);
+  }, []);
+
+  const markCompanionDirty = useCallback(() => {
+    markSyncDirty({ kind: "companionSnapshot", clientTs: new Date().toISOString() });
+  }, [markSyncDirty]);
 
   useEffect(() => {
     const saved =
@@ -100,7 +179,7 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
     if (loaded) {
       const welcomed = checkComebackGift(loaded, today);
 
-      setState(welcomed);
+      commitState(welcomed);
 
       const species = welcomed.companion.activeSpecies;
       const pet = species ? welcomed.companion.pets[species] : undefined;
@@ -114,13 +193,57 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
     }
 
     setHydrated(true);
-  }, [today]);
+  }, [commitState, today]);
 
   useEffect(() => {
     if (!hydrated) return;
 
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [hydrated, state]);
+
+  // Sync bootstrap (spec §2.1/§2.5): render never waits for this. With a
+  // session + prior opt-in the engine hydrates in the background; with a
+  // session but no opt-in we ask once per day; otherwise sync stays disabled.
+  useEffect(() => {
+    if (!hydrated) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      if (!(await hasSupabaseSession()) || cancelled) return;
+
+      if (loadSyncOptIn()) {
+        void startSyncEngine().hydrate();
+      } else if (shouldAskSyncOptIn(today)) {
+        setShowSyncOnboarding(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      engineRef.current?.dispose();
+      engineRef.current = null;
+    };
+  }, [hydrated, startSyncEngine, today]);
+
+  /**
+   * Spec §2.5 — the user picked how their garden goes to the cloud.
+   * Hydrate BEFORE uploading: the initial upload is built from the merged
+   * post-hydrate state, never from the pre-hydrate (possibly seed) snapshot.
+   */
+  function handleSyncChoice(mode: InitialUploadMode) {
+    saveSyncOptIn(mode);
+    setShowSyncOnboarding(false);
+
+    const engine = startSyncEngine();
+
+    void runSyncOnboarding(engine, () => stateRef.current, mode, today);
+  }
+
+  function handleSyncDismiss() {
+    snoozeSyncAsk(today);
+    setShowSyncOnboarding(false);
+  }
 
   /** Applies pet reactions to a state transition and picks the matching line. */
   function speakAfter(next: DashboardState, before: DashboardState, event: PetEvent) {
@@ -167,7 +290,21 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
       speakAfter(next, state, completesTheDay ? "allDone" : "habitDone");
     }
 
-    setState(next);
+    commitState(next);
+
+    if (habit) {
+      // SET-based, idempotent (spec §2.1): the engine stamps the shadow cell.
+      markSyncDirty({
+        kind: "setHabitLog",
+        habitKey: habitId,
+        date: today,
+        done: turningOn,
+        clientTs: new Date().toISOString()
+      });
+    }
+
+    // Ticking on feeds the companion economy (food/growth/all-done bonus).
+    if (turningOn && state.companion.activeSpecies) markCompanionDirty();
   }
 
   function feedPet() {
@@ -180,7 +317,8 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
     setEating(true);
     window.setTimeout(() => setEating(false), 1300);
     speakAfter(next, state, "feeding");
-    setState(next);
+    commitState(next);
+    markCompanionDirty();
   }
 
   function petThePet() {
@@ -188,14 +326,18 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
 
     speakAfter(next === state ? state : next, state, "petting");
 
-    if (next !== state) setState(next);
+    if (next !== state) {
+      commitState(next);
+      markCompanionDirty();
+    }
   }
 
   function handleAdopt(species: PetSpecies, name: string) {
     const next = adoptPet(state, species, name, today);
     const adoptedName = next.companion.pets[species]?.name ?? name;
 
-    setState(next);
+    commitState(next);
+    markCompanionDirty();
     setBubble(getPetLine(species, 1, "morning"));
     toast.success(`${adoptedName} đã về nhà 💕`, {
       description:
@@ -212,7 +354,8 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
 
     const pet = next.companion.pets[species];
 
-    setState(next);
+    commitState(next);
+    markCompanionDirty();
 
     if (pet) setBubble(getPetLine(species, getBondTier(pet.bond), "idle"));
   }
@@ -223,14 +366,36 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
     if (next === state) return;
 
     speakAfter(next, state, "comeback");
-    setState(next);
+    commitState(next);
+    markCompanionDirty();
     toast.success("Quà để dành! +3 món ăn 🎁", {
       description: "Đi vắng mấy hôm cũng không sao — bé chỉ mong bạn về thôi."
     });
   }
 
   function addHabit(name: string, category: string) {
-    setState((current) => addHabitToState(current, { name, category }));
+    const next = addHabitToState(state, { name, category });
+
+    if (next === state) return;
+
+    const created = next.habits[next.habits.length - 1];
+
+    commitState(next);
+    // expectCreate arms server-side slug-collision detection (spec §2.2).
+    markSyncDirty({
+      kind: "upsertHabit",
+      habit: {
+        key: created.id,
+        name: created.name,
+        category: created.category,
+        maxScore: created.maxScore,
+        active: true,
+        description: created.description,
+        sortOrder: next.habits.length - 1
+      },
+      clientTs: new Date().toISOString(),
+      expectCreate: true
+    });
     toast.success("New habit planted 🌱", {
       description: activePet
         ? `${activePet.name} sẽ cổ vũ bạn từ hôm nay.`
@@ -239,7 +404,14 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
   }
 
   function removeHabit(habitId: string) {
-    setState((current) => removeHabitFromState(current, habitId));
+    const deletedAt = new Date().toISOString();
+    const next = removeHabitFromState(state, habitId, deletedAt);
+
+    if (next === state) return;
+
+    commitState(next);
+    // Tombstone (spec §2.4): the same stamp lives in state.deletedHabits.
+    markSyncDirty({ kind: "deleteHabit", habitKey: habitId, deletedAt });
   }
 
   async function handleSignOut() {
@@ -308,7 +480,38 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
           </aside>
         </div>
       </div>
+
+      <SyncStatusDot status={syncStatus} />
+
+      {showSyncOnboarding ? (
+        <SyncOnboarding onChoose={handleSyncChoice} onDismiss={handleSyncDismiss} />
+      ) : null}
     </main>
+  );
+}
+
+/**
+ * Discreet sync indicator (spec §2.1), pinned to the footer corner. Hidden
+ * entirely while sync is disabled (logged out / dev bypass); fixed positioning
+ * means it never shifts the layout, appearing or changing state.
+ */
+function SyncStatusDot({ status }: { status: SyncStatus }) {
+  if (status === "disabled") return null;
+
+  const dot = SYNC_DOT[status];
+
+  return (
+    <span
+      aria-label={dot.label}
+      className={cn(
+        "fixed bottom-3 right-3 z-40 flex h-8 w-8 select-none items-center justify-center rounded-full border border-wafer bg-mochi text-sm leading-none shadow-mochi",
+        status === "idle" && "opacity-60"
+      )}
+      role="status"
+      title={dot.label}
+    >
+      {dot.emoji}
+    </span>
   );
 }
 

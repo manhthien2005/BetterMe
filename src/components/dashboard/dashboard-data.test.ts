@@ -6,6 +6,7 @@ import {
   buildDashboardViewModel,
   checkComebackGift,
   createInitialDashboardState,
+  deriveFoodBalance,
   feedActivePet,
   getBondTier,
   getPetStage,
@@ -14,10 +15,13 @@ import {
   migrateDashboardState,
   openGift,
   petActivePet,
+  pruneFoodLedgers,
   recordGrowthDay,
+  rekeyHabit,
   removeHabitFromState,
   switchActivePet,
-  toggleHabitForDate
+  toggleHabitForDate,
+  type DashboardState
 } from "@/components/dashboard/dashboard-data";
 
 const today = "2026-07-04";
@@ -294,5 +298,290 @@ describe("companion pet system", () => {
     expect(viewModel.companion.activePet?.bondTierLabel).toBe("Lạ lẫm");
     expect(viewModel.companion.activePet?.daysToNextStage).toBe(5);
     expect(viewModel.companion.activePet?.canPetToday).toBe(true);
+  });
+});
+
+describe("phase 0 sync groundwork", () => {
+  const nowIso = "2026-07-04T10:00:00.000Z";
+
+  function adopted(species: "dog" | "cat" = "dog", name = "Xoài") {
+    return adoptPet(createInitialDashboardState(today), species, name, today, nowIso);
+  }
+
+  /** Simulates a pre-sync v2 payload: numeric food counter, no ledger fields, no provenance. */
+  function legacyPayload(overrides: Record<string, unknown> = {}) {
+    const base = createInitialDashboardState(today) as unknown as Record<string, unknown>;
+
+    delete base.seedCutoverDate;
+    delete base.deletedHabits;
+
+    return {
+      ...base,
+      companion: {
+        pets: {
+          dog: {
+            species: "dog",
+            name: "Xoài",
+            adoptedOn: "2026-06-20",
+            growthDays: 3,
+            bond: 10,
+            lastGrowthDate: null,
+            petsToday: 0,
+            petsTodayDate: null
+          }
+        },
+        activeSpecies: "dog",
+        food: 5,
+        foodGrantedByDate: { "2026-07-01": 4, "2026-07-03": 6 },
+        allDoneBonusDates: {},
+        lastSeenDate: "2026-07-03",
+        pendingGift: false,
+        ...overrides
+      }
+    };
+  }
+
+  it("stamps seedCutoverDate on creation", () => {
+    expect(createInitialDashboardState(today).seedCutoverDate).toBe(today);
+    expect(createInitialDashboardState(today).deletedHabits).toEqual([]);
+  });
+
+  it("backfills seedCutoverDate on migration from the earliest adoption", () => {
+    const migrated = migrateDashboardState(legacyPayload(), today);
+
+    expect(migrated?.seedCutoverDate).toBe("2026-06-20");
+
+    // No pets: the migration day is the only safe cutover.
+    const petless = migrateDashboardState(legacyPayload({ pets: {}, activeSpecies: null }), today);
+
+    expect(petless?.seedCutoverDate).toBe(today);
+
+    // An adoption "after" today never pushes the cutover into the future.
+    const future = migrateDashboardState(
+      legacyPayload({
+        pets: {
+          dog: { ...legacyPayload().companion.pets.dog, adoptedOn: "2026-08-01" }
+        }
+      }),
+      today
+    );
+
+    expect(future?.seedCutoverDate).toBe(today);
+
+    // A payload that already carries the stamp keeps it verbatim.
+    const stamped = migrateDashboardState(
+      { ...legacyPayload(), seedCutoverDate: "2026-05-05" },
+      today
+    );
+
+    expect(stamped?.seedCutoverDate).toBe("2026-05-05");
+  });
+
+  it("appends a tombstone and prunes orphan completions on habit removal", () => {
+    const state = createInitialDashboardState(today);
+    const target = state.habits[0];
+    const other = state.habits[1];
+    const next = removeHabitFromState(state, target.id, nowIso);
+
+    expect(next.deletedHabits).toEqual([{ key: target.id, deletedAt: nowIso }]);
+
+    Object.values(next.records).forEach((record) => {
+      expect(target.id in record.completions).toBe(false);
+      expect(other.id in record.completions).toBe(true);
+    });
+
+    // Removing a second habit stacks tombstones instead of replacing them.
+    const twice = removeHabitFromState(next, other.id, "2026-07-05T08:00:00.000Z");
+
+    expect(twice.deletedHabits).toHaveLength(2);
+    expect(removeHabitFromState(twice, "missing-id", nowIso)).toBe(twice);
+  });
+
+  it("rekeys a habit across the habit list and every day's completions", () => {
+    let state = addHabitToState(createInitialDashboardState(today), {
+      name: "Đọc sách",
+      category: "Learning"
+    });
+
+    state = toggleHabitForDate(state, today, "custom_doc_sach");
+
+    const rekeyed = rekeyHabit(state, "custom_doc_sach", "custom_doc_sach_2");
+    const habit = rekeyed.habits.find((item) => item.id === "custom_doc_sach_2");
+
+    expect(habit).toBeTruthy();
+    expect(habit?.key).toBe("custom_doc_sach_2");
+    expect(rekeyed.habits.some((item) => item.id === "custom_doc_sach")).toBe(false);
+    expect(rekeyed.records[today].completions["custom_doc_sach_2"]).toBe(true);
+
+    Object.values(rekeyed.records).forEach((record) => {
+      expect("custom_doc_sach" in record.completions).toBe(false);
+    });
+
+    // Guard rails: unknown source, occupied target, and no-op rekeys return the same state.
+    expect(rekeyHabit(state, "missing", "anything")).toBe(state);
+    expect(rekeyHabit(state, "custom_doc_sach", state.habits[0].id)).toBe(state);
+    expect(rekeyHabit(state, "custom_doc_sach", "custom_doc_sach")).toBe(state);
+  });
+
+  it("migrates the numeric food counter into carryover with an identical derived balance", () => {
+    const migrated = migrateDashboardState(legacyPayload(), today);
+
+    expect(migrated).not.toBeNull();
+    expect(migrated!.companion.foodCarryover).toBe(5);
+    expect(deriveFoodBalance(migrated!.companion)).toBe(5);
+    expect(migrated!.companion.food).toBe(5);
+
+    // Historical grants stay for the daily cap but are neutralised by
+    // deterministic migration spend events, so nothing double-counts.
+    expect(migrated!.companion.foodGrantedByDate).toEqual({
+      "2026-07-01": 4,
+      "2026-07-03": 6
+    });
+    expect(migrated!.companion.foodSpentEvents["2026-07-01"]).toHaveLength(4);
+    expect(migrated!.companion.foodSpentEvents["2026-07-03"]).toHaveLength(6);
+
+    // Re-migrating the migrated payload is a no-op (idempotent under retries).
+    const twice = migrateDashboardState(migrated, today);
+
+    expect(twice!.companion.foodCarryover).toBe(5);
+    expect(twice!.companion.foodSpentEvents).toEqual(migrated!.companion.foodSpentEvents);
+    expect(deriveFoodBalance(twice!.companion)).toBe(5);
+  });
+
+  it("defaults the new LWW stamps to null on migration", () => {
+    const migrated = migrateDashboardState(legacyPayload(), today);
+
+    expect(migrated!.companion.pets.dog?.nameUpdatedAt).toBeNull();
+    expect(migrated!.companion.activeSpeciesUpdatedAt).toBeNull();
+    expect(migrated!.companion.foodGiftsReceived).toEqual({});
+    expect(migrated!.companion.giftOverflowBondByDate).toEqual({});
+    expect(migrated!.deletedHabits).toEqual([]);
+  });
+
+  it("stamps nameUpdatedAt on adoption and activeSpeciesUpdatedAt on switching", () => {
+    let state = adopted();
+
+    expect(state.companion.pets.dog?.nameUpdatedAt).toBe(nowIso);
+    expect(state.companion.activeSpeciesUpdatedAt).toBe(nowIso);
+
+    state = adoptPet(state, "cat", "Mochi", today, "2026-07-04T11:00:00.000Z");
+
+    expect(state.companion.pets.cat?.nameUpdatedAt).toBe("2026-07-04T11:00:00.000Z");
+    expect(state.companion.activeSpeciesUpdatedAt).toBe("2026-07-04T11:00:00.000Z");
+    // The dog's own name stamp is untouched by the cat's adoption.
+    expect(state.companion.pets.dog?.nameUpdatedAt).toBe(nowIso);
+
+    state = switchActivePet(state, "dog", "2026-07-04T12:00:00.000Z");
+
+    expect(state.companion.activeSpecies).toBe("dog");
+    expect(state.companion.activeSpeciesUpdatedAt).toBe("2026-07-04T12:00:00.000Z");
+
+    // Adopting an already-adopted species is a switch and stamps accordingly.
+    state = adoptPet(state, "cat", "ignored", today, "2026-07-04T13:00:00.000Z");
+
+    expect(state.companion.activeSpeciesUpdatedAt).toBe("2026-07-04T13:00:00.000Z");
+    expect(state.companion.pets.cat?.name).toBe("Mochi");
+  });
+
+  it("feeding appends a spend event and drops the derived balance by one", () => {
+    let state = adopted();
+
+    state = grantFoodForHabitCompletion(state, today, 1, 7);
+    state = grantFoodForHabitCompletion(state, today, 2, 7);
+
+    expect(deriveFoodBalance(state.companion)).toBe(2);
+
+    state = feedActivePet(state, today, "evt-1");
+
+    expect(state.companion.foodSpentEvents[today]).toEqual(["evt-1"]);
+    expect(deriveFoodBalance(state.companion)).toBe(1);
+    expect(state.companion.food).toBe(1);
+  });
+
+  it("dedupes a replayed feed event: same uuid twice counts once", () => {
+    let state = adopted();
+
+    state = grantFoodForHabitCompletion(state, today, 1, 7);
+    state = grantFoodForHabitCompletion(state, today, 2, 7);
+    state = feedActivePet(state, today, "evt-retry");
+
+    const bondAfterFirst = state.companion.pets.dog!.bond;
+    const replayed = feedActivePet(state, today, "evt-retry");
+
+    expect(replayed).toBe(state);
+    expect(replayed.companion.foodSpentEvents[today]).toEqual(["evt-retry"]);
+    expect(replayed.companion.pets.dog?.bond).toBe(bondAfterFirst);
+    expect(deriveFoodBalance(replayed.companion)).toBe(1);
+
+    // A different event id is a genuine second feed.
+    const second = feedActivePet(state, today, "evt-2");
+
+    expect(second.companion.foodSpentEvents[today]).toEqual(["evt-retry", "evt-2"]);
+    expect(deriveFoodBalance(second.companion)).toBe(0);
+  });
+
+  it("opening the comeback gift writes the gifts ledger idempotently", () => {
+    let state = adopted();
+
+    state = checkComebackGift(state, today);
+    state = checkComebackGift(state, "2026-07-10");
+    state = openGift(state, "2026-07-10");
+
+    expect(state.companion.foodGiftsReceived).toEqual({ "2026-07-10:comeback": 3 });
+    expect(state.companion.food).toBe(3);
+    expect(deriveFoodBalance(state.companion)).toBe(3);
+    expect(openGift(state, "2026-07-10")).toBe(state);
+  });
+
+  it("pruning old ledger days into carryover never changes the derived balance", () => {
+    const base = adopted();
+    const state: DashboardState = {
+      ...base,
+      companion: {
+        ...base.companion,
+        foodCarryover: 1,
+        foodGrantedByDate: { "2026-05-01": 4, "2026-05-20": 2, "2026-07-01": 3 },
+        foodGiftsReceived: { "2026-05-01:visit-9": 1 },
+        foodSpentEvents: { "2026-05-01": ["a", "b"], "2026-07-01": ["c"] },
+        giftOverflowBondByDate: { "2026-05-01": 2, "2026-07-01": 1 }
+      }
+    };
+    const before = deriveFoodBalance(state.companion);
+
+    expect(before).toBe(8); // 1 + (4+2+3) + 1 − (2+1)
+
+    const pruned = pruneFoodLedgers(state, today);
+
+    expect(deriveFoodBalance(pruned.companion)).toBe(before);
+    expect(pruned.companion.food).toBe(before);
+
+    // Expired days are folded away; recent days survive untouched.
+    expect(pruned.companion.foodCarryover).toBe(6); // 1 + (4+1−2) + 2
+    expect(pruned.companion.foodGrantedByDate).toEqual({ "2026-07-01": 3 });
+    expect(pruned.companion.foodGiftsReceived).toEqual({});
+    expect(pruned.companion.foodSpentEvents).toEqual({ "2026-07-01": ["c"] });
+    expect(pruned.companion.giftOverflowBondByDate).toEqual({ "2026-07-01": 1 });
+
+    // Nothing to prune -> same state reference (no useless re-renders).
+    expect(pruneFoodLedgers(pruned, today)).toBe(pruned);
+  });
+
+  it("keeps the migrated balance intact through granting, feeding, and pruning", () => {
+    const migrated = migrateDashboardState(legacyPayload(), today)!;
+    let state = grantFoodForHabitCompletion(migrated, today, 1, 7);
+
+    expect(state.companion.food).toBe(6); // 5 migrated + 1 fresh grant
+
+    state = feedActivePet(state, today, "evt-after-migration");
+
+    expect(state.companion.food).toBe(5);
+
+    // 40 days later, everything old folds into carryover without moving the balance.
+    const later = pruneFoodLedgers(state, "2026-08-13");
+
+    expect(deriveFoodBalance(later.companion)).toBe(5);
+    expect(later.companion.foodGrantedByDate).toEqual({});
+    expect(later.companion.foodSpentEvents).toEqual({});
+    expect(later.companion.foodCarryover).toBe(5);
   });
 });

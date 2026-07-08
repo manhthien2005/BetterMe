@@ -1,3 +1,11 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
 export type TrackerStatus = "Good" | "Okay" | "Bad" | "Planned" | "";
 
 export type Habit = {
@@ -199,7 +207,53 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    // Sync RPCs (supabase/schema.sql, Social Garden Phase 0 §2). jsonb-returning
+    // functions are typed Json and parsed defensively at the call boundary.
+    Functions: {
+      apply_habit_log: {
+        Args: {
+          p_habit_key: string;
+          p_date: string;
+          p_done: boolean;
+          p_mutated_at: string | null;
+        };
+        Returns: undefined;
+      };
+      upsert_habit: {
+        Args: {
+          p_key: string;
+          p_name: string;
+          p_category: string;
+          p_max_score: number;
+          p_active: boolean;
+          p_description: string;
+          p_sort_order: number;
+          p_client_ts: string | null;
+          p_expect_create?: boolean;
+        };
+        Returns: Json;
+      };
+      delete_habit: {
+        Args: { p_key: string; p_deleted_at: string | null };
+        Returns: Json;
+      };
+      reset_companion: {
+        Args: { p_species: string };
+        Returns: undefined;
+      };
+      merge_companion_state: {
+        Args: { p: Json };
+        Returns: Json;
+      };
+      get_sync_snapshot: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      companion_state_jsonb: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
