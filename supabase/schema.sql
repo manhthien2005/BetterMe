@@ -831,3 +831,485 @@ grant execute on function public.get_sync_snapshot() to authenticated;
 -- internal calls working.
 revoke execute on function public.companion_state_jsonb() from public, anon;
 grant execute on function public.companion_state_jsonb() to authenticated;
+
+-- =====================================================================
+-- ===== Social Garden Phase 1: identity & friending =====
+-- Spec: docs/superpowers/specs/2026-07-08-social-garden-spec.md §3
+-- Idempotent — safe to re-run. Friend requests burn quota (including wrong codes).
+-- Friending exposes ZERO habit/pet data in Phase 1 (summary projection comes in Phase 2).
+-- =====================================================================
+
+-- Constants used throughout Phase 1 (inline in code below):
+-- MAX_FRIENDS = 50 (per user)
+-- RATE_LIMIT = 10 requests per 24 hours (per user)
+-- ATTEMPT_RETENTION = 7 days (prune old attempts)
+
+-- ---------------------------------------------------------------------
+-- Extension: profiles table (§3.1)
+-- ---------------------------------------------------------------------
+
+-- display_name: 30 char max, empty string allowed (clears to default).
+alter table public.profiles add column if not exists display_name text not null default '';
+
+-- Add CHECK constraint via DO block (idempotent).
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'profiles_display_name_length'
+      and conrelid = 'public.profiles'::regclass
+  ) then
+    alter table public.profiles
+      add constraint profiles_display_name_length
+      check (char_length(display_name) <= 30);
+  end if;
+end $$;
+
+-- avatar_kind: 'nep' (mascot) | 'dog' | 'cat' (user's pet).
+alter table public.profiles add column if not exists avatar_kind text not null default 'nep';
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'profiles_avatar_kind_values'
+      and conrelid = 'public.profiles'::regclass
+  ) then
+    alter table public.profiles
+      add constraint profiles_avatar_kind_values
+      check (avatar_kind in ('nep', 'dog', 'cat'));
+  end if;
+end $$;
+
+-- invite_code: 16 hex chars (64-bit), set by trigger below, unique.
+alter table public.profiles add column if not exists invite_code text;
+create unique index if not exists profiles_invite_code_key on public.profiles (invite_code);
+
+-- sharing_enabled: opt-in for summary projection (Phase 2). Phase 1 friending
+-- does NOT expose any data yet — this column is safe to add now.
+alter table public.profiles add column if not exists sharing_enabled boolean not null default false;
+
+-- Invite code generator trigger (§3.1): re-rolls upper(encode(gen_random_bytes(8),'hex'))
+-- until unique. The unique index above is the backstop for a rare race; the
+-- re-roll loop makes a collision astronomically unlikely (64-bit space).
+create or replace function public.set_invite_code()
+returns trigger
+language plpgsql
+as $$
+begin
+  loop
+    new.invite_code := upper(encode(gen_random_bytes(8), 'hex')); -- 16 hex, 64 bit
+    exit when not exists (
+      select 1 from public.profiles where invite_code = new.invite_code
+    );
+  end loop;
+  return new;
+end;
+$$;
+
+-- BEFORE INSERT only, and only when invite_code is null (rows are always
+-- inserted without a code; the column is never set NOT NULL so re-runs stay safe).
+drop trigger if exists profiles_set_invite_code on public.profiles;
+create trigger profiles_set_invite_code
+before insert on public.profiles
+for each row when (new.invite_code is null)
+execute function public.set_invite_code();
+
+-- Backfill existing rows (loop-safe, same re-roll expression as the trigger).
+-- Direct UPDATE — the INSERT trigger does not fire on these. Idempotent: only
+-- touches rows still missing a code.
+do $$
+declare
+  v_row record;
+  v_code text;
+begin
+  for v_row in select user_id from public.profiles where invite_code is null loop
+    loop
+      v_code := upper(encode(gen_random_bytes(8), 'hex'));
+      exit when not exists (
+        select 1 from public.profiles where invite_code = v_code
+      );
+    end loop;
+    update public.profiles set invite_code = v_code where user_id = v_row.user_id;
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Table: friendships (§3.2)
+-- Canonical pair: user_a < user_b (lexicographically). Status: pending | accepted.
+-- ---------------------------------------------------------------------
+
+create table if not exists public.friendships (
+  user_a uuid not null references auth.users(id) on delete cascade,
+  user_b uuid not null references auth.users(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'accepted')),
+  requested_by uuid not null,
+  created_at timestamptz not null default now(),
+  accepted_at timestamptz,
+  primary key (user_a, user_b),
+  check (user_a < user_b),                       -- canonical pair, no two-way dupes
+  check (requested_by in (user_a, user_b))
+);
+
+-- PK (user_a, user_b) already indexes user_a-leading lookups; add user_b for
+-- the reverse-direction scans in get_friends_overview.
+create index if not exists friendships_user_b_idx on public.friendships (user_b);
+
+alter table public.friendships enable row level security;
+
+-- RLS: users can SELECT their own friendships (both directions).
+drop policy if exists "Users can view their friendships" on public.friendships;
+create policy "Users can view their friendships" on public.friendships
+for select using (auth.uid() in (user_a, user_b));
+
+-- RLS: users can DELETE their own friendships (unfriend).
+drop policy if exists "Users can delete their friendships" on public.friendships;
+create policy "Users can delete their friendships" on public.friendships
+for delete using (auth.uid() in (user_a, user_b));
+
+-- No INSERT/UPDATE policies: writes only via send_friend_request/respond_friend_request RPCs.
+
+-- ---------------------------------------------------------------------
+-- Table: friend_request_attempts (§3.2)
+-- Rate-limit ledger: every send_friend_request call logs here FIRST (before
+-- code lookup), so wrong codes burn quota too. Prune > 7 days on write.
+-- ---------------------------------------------------------------------
+
+create table if not exists public.friend_request_attempts (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists friend_request_attempts_user_date_idx
+on public.friend_request_attempts (user_id, created_at);
+
+alter table public.friend_request_attempts enable row level security;
+
+-- RLS: NO policies (default deny). Only RPCs write/read this table.
+
+-- ---------------------------------------------------------------------
+-- RPC: send_friend_request (§3.3)
+-- Returns jsonb with "status" field. Possible status values:
+--   "rate-limited"        — exceeded 10 requests/24h
+--   "not-found"           — code does not exist (generic, no info leak)
+--   "self"                — user entered their own code
+--   "cap-reached"         — sender has 50 accepted friends
+--   "their-cap-reached"   — recipient has 50 accepted friends
+--   "already-pending"     — request already pending (includes "direction": "sent"|"received")
+--   "already-friends"     — already accepted friends
+--   "sent"                — request sent successfully (includes "displayName", "otherUserId")
+-- ---------------------------------------------------------------------
+
+create or replace function public.send_friend_request(p_code text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid;
+  v_recipient_id uuid;
+  v_recipient_name text;
+  v_code_normalized text;
+  v_attempts_24h integer;
+  v_sender_count integer;
+  v_recipient_count integer;
+  v_user_a uuid;
+  v_user_b uuid;
+  v_existing record;
+begin
+  v_uid := auth.uid();
+  if v_uid is null then
+    raise exception using errcode = 'P0001', message = 'not-authenticated';
+  end if;
+
+  -- Step 1: Advisory lock on sender (serialize quota checks).
+  perform pg_advisory_xact_lock(hashtext('betterme.friend_request:' || v_uid::text));
+
+  -- Step 2: Log attempt FIRST (before any code lookup — wrong codes burn quota).
+  insert into public.friend_request_attempts (user_id) values (v_uid);
+
+  -- Prune old attempts (> 7 days) for this user.
+  delete from public.friend_request_attempts
+  where user_id = v_uid and created_at < now() - interval '7 days';
+
+  -- Step 3: Rate limit check (10 requests per 24 hours).
+  select count(*) into v_attempts_24h
+  from public.friend_request_attempts
+  where user_id = v_uid and created_at >= now() - interval '24 hours';
+
+  if v_attempts_24h > 10 then
+    return jsonb_build_object('status', 'rate-limited');
+  end if;
+
+  -- Step 4: Normalize code and lookup recipient.
+  v_code_normalized := upper(trim(coalesce(p_code, '')));
+  select user_id, display_name into v_recipient_id, v_recipient_name
+  from public.profiles
+  where invite_code = v_code_normalized;
+
+  if v_recipient_id is null then
+    return jsonb_build_object('status', 'not-found');
+  end if;
+
+  if v_recipient_id = v_uid then
+    return jsonb_build_object('status', 'self');
+  end if;
+
+  -- Step 5: Canonical pair lock (serialize friendship mutations for this pair).
+  if v_uid < v_recipient_id then
+    v_user_a := v_uid;
+    v_user_b := v_recipient_id;
+  else
+    v_user_a := v_recipient_id;
+    v_user_b := v_uid;
+  end if;
+  perform pg_advisory_xact_lock(hashtext('betterme.friendship:' || v_user_a::text || ':' || v_user_b::text));
+
+  -- Step 6: Friend cap checks (MAX_FRIENDS = 50).
+  select count(*) into v_sender_count
+  from public.friendships
+  where (user_a = v_uid or user_b = v_uid) and status = 'accepted';
+
+  if v_sender_count >= 50 then
+    return jsonb_build_object('status', 'cap-reached');
+  end if;
+
+  select count(*) into v_recipient_count
+  from public.friendships
+  where (user_a = v_recipient_id or user_b = v_recipient_id) and status = 'accepted';
+
+  if v_recipient_count >= 50 then
+    return jsonb_build_object('status', 'their-cap-reached');
+  end if;
+
+  -- Step 7: Check for existing friendship.
+  select * into v_existing from public.friendships
+  where user_a = v_user_a and user_b = v_user_b;
+
+  if found then
+    if v_existing.status = 'pending' then
+      return jsonb_build_object(
+        'status', 'already-pending',
+        'direction', case when v_existing.requested_by = v_uid then 'sent' else 'received' end
+      );
+    elsif v_existing.status = 'accepted' then
+      return jsonb_build_object('status', 'already-friends');
+    end if;
+  end if;
+
+  -- Step 8: Insert friendship (canonical order, status pending).
+  insert into public.friendships (user_a, user_b, status, requested_by)
+  values (v_user_a, v_user_b, 'pending', v_uid);
+
+  return jsonb_build_object(
+    'status', 'sent',
+    'displayName', v_recipient_name,
+    'otherUserId', v_recipient_id
+  );
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- RPC: respond_friend_request (§3.3)
+-- Only the NON-requester can respond. Returns jsonb with "status" field:
+--   "accepted"   — request accepted (includes "displayName" of other user)
+--   "declined"   — request declined (row deleted, silent to requester)
+-- Raises P0004 if caller is not the recipient or if friendship not found.
+-- ---------------------------------------------------------------------
+
+create or replace function public.respond_friend_request(p_other uuid, p_accept boolean)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid;
+  v_user_a uuid;
+  v_user_b uuid;
+  v_existing record;
+  v_other_name text;
+begin
+  v_uid := auth.uid();
+  if v_uid is null then
+    raise exception using errcode = 'P0001', message = 'not-authenticated';
+  end if;
+  if p_other is null then
+    raise exception using errcode = 'P0004', message = 'invalid-args';
+  end if;
+
+  -- Canonical pair.
+  if v_uid < p_other then
+    v_user_a := v_uid;
+    v_user_b := p_other;
+  else
+    v_user_a := p_other;
+    v_user_b := v_uid;
+  end if;
+
+  -- Lock pair.
+  perform pg_advisory_xact_lock(hashtext('betterme.friendship:' || v_user_a::text || ':' || v_user_b::text));
+
+  -- Lookup friendship.
+  select * into v_existing from public.friendships
+  where user_a = v_user_a and user_b = v_user_b;
+
+  if not found or v_existing.status != 'pending' then
+    raise exception using errcode = 'P0004', message = 'invalid-request';
+  end if;
+
+  -- Only the NON-requester can respond.
+  if v_existing.requested_by = v_uid then
+    raise exception using errcode = 'P0004', message = 'cannot-respond-to-own-request';
+  end if;
+
+  -- Fetch other user's display name.
+  select display_name into v_other_name from public.profiles where user_id = p_other;
+
+  if p_accept then
+    update public.friendships
+    set status = 'accepted', accepted_at = now()
+    where user_a = v_user_a and user_b = v_user_b;
+
+    return jsonb_build_object('status', 'accepted', 'displayName', v_other_name);
+  else
+    delete from public.friendships
+    where user_a = v_user_a and user_b = v_user_b;
+
+    return jsonb_build_object('status', 'declined');
+  end if;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- RPC: get_friends_overview (§3.1)
+-- Returns jsonb with "me" and "friends" fields. This is the ONLY RPC that
+-- cross-looks up profiles (profiles RLS stays owner-only; this SECURITY DEFINER
+-- RPC is the sanctioned path).
+-- Shape:
+--   {
+--     "me": {"displayName", "avatarKind", "inviteCode", "sharingEnabled"},
+--     "friends": [
+--       {"otherUserId", "displayName", "avatarKind", "status", "requestedByMe", "acceptedAt"}
+--     ]
+--   }
+-- Friends ordered by accepted_at (nulls last), then created_at.
+-- ---------------------------------------------------------------------
+
+create or replace function public.get_friends_overview()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid;
+  v_me jsonb;
+  v_friends jsonb;
+begin
+  v_uid := auth.uid();
+  if v_uid is null then
+    raise exception using errcode = 'P0001', message = 'not-authenticated';
+  end if;
+
+  -- Fetch own profile.
+  select jsonb_build_object(
+    'displayName', display_name,
+    'avatarKind', avatar_kind,
+    'inviteCode', invite_code,
+    'sharingEnabled', sharing_enabled
+  ) into v_me
+  from public.profiles
+  where user_id = v_uid;
+
+  -- Fetch friends (both directions, pending + accepted).
+  select coalesce(jsonb_agg(
+    jsonb_build_object(
+      'otherUserId', f.other_id,
+      'displayName', p.display_name,
+      'avatarKind', p.avatar_kind,
+      'status', f.status,
+      'requestedByMe', f.requested_by = v_uid,
+      'acceptedAt', f.accepted_at
+    ) order by f.accepted_at nulls last, f.created_at
+  ), '[]'::jsonb) into v_friends
+  from (
+    select user_b as other_id, status, requested_by, accepted_at, created_at
+    from public.friendships
+    where user_a = v_uid
+    union all
+    select user_a as other_id, status, requested_by, accepted_at, created_at
+    from public.friendships
+    where user_b = v_uid
+  ) f
+  join public.profiles p on p.user_id = f.other_id;
+
+  return jsonb_build_object('me', v_me, 'friends', v_friends);
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- RPC: update_my_profile (§3.1)
+-- Updates display_name and avatar_kind. Returns {"status": "ok"}.
+-- Can be SECURITY INVOKER (own row, RLS applies), but kept as DEFINER so
+-- Phase 2 can hook refresh_my_summary here (per spec §4.1).
+-- ---------------------------------------------------------------------
+
+create or replace function public.update_my_profile(p_display_name text, p_avatar_kind text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid;
+  v_name text;
+begin
+  v_uid := auth.uid();
+  if v_uid is null then
+    raise exception using errcode = 'P0001', message = 'not-authenticated';
+  end if;
+
+  -- Validate and trim display_name (empty allowed = clears to default).
+  v_name := trim(coalesce(p_display_name, ''));
+  if char_length(v_name) > 30 then
+    raise exception using errcode = 'P0004', message = 'display-name-too-long';
+  end if;
+
+  -- Validate avatar_kind.
+  if p_avatar_kind is null or p_avatar_kind not in ('nep', 'dog', 'cat') then
+    raise exception using errcode = 'P0004', message = 'invalid-avatar-kind';
+  end if;
+
+  update public.profiles
+  set display_name = v_name, avatar_kind = p_avatar_kind
+  where user_id = v_uid;
+
+  return jsonb_build_object('status', 'ok');
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- Hardening: revoke DELETE on companion_meta (mirror of companions lockout).
+-- Account deletion still cascades from auth.users (referential actions bypass RLS).
+-- ---------------------------------------------------------------------
+
+revoke delete on table public.companion_meta from anon, authenticated;
+
+-- ---------------------------------------------------------------------
+-- Grants: all Phase 1 RPCs are for authenticated users only.
+-- Unfriend needs no RPC — the DELETE policy on friendships covers it.
+-- ---------------------------------------------------------------------
+
+revoke execute on function public.send_friend_request(text) from public, anon;
+grant execute on function public.send_friend_request(text) to authenticated;
+
+revoke execute on function public.respond_friend_request(uuid, boolean) from public, anon;
+grant execute on function public.respond_friend_request(uuid, boolean) to authenticated;
+
+revoke execute on function public.get_friends_overview() from public, anon;
+grant execute on function public.get_friends_overview() to authenticated;
+
+revoke execute on function public.update_my_profile(text, text) from public, anon;
+grant execute on function public.update_my_profile(text, text) to authenticated;

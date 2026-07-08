@@ -43,6 +43,7 @@ import {
   type DashboardViewModel,
   type PetSpecies
 } from "@/components/dashboard/dashboard-data";
+import { FriendsCard } from "@/components/dashboard/friends-card";
 import { GiftBox, Pet, PetAdoption } from "@/components/dashboard/pet";
 import { getPetLine, type PetEvent } from "@/components/dashboard/pet-voice";
 import {
@@ -470,6 +471,10 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
             <CalendarPanel days={viewModel.calendar.days} viewModel={viewModel} />
             <UpcomingEvents viewModel={viewModel} />
             <AnalyticsPanel viewModel={viewModel} />
+            {/* Social layer rides on sync (spec §3.3): the card exists ONLY
+                while the engine is enabled — live Supabase session + sync
+                opt-in. Logged out / dev bypass: absent, zero layout change. */}
+            {syncStatus !== "disabled" ? <FriendsCard /> : null}
           </div>
           <aside
             aria-label="Weather and Spotify highlights"

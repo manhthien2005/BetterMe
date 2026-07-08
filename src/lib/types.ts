@@ -205,6 +205,28 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["habit_logs"]["Insert"]>;
         Relationships: [];
       };
+      // Social Garden Phase 1 (§3.2). INSERT/UPDATE have no RLS policies —
+      // writes go through the friending RPCs; only SELECT/DELETE are direct.
+      friendships: {
+        Row: {
+          user_a: string;
+          user_b: string;
+          status: string;
+          requested_by: string;
+          created_at: string;
+          accepted_at: string | null;
+        };
+        Insert: {
+          user_a: string;
+          user_b: string;
+          status?: string;
+          requested_by: string;
+          created_at?: string;
+          accepted_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["friendships"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     // Sync RPCs (supabase/schema.sql, Social Garden Phase 0 §2). jsonb-returning
@@ -251,6 +273,25 @@ export type Database = {
       };
       companion_state_jsonb: {
         Args: Record<string, never>;
+        Returns: Json;
+      };
+      // Social Garden Phase 1 friending RPCs (supabase/schema.sql §3). All
+      // SECURITY DEFINER, jsonb-returning; parsed defensively at the call
+      // boundary in src/lib/server/social-actions.ts.
+      send_friend_request: {
+        Args: { p_code: string };
+        Returns: Json;
+      };
+      respond_friend_request: {
+        Args: { p_other: string; p_accept: boolean };
+        Returns: Json;
+      };
+      get_friends_overview: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      update_my_profile: {
+        Args: { p_display_name: string; p_avatar_kind: string };
         Returns: Json;
       };
     };
