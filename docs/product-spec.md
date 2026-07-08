@@ -118,14 +118,21 @@ Phase 1 does not include remote synchronization, notifications, analytics teleme
 
 ## Explicitly out of scope
 
-- Login and authentication
-- Multi-user accounts and profiles
-- Backend database or required network service
-- Friend system
-- Group streaks
-- Social accountability
-- Public sharing
-- Promotional, referral, or growth features
+> **Amendment 2026-07-08 (owner decision):** the "private, single-user" anti-goal is lifted.
+> Friend connections, friend groups, visibility of friends' streaks/pets/achievements, and
+> gentle competition are now planned — see
+> `docs/superpowers/specs/2026-07-08-social-garden-spec.md` for the approved design and its
+> guardrails (no-guilt and no-decay invariants still stand; sharing is friends-only and
+> opt-in). The struck-through items below are superseded by that spec; the rest remain.
+
+- Login and authentication *(already superseded in practice — Supabase auth shipped)*
+- ~~Multi-user accounts and profiles~~ *(superseded 2026-07-08)*
+- ~~Backend database or required network service~~ *(superseded — Supabase sync planned; app stays local-first and usable offline)*
+- ~~Friend system~~ *(superseded 2026-07-08)*
+- ~~Group streaks~~ *(superseded — shared rhythm/co-op quests, reward-only)*
+- ~~Social accountability~~ *(superseded — positive-only sharing; misses are never broadcast)*
+- Public sharing *(still out of scope — friends-only)*
+- Promotional, referral, or growth features *(still out of scope)*
 - Production external integrations for Weather, Spotify, or Google Calendar
 
 ## Acceptance summary

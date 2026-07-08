@@ -137,6 +137,30 @@ The Phase 1 dataset is small and transactional complexity is low, so direct `loc
 
 ## Future auth/backend/social extension path
 
+> **Status (updated 2026-07-08): no longer speculative.** The owner lifted the "private,
+> single-user" anti-goal; the backend/social extension path below is now a concrete, reviewed
+> design — see `docs/superpowers/specs/2026-07-08-social-garden-spec.md` (PROPOSED v2, survived
+> a 23-finding adversarial review). Summary of how it instantiates this section's seams:
+>
+> - **Sync layer (Phase 0)**: hybrid local-first. `localStorage` (`betterme.dashboard.v2`)
+>   stays the render source of truth; Supabase becomes the durable copy and multi-device merge
+>   point. A background sync queue (`betterme.syncqueue.v1`) carries SET-based idempotent
+>   mutations; merge laws are monotonic max() for reward state (growth/bond — the no-decay
+>   invariant as conflict resolution, enforced by a Postgres trigger), per-cell LWW for habit
+>   completions (shadow map `betterme.syncmeta.v1` + `habit_logs.mutated_at` — untick must
+>   propagate), append-only event ledgers for the food economy (a balance is derived, never
+>   merged), per-field LWW for pet name/active species, and tombstones for habit deletion.
+>   The pure-function layer in `dashboard-data.ts` keeps its shape; sync metadata lives outside
+>   `DashboardState`. Seed/demo history never uploads (`seedCutoverDate` provenance stamp).
+> - **Published summaries**: exactly as this section anticipated, friends consume a projection
+>   (`published_summaries`), never private rows. The projection is writable only via the
+>   `refresh_my_summary` RPC which recomputes from source (`habit_logs`, `companions`) —
+>   owner clients cannot upsert fabricated values — and structurally contains no field from
+>   which a miss-day or inactivity gap can be inferred (no `last_good_date`).
+> - **Friend/group concepts stay out of the private model**: friendships, garden visits,
+>   shared rhythms, and the weekly fair live in their own tables and RPCs; `DailyRecord`/
+>   `DashboardState` gain no social fields. Social surfaces read summaries only.
+
 The stable modules are `src/types/` domain entities (with additive ownership metadata in an API layer if needed), `src/lib/scoring/`, `src/lib/date/`, `src/charts/`, theme modules, and presentational components. They remain untouched.
 
 A backend phase adds an authenticated `RemoteStorageAdapter` or repository layer under `src/lib/storage/`, server route/actions under `src/app/`, and mapping DTOs at that boundary. The store swaps adapter construction and gains sync/conflict state; domain inputs/outputs do not change. Auth wraps route access and adapter identity but does not enter scoring/date/components. Social features receive separate modules that consume published summaries or events; they do not add friend/group concepts to a private `DailyRecord`.
