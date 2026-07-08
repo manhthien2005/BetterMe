@@ -7,7 +7,8 @@ import type { BondTier, PetSpecies } from "@/components/dashboard/dashboard-data
  *
  * Dog voice: devoted and loud — xưng "em", gọi "Sếp", barks "gâu".
  * Cat voice: tsundere — xưng "tôi", gọi "cậu", trails off in "meo~" and "…".
- * Golden rule: no line may ever guilt the user.
+ * Golden rule: no line may ever guilt the user — and no social line may
+ * ever compare anyone down (celebrate own garden, never rank a friend).
  */
 
 export type PetEvent =
@@ -19,7 +20,10 @@ export type PetEvent =
   | "comeback"
   | "night"
   | "evolve"
-  | "idle";
+  | "idle"
+  | "friendVisit"
+  | "fairLantern"
+  | "sharedRhythm";
 
 type TierGroup = "low" | "mid" | "high";
 
@@ -71,6 +75,21 @@ const DOG_VOICE: VoicePack = {
       "Em ngồi đây ngoan lắm nè, Sếp thấy hông?",
       "Gâu? Sếp đang nhìn em hả? Em vẫy đuôi liền!",
       "Em đánh hơi được một ngày tốt lành đó Sếp!"
+    ],
+    friendVisit: [
+      "Sếp ơi, có bạn ghé thăm vườn mình đó! Em vẫy đuôi chào liền luôn, gâu!",
+      "Hôm nay vườn mình có khách nè Sếp! Vui hẳn lên luôn á, gâu gâu!",
+      "Bạn của Sếp ghé còn để lại quà nữa đó! Em canh kỹ lắm nha, gâu!"
+    ],
+    fairLantern: [
+      "Sếp ơi, vườn mình được treo lồng đèn nè!! Đẹp lung linh ghê, gâu gâu!!",
+      "Lồng đèn hội chợ kìa Sếp! Em chạy quanh ngắm ba vòng rồi đó, gâu!",
+      "Em hãnh diện ghê! Vườn mình có lồng đèn nè Sếp, gâu!!"
+    ],
+    sharedRhythm: [
+      "Sếp ơi, nhịp chung với bạn lớn thêm rồi nè! Cùng nhau vui ghê, gâu!",
+      "Hôm nay cả Sếp và bạn đều chăm vườn đó! Em nhảy cẫng ăn mừng nè, gâu gâu!",
+      "Nhịp chung thêm một ngày rồi! Có bạn đồng hành thích ghê, gâu!"
     ]
   },
   mid: {
@@ -118,6 +137,21 @@ const DOG_VOICE: VoicePack = {
       "Em đang tập trò mới để khoe Sếp đó, chờ xíu nha!",
       "Ngồi cạnh bạn thân thôi cũng vui rồi, gâu~",
       "Sếp bận thì em nằm đây hóng gió chờ Sếp nè."
+    ],
+    friendVisit: [
+      "Bạn thân ơi, có bạn ghé vườn nè! Em khoe mấy ô xanh của Sếp luôn đó, gâu!",
+      "Khách quý tới thăm! Em dẫn đi xem vườn mình một vòng rồi nè, gâu gâu!",
+      "Bạn Sếp gửi quà cho vườn mình nè! Em chưa đụng vô đâu nha, gâu!"
+    ],
+    fairLantern: [
+      "Bạn thân ơi, mình có lồng đèn hội chợ nè!! Cả tuần chăm chỉ mà, gâu!",
+      "Em ngồi dưới lồng đèn chờ Sếp ra ngắm chung nè, gâu gâu!",
+      "Vườn mình rực rỡ ghê! Em muốn khoe với cả xóm luôn á, gâu!"
+    ],
+    sharedRhythm: [
+      "Nhịp chung của Sếp với bạn lại dài thêm nè! Em gõ trống ăn mừng, gâu!",
+      "Hai khu vườn cùng xanh một ngày nữa rồi đó Sếp! Vui ghê, gâu gâu!",
+      "Cùng nhau giữ nhịp thế này, em thấy ấm cả vườn luôn á, gâu!"
     ]
   },
   high: {
@@ -165,6 +199,21 @@ const DOG_VOICE: VoicePack = {
       "Em ngồi đây, Sếp cứ làm việc, thi thoảng nhìn em xíu là được.",
       "Người nhà ở cạnh nhau vậy thôi là đủ rồi, gâu~",
       "Em giữ vườn cho Sếp, chuyện nhỏ mà, gâu!"
+    ],
+    friendVisit: [
+      "Nhà mình có khách nè Sếp! Em tiếp đón chu đáo lắm luôn đó, gâu!",
+      "Bạn của Sếp khen vườn mình ấm ghê! Em nở mũi luôn nè, gâu gâu!",
+      "Có quà bạn gửi nè Sếp! Người nhà mình được thương ghê đó, gâu~"
+    ],
+    fairLantern: [
+      "Nhà mình có lồng đèn nè Sếp!! Mình ngắm chung một lát nha, gâu~",
+      "Lồng đèn sáng cả vườn luôn! Công người nhà mình chăm đó, gâu!!",
+      "Em cất kỷ niệm này lên kệ nhà mình nha Sếp! Đẹp quá trời, gâu!"
+    ],
+    sharedRhythm: [
+      "Nhịp chung lớn thêm rồi! Người nhà mình với bạn cùng nhau giỏi ghê, gâu!",
+      "Sếp với bạn cùng chăm thêm một ngày nữa! Em tự hào về cả hai luôn, gâu gâu!",
+      "Nhịp này ấm như ổ nằm của em vậy đó Sếp. Mình cùng nhau tiếp nha, gâu~"
     ]
   }
 };
@@ -215,6 +264,21 @@ const CAT_VOICE: VoicePack = {
       "Tôi không buồn ngủ. Mắt tôi nghỉ thôi. Meo.",
       "Nhìn gì. Làm việc của cậu đi.",
       "Tôi đang bận. Bận nằm."
+    ],
+    friendVisit: [
+      "Có người ghé vườn đấy. Tôi có ra chào. Một cái gật đầu. Meo.",
+      "Khách của cậu tới lúc nãy. Tôi… có cho ngồi ghế đấy.",
+      "Có quà ai để lại kìa. Tôi trông giúp thôi, đừng hiểu lầm. Meo."
+    ],
+    fairLantern: [
+      "Vườn có lồng đèn kìa. Tôi không ngắm đâu. …Ngắm một chút. Meo.",
+      "Hm. Lồng đèn à. Treo ở vườn này thì… cũng hợp đấy.",
+      "Đèn sáng thế ai ngủ được. …Thôi được, đẹp thật. Meo."
+    ],
+    sharedRhythm: [
+      "Nhịp chung với bạn cậu tăng rồi đấy. Tôi chỉ báo tin thôi. Meo.",
+      "Hai người cùng chăm vườn hôm nay à. …Cũng dễ thương phết.",
+      "Nhịp chung thêm một ngày. Tôi có liếc nhìn. Một lần thôi. Meo."
     ]
   },
   mid: {
@@ -262,6 +326,21 @@ const CAT_VOICE: VoicePack = {
       "Tôi nằm đây không phải để gần cậu đâu. Chỗ này mát thôi.",
       "…Cậu cứ làm việc đi. Tôi trông chừng cho. Meo.",
       "Hm. Hôm nay cậu ngồi thẳng lưng hơn rồi đấy."
+    ],
+    friendVisit: [
+      "Bạn cậu ghé vườn đấy. Tôi có tiếp chuyện… theo kiểu của mèo. Meo.",
+      "Có khách tới thăm. Vườn hôm nay… đông vui phết. Nói nhỏ thôi.",
+      "Bạn cậu gửi quà này. Tôi giữ nguyên chưa đụng. Khen tôi đi. Meo~"
+    ],
+    fairLantern: [
+      "Lồng đèn hội chợ đấy. Vườn mình tuần này… ra dáng phết. Meo~",
+      "Tôi nằm dưới lồng đèn cả chiều. Vì chỗ đó ấm thôi. Ừ. Vì ấm.",
+      "Cậu thấy lồng đèn chưa. Công cậu chăm vườn đấy. Tôi chỉ nói một lần."
+    ],
+    sharedRhythm: [
+      "Nhịp chung lại lớn thêm đấy. Cùng nhau thế này… không tệ. Meo~",
+      "Cậu và bạn giữ nhịp đều ghê. Tôi kể cho con bướm nghe rồi đấy.",
+      "Thêm một ngày cùng nhau rồi. Tôi… có hơi vui. Có hơi thôi. Meo."
     ]
   },
   high: {
@@ -309,6 +388,21 @@ const CAT_VOICE: VoicePack = {
       "Tôi nằm chỗ này vì nhìn thấy cậu rõ nhất. Đấy, lý do đấy.",
       "Cậu làm việc đi. Thi thoảng tôi liếc qua thôi. Meo~",
       "Ở cạnh nhau im lặng thế này… cũng là một kiểu trò chuyện."
+    ],
+    friendVisit: [
+      "Bạn cậu ghé chơi đấy. Nhà mình có khách cũng… ấm ra phết. Meo~",
+      "Có người tới thăm vườn. Tôi khoe cậu với người ta rồi. Ừ, tôi khoe đấy.",
+      "Quà của bạn cậu đây. Nhà mình được quý thật đấy. Meo~"
+    ],
+    fairLantern: [
+      "Lồng đèn nhà mình đẹp nhỉ. Ừ, tôi nói 'nhà mình' đấy. Meo~",
+      "Tuần này vườn mình sáng ghê. Tôi tự hào về cậu. …Đó, nói rồi đó.",
+      "Ngồi ngắm lồng đèn cùng tôi một lát đi. Chỉ một lát thôi. Meo~"
+    ],
+    sharedRhythm: [
+      "Nhịp chung của cậu và bạn ấm thật đấy. Tôi thích nhìn nó lớn lên. Meo~",
+      "Cùng nhau từng ngày thế này… nhà mình vui hẳn ra. Ừ, tôi nói thật đấy.",
+      "Nhịp lại thêm một ngày. Tôi grừ grừ vì mừng đấy, không giấu nữa. Meo~"
     ]
   }
 };
@@ -316,6 +410,41 @@ const CAT_VOICE: VoicePack = {
 const VOICE: Record<PetSpecies, VoicePack> = {
   dog: DOG_VOICE,
   cat: CAT_VOICE
+};
+
+/**
+ * Guest-side voice — the host's pet greeting a *visiting friend*.
+ * Keyed by species only: a visitor has no bond with the host's pet.
+ */
+export type GuestEvent = "guestPet" | "guestGift";
+
+type GuestVoicePack = Record<GuestEvent, string[]>;
+
+const GUEST_VOICE: Record<PetSpecies, GuestVoicePack> = {
+  dog: {
+    guestPet: [
+      "Oa!! Bạn của Sếp xoa đầu em nè! Đuôi em vẫy tít mù luôn, gâu gâu!!",
+      "Hehe, tay bạn ấm ghê! Em lăn ra sân cho xoa bụng luôn nè, gâu!",
+      "Khách quý cưng em kìa!! Em vui muốn xỉu luôn á, gâu gâu!!"
+    ],
+    guestGift: [
+      "Bạn cho em ăn hả?! Cảm ơn bạn nhiều lắm luôn, gâu gâu!!",
+      "Món này ngon ghê!! Em sẽ khoe Sếp là bạn dễ thương nhất, gâu!",
+      "Khách tới còn mang đồ ăn ngon! Vườn nhà em hên ghê, gâu!!"
+    ]
+  },
+  cat: {
+    guestPet: [
+      "Khách à. Cho chạm ba giây thôi đấy. …Thêm hai giây nữa cũng được. Meo.",
+      "Tôi không quen người lạ đâu. …Grừ grừ. Tiếng đó tự phát thôi. Meo~",
+      "Hm. Tay khách ấm phết. Đừng kể với ai là tôi có nheo mắt đấy."
+    ],
+    guestGift: [
+      "Cho tôi à? Đặt xuống đó đi. …Cảm ơn. Nói nhỏ thôi. Meo.",
+      "Khách biết chọn món ghê. Tôi nhận vì lịch sự… Ngon thật đấy. Meo~",
+      "Quà này tôi để khoe người nhà trước rồi mới ăn. Ừ, tôi khoe đấy."
+    ]
+  }
 };
 
 function tierGroup(tier: BondTier): TierGroup {
@@ -329,17 +458,15 @@ export function getVoicePool(species: PetSpecies, tier: BondTier, event: PetEven
   return VOICE[species][tierGroup(tier)][event];
 }
 
+/** Exposed for tests: the raw guest-side pool for a given (species, event). */
+export function getGuestVoicePool(species: PetSpecies, event: GuestEvent): string[] {
+  return GUEST_VOICE[species][event];
+}
+
 // Shuffle bags per pool — every line plays once before any line repeats.
 const bags = new Map<string, string[]>();
 
-export function getPetLine(
-  species: PetSpecies,
-  tier: BondTier,
-  event: PetEvent,
-  random: () => number = Math.random
-): string {
-  const pool = getVoicePool(species, tier, event);
-  const key = `${species}.${tierGroup(tier)}.${event}`;
+function drawFromBag(key: string, pool: string[], random: () => number): string {
   let bag = bags.get(key);
 
   if (!bag || bag.length === 0) {
@@ -348,6 +475,28 @@ export function getPetLine(
   }
 
   return bag.pop() ?? pool[0];
+}
+
+export function getPetLine(
+  species: PetSpecies,
+  tier: BondTier,
+  event: PetEvent,
+  random: () => number = Math.random
+): string {
+  const pool = getVoicePool(species, tier, event);
+
+  return drawFromBag(`${species}.${tierGroup(tier)}.${event}`, pool, random);
+}
+
+/** What the host's pet says to a visiting friend (thăm vườn overlay). */
+export function getGuestLine(
+  species: PetSpecies,
+  event: GuestEvent,
+  random: () => number = Math.random
+): string {
+  const pool = getGuestVoicePool(species, event);
+
+  return drawFromBag(`guest.${species}.${event}`, pool, random);
 }
 
 /** Exposed for tests: forget shuffle history. */
