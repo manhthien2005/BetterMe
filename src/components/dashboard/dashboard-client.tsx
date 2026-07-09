@@ -45,11 +45,13 @@ import {
   type PetSpecies
 } from "@/components/dashboard/dashboard-data";
 import { FriendsCard } from "@/components/dashboard/friends-card";
+import { GardenFairCard } from "@/components/dashboard/garden-fair";
 import { GardenVisitOverlay } from "@/components/dashboard/garden-visit-overlay";
 import { GiftBox, Pet, PetAdoption } from "@/components/dashboard/pet";
 import { getPetLine, type PetEvent } from "@/components/dashboard/pet-voice";
 import {
   ackGardenVisits,
+  bumpSharedRhythms,
   getPendingGardenVisits,
   refreshMySummary
 } from "@/lib/server/social-actions";
@@ -181,6 +183,8 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
   const engineRef = useRef<SyncEngine | null>(null);
   // One mailbox delivery per mount — re-runs happen on the next visit anyway.
   const mailboxDeliveredRef = useRef(false);
+  // Shared-rhythm bump fires at most once per day per mount (spec §5.1).
+  const bumpedDateRef = useRef<string | null>(null);
   const viewModel = useMemo(() => buildDashboardViewModel(state, today), [state, today]);
   const activePet = viewModel.companion.activePet;
 
@@ -316,6 +320,31 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
       );
     }
   }, [commitState, markCompanionDirty, today]);
+
+  /**
+   * Shared rhythm (spec §5.1): after my first tick of the day, ask the server
+   * to advance any shared rhythms (a day both gardens tended). Fire-and-forget,
+   * once per day per mount; the RPC is idempotent (last_counted_date guards
+   * double counts) and returns only counts. advanced > 0 cues the sharedRhythm
+   * voice line — never an absence/"waiting" frame (invariant 2, structural).
+   */
+  const maybeBumpSharedRhythms = useCallback(() => {
+    if (!engineRef.current) return; // sync disabled -> no social calls
+    if (bumpedDateRef.current === today) return;
+
+    bumpedDateRef.current = today;
+
+    void bumpSharedRhythms().then((result) => {
+      if (!result.ok || result.advanced <= 0) return;
+
+      const species = stateRef.current.companion.activeSpecies;
+      const pet = species ? stateRef.current.companion.pets[species] : undefined;
+
+      if (species && pet) {
+        setBubble(getPetLine(species, getBondTier(pet.bond), "sharedRhythm"));
+      }
+    });
+  }, [today]);
 
   useEffect(() => {
     const saved =
@@ -464,8 +493,12 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
       });
     }
 
-    // Ticking on feeds the companion economy (food/growth/all-done bonus).
-    if (turningOn && state.companion.activeSpecies) markCompanionDirty();
+    // Ticking on feeds the companion economy (food/growth/all-done bonus) and
+    // may advance a shared rhythm with a friend (spec §5.1).
+    if (turningOn && state.companion.activeSpecies) {
+      markCompanionDirty();
+      maybeBumpSharedRhythms();
+    }
   }
 
   function feedPet() {
@@ -640,7 +673,19 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
                 while the engine is enabled — live Supabase session + sync
                 opt-in. Logged out / dev bypass: absent, zero layout change. */}
             {syncStatus !== "disabled" ? (
-              <FriendsCard onVisitFriend={setVisitingFriendId} />
+              <>
+                <FriendsCard onVisitFriend={setVisitingFriendId} />
+                <GardenFairCard
+                  onOwnLantern={() => {
+                    const species = stateRef.current.companion.activeSpecies;
+                    const pet = species ? stateRef.current.companion.pets[species] : undefined;
+
+                    if (species && pet) {
+                      setBubble(getPetLine(species, getBondTier(pet.bond), "fairLantern"));
+                    }
+                  }}
+                />
+              </>
             ) : null}
           </div>
           <aside

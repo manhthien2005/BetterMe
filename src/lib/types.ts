@@ -241,6 +241,10 @@ export type Database = {
           pet_stage: string | null;
           pet_bond_tier: number | null;
           milestones: Json;
+          week_start: string | null;
+          weekly_good_days: number | null;
+          prev_week_start: string | null;
+          prev_week_good_days: number | null;
         };
         Insert: never;
         Update: never;
@@ -259,6 +263,20 @@ export type Database = {
           gifted_food: number;
           cheered_milestone_id: string | null;
           applied_at: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      // Social Garden Phase 3 (§5.1). Both sides SELECT via RLS; ALL writes go
+      // through bump_shared_rhythms. rhythm_days only rises or rests (no decay).
+      shared_rhythms: {
+        Row: {
+          user_a: string;
+          user_b: string;
+          rhythm_days: number;
+          last_counted_date: string | null;
           created_at: string;
         };
         Insert: never;
@@ -355,6 +373,23 @@ export type Database = {
       };
       get_my_garden_feed: {
         Args: { p_limit?: number };
+        Returns: Json;
+      };
+      // Social Garden Phase 3 RPCs (supabase/schema.sql §5).
+      set_fair_opt_in: {
+        Args: { p_enabled: boolean };
+        Returns: Json;
+      };
+      bump_shared_rhythms: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      get_garden_fair: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      get_shared_rhythms: {
+        Args: Record<string, never>;
         Returns: Json;
       };
     };

@@ -791,3 +791,230 @@ function parseFeed(value: Json | null): VisitEntry[] | null {
 
   return entries;
 }
+
+
+
+// ---------------------------------------------------------------------------
+// Phase 3: Nhịp Chung (shared rhythm) & Hội chợ vườn (garden fair) — spec §5
+// ---------------------------------------------------------------------------
+
+export type SetFairOptInResult =
+  | { ok: true; sharingEnabled: boolean; fairOptIn: boolean }
+  | SocialActionFailure;
+
+export type BumpSharedRhythmsResult = { ok: true; advanced: number } | SocialActionFailure;
+
+/**
+ * One garden's weekend-fair entry (spec §5.2). Carries only identity + POSITIVE
+ * weekly counts — no streak, no last-active (§0.3). Decorations (top-3 lanterns,
+ * bloom band, week-0 silence) are derived client-side from these raw fields so
+ * the rank-free / self-verifying logic stays pure and testable.
+ */
+export type FairGarden = {
+  userId: string;
+  displayName: string | null;
+  avatarKind: AvatarKind;
+  petSpecies: "dog" | "cat" | null;
+  /** 0..7 distinct good days this week (always present — the fair filters NULLs out). */
+  weeklyGoodDays: number;
+  /** ISO date of this week's Monday (owner tz). */
+  weekStart: string;
+  /** Prior week's count, null on a first fair week. */
+  prevWeekGoodDays: number | null;
+  prevWeekStart: string | null;
+};
+
+export type GardenFair = {
+  /** My own fair entry, or null when I'm not sharing + in the fair. */
+  me: FairGarden | null;
+  /** Opt-in friends, ordered by friendship age (oldest first) — never by score. */
+  gardens: FairGarden[];
+};
+
+export type GetGardenFairResult =
+  | { ok: true; fair: GardenFair; fairOptIn: boolean }
+  | SocialActionFailure;
+
+export type SharedRhythm = {
+  otherUserId: string;
+  displayName: string;
+  avatarKind: AvatarKind;
+  /** Days the two gardens both tended — only rises or rests, never decays. */
+  rhythmDays: number;
+};
+
+export type GetSharedRhythmsResult = { ok: true; rhythms: SharedRhythm[] } | SocialActionFailure;
+
+/**
+ * Opt into (or out of) the weekend Garden Fair (spec §5.2 — a separate consent
+ * from sharing). Server flips profiles.fair_opt_in and recomputes the summary
+ * in one transaction (enable populates the fair columns, disable clears them).
+ */
+export async function setFairOptIn(enabled: boolean): Promise<SetFairOptInResult> {
+  const ctx = await getAuthedContext();
+
+  if (!ctx) return { ok: false, reason: "no-session" };
+
+  try {
+    const { data, error } = await ctx.supabase.rpc("set_fair_opt_in", {
+      p_enabled: enabled === true
+    });
+
+    if (error) return rpcFailure(error);
+
+    const obj = asObject(data ?? null);
+
+    if (obj?.status !== "ok") return { ok: false, reason: "bad-response" };
+
+    return {
+      ok: true,
+      sharingEnabled: asBoolean(obj.sharingEnabled, false),
+      fairOptIn: asBoolean(obj.fairOptIn, enabled === true)
+    };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+/**
+ * Advance shared rhythms after my first tick of the day (spec §5.1). The RPC
+ * checks each accepted friend (cap 5) for a shared tended day (today + a 1-day
+ * catch-up) and returns only the number of rhythms that advanced — never any
+ * friend's data. Fire-and-forget from the client; `advanced > 0` cues the
+ * sharedRhythm voice line.
+ */
+export async function bumpSharedRhythms(): Promise<BumpSharedRhythmsResult> {
+  const ctx = await getAuthedContext();
+
+  if (!ctx) return { ok: false, reason: "no-session" };
+
+  try {
+    const { data, error } = await ctx.supabase.rpc("bump_shared_rhythms");
+
+    if (error) return rpcFailure(error);
+
+    const obj = asObject(data ?? null);
+
+    if (obj?.status !== "ok") return { ok: false, reason: "bad-response" };
+
+    return { ok: true, advanced: typeof obj.advanced === "number" ? obj.advanced : 0 };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+/**
+ * Fetch the weekend Garden Fair (spec §5.2): my own entry + every opt-in friend,
+ * ordered by friendship age. Rank-free — decorations are derived client-side.
+ */
+export async function getGardenFair(): Promise<GetGardenFairResult> {
+  const ctx = await getAuthedContext();
+
+  if (!ctx) return { ok: false, reason: "no-session" };
+
+  try {
+    const { data, error } = await ctx.supabase.rpc("get_garden_fair");
+
+    if (error) return rpcFailure(error);
+
+    const obj = asObject(data ?? null);
+    const fair = parseGardenFair(data ?? null);
+
+    if (!obj || !fair) return { ok: false, reason: "bad-response" };
+
+    return { ok: true, fair, fairOptIn: asBoolean(obj.fairOptIn, false) };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+/**
+ * Fetch shared rhythms (spec §5.1): accepted friends with a rhythm >= 1 day,
+ * ordered by friendship age (never by rhythm). A 0-day rhythm never appears.
+ */
+export async function getSharedRhythms(): Promise<GetSharedRhythmsResult> {
+  const ctx = await getAuthedContext();
+
+  if (!ctx) return { ok: false, reason: "no-session" };
+
+  try {
+    const { data, error } = await ctx.supabase.rpc("get_shared_rhythms");
+
+    if (error) return rpcFailure(error);
+
+    const obj = asObject(data ?? null);
+
+    if (!obj) return { ok: false, reason: "bad-response" };
+
+    const raw = obj.rhythms;
+    const rhythms = Array.isArray(raw)
+      ? raw.map(parseSharedRhythm).filter((entry): entry is SharedRhythm => entry !== null)
+      : [];
+
+    return { ok: true, rhythms };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+function parseFairGarden(value: Json): FairGarden | null {
+  const obj = asObject(value);
+
+  if (!obj) return null;
+
+  const userId = asString(obj.userId);
+  const weeklyGoodDays = obj.weeklyGoodDays;
+  const weekStart = asString(obj.weekStart);
+
+  // The fair only returns gardens with a computed week (weekly_good_days not
+  // null); a row missing either is malformed.
+  if (userId === null || typeof weeklyGoodDays !== "number" || weekStart === null) return null;
+
+  const species = asString(obj.petSpecies);
+  const prevWeekGoodDays = obj.prevWeekGoodDays;
+
+  return {
+    userId,
+    displayName: asString(obj.displayName),
+    avatarKind: parseAvatarKind(obj.avatarKind),
+    petSpecies: species === "dog" || species === "cat" ? species : null,
+    weeklyGoodDays,
+    weekStart,
+    prevWeekGoodDays: typeof prevWeekGoodDays === "number" ? prevWeekGoodDays : null,
+    prevWeekStart: asString(obj.prevWeekStart)
+  };
+}
+
+function parseGardenFair(value: Json | null): GardenFair | null {
+  const obj = asObject(value);
+
+  if (!obj) return null;
+
+  const meRaw = obj.me ?? null;
+  const gardensRaw = obj.gardens;
+
+  return {
+    me: meRaw === null ? null : parseFairGarden(meRaw),
+    gardens: Array.isArray(gardensRaw)
+      ? gardensRaw.map(parseFairGarden).filter((entry): entry is FairGarden => entry !== null)
+      : []
+  };
+}
+
+function parseSharedRhythm(value: Json): SharedRhythm | null {
+  const obj = asObject(value);
+
+  if (!obj) return null;
+
+  const otherUserId = asString(obj.otherUserId);
+  const rhythmDays = obj.rhythmDays;
+
+  if (otherUserId === null || typeof rhythmDays !== "number") return null;
+
+  return {
+    otherUserId,
+    displayName: asString(obj.displayName) ?? "",
+    avatarKind: parseAvatarKind(obj.avatarKind),
+    rhythmDays
+  };
+}

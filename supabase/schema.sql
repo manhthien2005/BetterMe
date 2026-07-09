@@ -889,6 +889,12 @@ create unique index if not exists profiles_invite_code_key on public.profiles (i
 -- does NOT expose any data yet — this column is safe to add now.
 alter table public.profiles add column if not exists sharing_enabled boolean not null default false;
 
+-- fair_opt_in: opt-in for the weekend Garden Fair (Phase 3 §5.2) — a SEPARATE
+-- consent from sharing. Enforced at the WRITE layer: refresh_my_summary only
+-- populates the fair columns of published_summaries when this is true, else
+-- leaves them NULL (§8) — a NULL weekly_good_days means "not in the fair".
+alter table public.profiles add column if not exists fair_opt_in boolean not null default false;
+
 -- Invite code generator trigger (§3.1): re-rolls upper(encode(gen_random_bytes(8),'hex'))
 -- until unique. The unique index above is the backstop for a rare race; the
 -- re-roll loop makes a collision astronomically unlikely (64-bit space).
@@ -1414,6 +1420,40 @@ alter table public.published_summaries
   add constraint published_summaries_pet_stage_check
   check (pet_stage is null or pet_stage in ('baby', 'kid', 'junior', 'teen', 'adult'));
 
+-- Phase 3 (§5.2) — weekend Garden Fair columns. weekly_good_days = distinct
+-- days with >=1 habit tick in the current ISO week (Monday start, owner's tz),
+-- capped 0..7. week_start = that week's Monday (owner tz). prev_week_* carry the
+-- prior week forward for the self-verifying lantern read (§5.2). All four are
+-- NULL unless fair_opt_in (write-layer opt-out §8) — NULL weekly_good_days
+-- means "not in the fair". No streak/last-active shape is introduced (§0.3):
+-- these are positive weekly counts only.
+alter table public.published_summaries add column if not exists week_start date;
+alter table public.published_summaries add column if not exists weekly_good_days integer;
+alter table public.published_summaries add column if not exists prev_week_start date;
+alter table public.published_summaries add column if not exists prev_week_good_days integer;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'published_summaries_weekly_good_days_check'
+      and conrelid = 'public.published_summaries'::regclass
+  ) then
+    alter table public.published_summaries
+      add constraint published_summaries_weekly_good_days_check
+      check (weekly_good_days is null or (weekly_good_days between 0 and 7));
+  end if;
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'published_summaries_prev_week_good_days_check'
+      and conrelid = 'public.published_summaries'::regclass
+  ) then
+    alter table public.published_summaries
+      add constraint published_summaries_prev_week_good_days_check
+      check (prev_week_good_days is null or (prev_week_good_days between 0 and 7));
+  end if;
+end $$;
+
 alter table public.published_summaries enable row level security;
 
 -- ---------------------------------------------------------------------
@@ -1600,11 +1640,17 @@ begin
     -- row"), even when sharing_enabled flips via a direct PATCH.
     delete from public.published_summaries where user_id = new.user_id;
   else
-    -- Update-if-exists only; never resurrects an opted-out/deleted summary
-    -- (re-publish stays with refresh_my_summary). avatar_kind sits in the
-    -- UPDATE OF list for when the summary grows an avatar column.
+    -- Sharing stays on: propagate the display name, and enforce the fair
+    -- write-layer opt-out (§8). A direct PATCH turning fair_opt_in OFF clears
+    -- the fair columns immediately; turning it ON re-populates on the next
+    -- refresh_my_summary (the trigger never fabricates fair data).
     update public.published_summaries
-    set display_name = new.display_name
+    set display_name = new.display_name,
+        week_start = case when new.fair_opt_in is true then week_start else null end,
+        weekly_good_days = case when new.fair_opt_in is true then weekly_good_days else null end,
+        prev_week_start = case when new.fair_opt_in is true then prev_week_start else null end,
+        prev_week_good_days =
+          case when new.fair_opt_in is true then prev_week_good_days else null end
     where user_id = new.user_id;
   end if;
   return new;
@@ -1613,7 +1659,7 @@ $$;
 
 drop trigger if exists profiles_propagate_summary on public.profiles;
 create trigger profiles_propagate_summary
-after update of display_name, avatar_kind, sharing_enabled on public.profiles
+after update of display_name, avatar_kind, sharing_enabled, fair_opt_in on public.profiles
 for each row execute function public.profiles_propagate_summary();
 
 -- ---------------------------------------------------------------------
@@ -1713,6 +1759,11 @@ declare
   v_pet_bond_tier integer;
   v_prev record;
   v_milestones jsonb := '[]'::jsonb;
+  v_fair_opt_in boolean;
+  v_week_start date;
+  v_weekly_good_days integer;
+  v_prev_week_start date;
+  v_prev_week_good_days integer;
 begin
   v_uid := auth.uid();
   if v_uid is null then
@@ -1722,8 +1773,8 @@ begin
   -- Advisory lock on own uid (same pattern as merge_companion_state).
   perform pg_advisory_xact_lock(hashtext('betterme.summary:' || v_uid::text));
 
-  select sharing_enabled, display_name, timezone
-  into v_sharing_enabled, v_display_name, v_timezone
+  select sharing_enabled, display_name, timezone, fair_opt_in
+  into v_sharing_enabled, v_display_name, v_timezone, v_fair_opt_in
   from public.profiles
   where user_id = v_uid;
 
@@ -1779,7 +1830,8 @@ begin
   -- forward-transitions only (nothing is appended on a regression — positive
   -- only, structurally). No previous row -> nothing to diff: a first publish
   -- starts with an empty history rather than invented backstory.
-  select ps.pet_species, ps.pet_stage, ps.pet_bond_tier, ps.milestones
+  select ps.pet_species, ps.pet_stage, ps.pet_bond_tier, ps.milestones,
+         ps.week_start, ps.weekly_good_days, ps.prev_week_start, ps.prev_week_good_days
   into v_prev
   from public.published_summaries ps
   where ps.user_id = v_uid;
@@ -1806,11 +1858,53 @@ begin
     -- ('bloom_week' lands with Phase 3's weekly rollover.)
   end if;
 
+  -- Garden Fair weekly metric (§5.2): distinct days with >=1 done habit_log in
+  -- the current ISO week (Monday start). habit_logs.date is already a local date
+  -- label, so no tz conversion is needed on it. Cap 0..7. Populated ONLY when
+  -- fair_opt_in is true (write-layer opt-out §8) — otherwise the four columns
+  -- stay NULL, and a NULL weekly_good_days means "not in the fair". No streak /
+  -- last-active shape is introduced (§0.3): a positive weekly count only.
+  if v_fair_opt_in is true then
+    -- Monday of the current week in the owner's calendar (isodow: Mon=1..Sun=7).
+    v_week_start := v_today - (extract(isodow from v_today)::integer - 1);
+
+    select count(distinct hl.date)
+    into v_weekly_good_days
+    from public.habit_logs hl
+    where hl.user_id = v_uid
+      and hl.done
+      and hl.date >= v_week_start
+      and hl.date < v_week_start + 7;
+
+    v_weekly_good_days := least(7, coalesce(v_weekly_good_days, 0));
+
+    -- Roll the prior week forward for the self-verifying lantern read (§5.2):
+    -- if the last publish was in an EARLIER week, its weekly count becomes the
+    -- prev-week entry; a same-week recompute keeps the existing prev-week; a
+    -- first publish has no prior week. The client's self-verifying read filters
+    -- a stale prev week (absent >= 2 weeks) against M-1, so we simply carry the
+    -- most recent completed week here.
+    if v_prev.week_start is not null and v_prev.week_start < v_week_start then
+      v_prev_week_start := v_prev.week_start;
+      v_prev_week_good_days := v_prev.weekly_good_days;
+    else
+      v_prev_week_start := v_prev.prev_week_start;
+      v_prev_week_good_days := v_prev.prev_week_good_days;
+    end if;
+  else
+    v_week_start := null;
+    v_weekly_good_days := null;
+    v_prev_week_start := null;
+    v_prev_week_good_days := null;
+  end if;
+
   -- Upsert published_summaries.
   insert into public.published_summaries (
-    user_id, display_name, pet_name, pet_species, pet_stage, pet_bond_tier, milestones
+    user_id, display_name, pet_name, pet_species, pet_stage, pet_bond_tier, milestones,
+    week_start, weekly_good_days, prev_week_start, prev_week_good_days
   ) values (
-    v_uid, v_display_name, v_pet_name, v_pet_species, v_pet_stage, v_pet_bond_tier, v_milestones
+    v_uid, v_display_name, v_pet_name, v_pet_species, v_pet_stage, v_pet_bond_tier, v_milestones,
+    v_week_start, v_weekly_good_days, v_prev_week_start, v_prev_week_good_days
   )
   on conflict (user_id) do update set
     display_name = excluded.display_name,
@@ -1818,7 +1912,11 @@ begin
     pet_species = excluded.pet_species,
     pet_stage = excluded.pet_stage,
     pet_bond_tier = excluded.pet_bond_tier,
-    milestones = excluded.milestones;
+    milestones = excluded.milestones,
+    week_start = excluded.week_start,
+    weekly_good_days = excluded.weekly_good_days,
+    prev_week_start = excluded.prev_week_start,
+    prev_week_good_days = excluded.prev_week_good_days;
 
   return jsonb_build_object('status', 'ok', 'sharingEnabled', true);
 end;
@@ -2216,3 +2314,313 @@ grant execute on function public.ack_garden_visits(uuid[]) to authenticated;
 
 revoke execute on function public.get_my_garden_feed(integer) from public, anon;
 grant execute on function public.get_my_garden_feed(integer) to authenticated;
+
+
+
+-- =====================================================================
+-- ===== Social Garden Phase 3: Nhịp Chung & Hội chợ vườn =====
+-- Spec: docs/superpowers/specs/2026-07-08-social-garden-spec.md §5
+-- Idempotent — safe to re-run. Adds the shared-rhythm ledger + the weekend
+-- garden-fair RPCs. The fair COLUMNS + weekly computation live with Phase 2's
+-- published_summaries / refresh_my_summary above (fair_opt_in on profiles,
+-- week_start/weekly_good_days/prev_week_* on published_summaries, all NULL
+-- unless fair_opt_in — write-layer opt-out §8). Locked decisions §11: bloom
+-- >= 4/7, lanterns top-3, Nhịp Chung never counts days both rest, reflection
+-- deferred. No streak/last-active surface anywhere (§0.3).
+-- Constants (inline): SHARED_RHYTHM_MAX_PARTNERS = 5.
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- Table: shared_rhythms (§5.1)
+-- Canonical pair (user_a < user_b). rhythm_days only ever RISES or RESTS —
+-- never decays (a not-counted day leaves it unchanged, never a break/penalty:
+-- invariant 2, structural). Writes go through bump_shared_rhythms only.
+-- ---------------------------------------------------------------------
+
+create table if not exists public.shared_rhythms (
+  user_a            uuid not null references auth.users(id) on delete cascade,
+  user_b            uuid not null references auth.users(id) on delete cascade,
+  rhythm_days       integer not null default 0 check (rhythm_days >= 0),
+  last_counted_date date,
+  created_at        timestamptz not null default now(),
+  primary key (user_a, user_b),
+  check (user_a < user_b)
+);
+
+alter table public.shared_rhythms enable row level security;
+
+-- RLS: both sides may SELECT their shared rhythm; no INSERT/UPDATE policies —
+-- writes are RPC-only (bump_shared_rhythms).
+drop policy if exists "Shared rhythms readable by both sides" on public.shared_rhythms;
+create policy "Shared rhythms readable by both sides" on public.shared_rhythms
+for select using (auth.uid() in (user_a, user_b));
+
+-- ---------------------------------------------------------------------
+-- RPC: set_fair_opt_in (§0.4/§5.2 — "Hội chợ là opt-in riêng nữa")
+-- Flips profiles.fair_opt_in and recomputes the summary in the SAME
+-- transaction so the fair columns populate (enable) or clear (disable) at
+-- once. Fair requires sharing: if the garden isn't shared, the opt-in is still
+-- stored and takes effect when sharing turns on. Returns refresh_my_summary's
+-- {"status":"ok","sharingEnabled":b} plus {"fairOptIn":b}.
+-- ---------------------------------------------------------------------
+
+create or replace function public.set_fair_opt_in(p_enabled boolean)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid;
+begin
+  v_uid := auth.uid();
+  if v_uid is null then
+    raise exception using errcode = 'P0001', message = 'not-authenticated';
+  end if;
+  if p_enabled is null then
+    raise exception using errcode = 'P0004', message = 'invalid-args';
+  end if;
+
+  update public.profiles set fair_opt_in = p_enabled where user_id = v_uid;
+
+  return public.refresh_my_summary() || jsonb_build_object('fairOptIn', p_enabled);
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- RPC: bump_shared_rhythms (§5.1)
+-- Called after the caller's first tick of the day. For up to
+-- SHARED_RHYTHM_MAX_PARTNERS (5) accepted friends (oldest friendships first),
+-- counts a shared day D when BOTH tended on the shared date label D. Reads the
+-- partner's habit_logs directly (SECURITY DEFINER, intentional RLS bypass) but
+-- returns ONLY the rhythm counts — never the partner's data (§0.3). The
+-- catch-up window (D and D-1 in the caller's local calendar) handles late
+-- ticks and cross-timezone pairs; last_counted_date < D blocks a double count.
+-- A day that does not qualify leaves the rhythm unchanged (rests, never
+-- breaks). Returns {"status":"ok","advanced":N}.
+-- ---------------------------------------------------------------------
+
+create or replace function public.bump_shared_rhythms()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid;
+  v_my_tz text;
+  v_my_today date;
+  v_partner record;
+  v_a uuid;
+  v_b uuid;
+  v_rhythm integer;
+  v_last date;
+  v_d date;
+  v_advanced integer := 0;
+begin
+  v_uid := auth.uid();
+  if v_uid is null then
+    raise exception using errcode = 'P0001', message = 'not-authenticated';
+  end if;
+
+  select timezone into v_my_tz from public.profiles where user_id = v_uid;
+  v_my_today := public.local_date_in(v_my_tz);
+
+  for v_partner in
+    select f.other_id
+    from (
+      select user_b as other_id, accepted_at, created_at
+      from public.friendships
+      where user_a = v_uid and status = 'accepted'
+      union all
+      select user_a as other_id, accepted_at, created_at
+      from public.friendships
+      where user_b = v_uid and status = 'accepted'
+    ) f
+    order by f.accepted_at nulls last, f.created_at
+    limit 5
+  loop
+    v_a := least(v_uid, v_partner.other_id);
+    v_b := greatest(v_uid, v_partner.other_id);
+
+    insert into public.shared_rhythms (user_a, user_b)
+    values (v_a, v_b)
+    on conflict (user_a, user_b) do nothing;
+
+    select rhythm_days, last_counted_date
+    into v_rhythm, v_last
+    from public.shared_rhythms
+    where user_a = v_a and user_b = v_b
+    for update;
+
+    -- D-1 then D (ascending): a caught-up day is counted before today so
+    -- last_counted_date advances correctly and a two-day catch-up is possible.
+    foreach v_d in array array[v_my_today - 1, v_my_today]
+    loop
+      if (v_last is null or v_last < v_d)
+        and exists (
+          select 1 from public.habit_logs
+          where user_id = v_uid and date = v_d and done
+        )
+        and exists (
+          select 1 from public.habit_logs
+          where user_id = v_partner.other_id and date = v_d and done
+        )
+      then
+        v_rhythm := v_rhythm + 1;
+        v_last := v_d;
+        v_advanced := v_advanced + 1;
+      end if;
+    end loop;
+
+    update public.shared_rhythms
+    set rhythm_days = v_rhythm, last_counted_date = v_last
+    where user_a = v_a and user_b = v_b;
+  end loop;
+
+  return jsonb_build_object('status', 'ok', 'advanced', v_advanced);
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- RPC: get_shared_rhythms (§5.1)
+-- The Nhịp Chung display source: accepted friends with a shared rhythm of at
+-- least 1 day, ordered oldest-friendship first — NEVER by rhythm (no ranking).
+-- A 0-day rhythm simply does not appear (positive/neutral only, not a miss
+-- surface). Returns {"rhythms":[{otherUserId, displayName, avatarKind, rhythmDays}]}.
+-- ---------------------------------------------------------------------
+
+create or replace function public.get_shared_rhythms()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid;
+  v_rhythms jsonb;
+begin
+  v_uid := auth.uid();
+  if v_uid is null then
+    raise exception using errcode = 'P0001', message = 'not-authenticated';
+  end if;
+
+  select coalesce(jsonb_agg(
+    jsonb_build_object(
+      'otherUserId', x.other_id,
+      'displayName', p.display_name,
+      'avatarKind', p.avatar_kind,
+      'rhythmDays', x.rhythm_days
+    ) order by x.accepted_at nulls last, x.created_at
+  ), '[]'::jsonb) into v_rhythms
+  from (
+    select f.other_id, f.accepted_at, f.created_at, sr.rhythm_days
+    from (
+      select user_b as other_id, accepted_at, created_at
+      from public.friendships
+      where user_a = v_uid and status = 'accepted'
+      union all
+      select user_a as other_id, accepted_at, created_at
+      from public.friendships
+      where user_b = v_uid and status = 'accepted'
+    ) f
+    join public.shared_rhythms sr
+      on sr.user_a = least(v_uid, f.other_id)
+     and sr.user_b = greatest(v_uid, f.other_id)
+    where sr.rhythm_days >= 1
+  ) x
+  join public.profiles p on p.user_id = x.other_id;
+
+  return jsonb_build_object('rhythms', v_rhythms);
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- RPC: get_garden_fair (§5.2)
+-- The Hội chợ data source: my own fair entry (null if I'm not sharing+fair)
+-- plus every accepted friend who is sharing AND in the fair (weekly_good_days
+-- not null), ordered by friendship age (oldest first) — NEVER by score. Returns
+-- the RAW weekly fields; the client derives decorations (self-verifying top-3
+-- lantern read, bloom band >= 4, week-0 silence) purely + testably. Only
+-- friends' identity + positive weekly counts cross — no streak/last-active.
+-- Returns {"me": {...}|null, "gardens": [{...}]}.
+-- ---------------------------------------------------------------------
+
+create or replace function public.get_garden_fair()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid;
+  v_me jsonb;
+  v_gardens jsonb;
+begin
+  v_uid := auth.uid();
+  if v_uid is null then
+    raise exception using errcode = 'P0001', message = 'not-authenticated';
+  end if;
+
+  select jsonb_build_object(
+    'userId', ps.user_id,
+    'displayName', pr.display_name,
+    'avatarKind', pr.avatar_kind,
+    'petSpecies', ps.pet_species,
+    'weeklyGoodDays', ps.weekly_good_days,
+    'weekStart', ps.week_start,
+    'prevWeekGoodDays', ps.prev_week_good_days,
+    'prevWeekStart', ps.prev_week_start
+  ) into v_me
+  from public.published_summaries ps
+  join public.profiles pr on pr.user_id = ps.user_id
+  where ps.user_id = v_uid and ps.weekly_good_days is not null;
+
+  select coalesce(jsonb_agg(
+    jsonb_build_object(
+      'userId', g.other_id,
+      'displayName', pr.display_name,
+      'avatarKind', pr.avatar_kind,
+      'petSpecies', ps.pet_species,
+      'weeklyGoodDays', ps.weekly_good_days,
+      'weekStart', ps.week_start,
+      'prevWeekGoodDays', ps.prev_week_good_days,
+      'prevWeekStart', ps.prev_week_start
+    ) order by g.accepted_at nulls last, g.created_at
+  ), '[]'::jsonb) into v_gardens
+  from (
+    select user_b as other_id, accepted_at, created_at
+    from public.friendships
+    where user_a = v_uid and status = 'accepted'
+    union all
+    select user_a as other_id, accepted_at, created_at
+    from public.friendships
+    where user_b = v_uid and status = 'accepted'
+  ) g
+  join public.published_summaries ps
+    on ps.user_id = g.other_id and ps.weekly_good_days is not null
+  join public.profiles pr on pr.user_id = g.other_id;
+
+  return jsonb_build_object(
+    'me', v_me,
+    'gardens', v_gardens,
+    'fairOptIn', coalesce((select fair_opt_in from public.profiles where user_id = v_uid), false)
+  );
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- Grants: all Phase 3 RPCs are for authenticated users only.
+-- ---------------------------------------------------------------------
+
+revoke execute on function public.set_fair_opt_in(boolean) from public, anon;
+grant execute on function public.set_fair_opt_in(boolean) to authenticated;
+
+revoke execute on function public.bump_shared_rhythms() from public, anon;
+grant execute on function public.bump_shared_rhythms() to authenticated;
+
+revoke execute on function public.get_shared_rhythms() from public, anon;
+grant execute on function public.get_shared_rhythms() to authenticated;
+
+revoke execute on function public.get_garden_fair() from public, anon;
+grant execute on function public.get_garden_fair() to authenticated;
