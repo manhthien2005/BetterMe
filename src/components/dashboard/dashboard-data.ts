@@ -21,6 +21,8 @@ const ALL_DONE_BOND_BONUS = 5;
 const GIFT_FOOD = 3;
 const GIFT_BOND = 3;
 const GIFT_ABSENCE_DAYS = 2;
+/** Spec §4.2.1: friend gifts can push the host's bond at most +2/day total. */
+export const GIFT_OVERFLOW_BOND_PER_DAY = 2;
 export const FOOD_LEDGER_RETENTION_DAYS = 30;
 const PET_STAGE_THRESHOLDS = [
   { stage: "baby", minDays: 0 },
@@ -735,6 +737,86 @@ export function openGift(state: DashboardState, today = getDashboardToday()): Da
         [species]: { ...pet, bond: pet.bond + GIFT_BOND }
       }
     })
+  };
+}
+
+/** One mailbox gift from a friend's garden visit (spec §4.2.1). */
+export type GardenGiftVisit = {
+  visitId: string;
+  /** Date label the visit was stamped with (visitor's calendar). */
+  visitDate: string;
+  giftedFood: number;
+};
+
+export type ApplyGiftResult = {
+  state: DashboardState;
+  /**
+   * true = the visit is fully absorbed (or carried no food) and safe to ack;
+   * false = no room anywhere today — leave applied_at null, the gift waits in
+   * the mailbox and applies on a later day ("quà không bao giờ mất trắng").
+   */
+  applied: boolean;
+};
+
+/**
+ * Applies one friend's gift from the garden_visits mailbox as a plain local
+ * mutation (spec §4.2.1). Ledger key `visitDate:visitId` makes the whole thing
+ * idempotent: a visit already in foodGiftsReceived is a no-op (re-ack only).
+ * Order of preference: food ledger while below FOOD_CAP; else +1 bond via the
+ * gift-overflow ledger (cap GIFT_OVERFLOW_BOND_PER_DAY across all friends);
+ * else the gift stays in the mailbox — never lost, never guilt.
+ */
+export function applyGiftToState(
+  state: DashboardState,
+  visit: GardenGiftVisit,
+  today = getDashboardToday()
+): ApplyGiftResult {
+  // Visits without food (pure pet/cheer) have nothing to absorb — just ack.
+  if (visit.giftedFood <= 0) return { state, applied: true };
+
+  const companion = state.companion;
+  const key = `${visit.visitDate}:${visit.visitId}`;
+
+  // Idempotent: the ledger key dedupes (reload before a lost ack re-acks only).
+  if (key in companion.foodGiftsReceived) return { state, applied: true };
+
+  if (deriveFoodBalance(companion) < FOOD_CAP) {
+    return {
+      state: {
+        ...state,
+        companion: withDerivedFood({
+          ...companion,
+          foodGiftsReceived: { ...companion.foodGiftsReceived, [key]: visit.giftedFood }
+        })
+      },
+      applied: true
+    };
+  }
+
+  // Pantry is full — overflow becomes +1 bond for the active pet, capped/day.
+  const species = companion.activeSpecies;
+  const pet = species ? companion.pets[species] : undefined;
+  const overflowToday = companion.giftOverflowBondByDate[today] ?? 0;
+
+  if (!species || !pet || overflowToday >= GIFT_OVERFLOW_BOND_PER_DAY) {
+    return { state, applied: false };
+  }
+
+  return {
+    state: {
+      ...state,
+      companion: withDerivedFood({
+        ...companion,
+        // Value 0: the key marks the visit as absorbed without adding food.
+        foodGiftsReceived: { ...companion.foodGiftsReceived, [key]: 0 },
+        giftOverflowBondByDate: {
+          ...companion.giftOverflowBondByDate,
+          [today]: overflowToday + 1
+        },
+        pets: { ...companion.pets, [species]: { ...pet, bond: pet.bond + 1 } }
+      })
+    },
+    applied: true
   };
 }
 

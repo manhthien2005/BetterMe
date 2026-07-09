@@ -24,11 +24,17 @@ const EVENTS: PetEvent[] = [
   "evolve",
   "idle",
   "friendVisit",
+  "friendVisitGift",
   "fairLantern",
   "sharedRhythm"
 ];
-const SOCIAL_EVENTS: PetEvent[] = ["friendVisit", "fairLantern", "sharedRhythm"];
-const GUEST_EVENTS: GuestEvent[] = ["guestPet", "guestGift"];
+const SOCIAL_EVENTS: PetEvent[] = [
+  "friendVisit",
+  "friendVisitGift",
+  "fairLantern",
+  "sharedRhythm"
+];
+const GUEST_EVENTS: GuestEvent[] = ["guestGreeting", "guestPet", "guestGift"];
 
 // Invariant 1 (no guilt) — the original banned list, now checked across every pool.
 const GUILT_PHRASES = [
@@ -106,6 +112,17 @@ describe("pet voice packs", () => {
         pool.forEach((line) => {
           expect(line.trim().length).toBeGreaterThan(0);
           expect(line.length).toBeLessThanOrEqual(80);
+        });
+      });
+    });
+  });
+
+  it("keeps the plain friendVisit pool gift-free — 🎁/quà only in friendVisitGift (§4.2.1)", () => {
+    SPECIES.forEach((species) => {
+      TIERS.forEach((tier) => {
+        getVoicePool(species, tier, "friendVisit").forEach((line) => {
+          expect(line).not.toContain("quà");
+          expect(line).not.toContain("🎁");
         });
       });
     });

@@ -399,3 +399,395 @@ function parseFriendsOverview(value: Json | null): FriendsOverview | null {
       : []
   };
 }
+
+// ---------------------------------------------------------------------------
+// Phase 2: Garden visits & cheers (spec §4)
+// ---------------------------------------------------------------------------
+
+/**
+ * The friend-visible projection (spec §4.1). AS-BUILT vocab, kept in lockstep
+ * with dashboard-data.ts (PetStage / BondTier). Structurally positive-only:
+ * NO streak counter or last_active-shaped field (§0.3), and milestones carry
+ * NO free text — content is server-derived, the client renders it from a fixed
+ * kind(+detail) dictionary.
+ */
+export type PublishedSummary = {
+  userId: string;
+  displayName: string | null;
+  petName: string | null;
+  petSpecies: "dog" | "cat" | null;
+  petStage: "baby" | "kid" | "junior" | "teen" | "adult" | null;
+  petBondTier: number | null; // integer 1..5 (validated on parse)
+  milestones: Array<{
+    id: string;
+    kind: "evolve" | "bond_tier" | "bloom_week" | "new_pet";
+    at: string; // ISO date (YYYY-MM-DD)
+    detail?: string; // stage / tier / species — enum-ish, never free text
+  }>;
+};
+
+export type VisitEntry = {
+  visitId: string;
+  visitorUserId: string;
+  visitorPetName: string | null;
+  visitorPetSpecies: "dog" | "cat" | null;
+  visitDate: string;
+  giftedFood: number;
+  cheeredMilestoneId: string | null;
+  appliedAt: string | null;
+};
+
+export type RefreshMySummaryResult =
+  | { ok: true; sharingEnabled: boolean }
+  | SocialActionFailure;
+
+export type SetSharingEnabledResult =
+  | { ok: true; sharingEnabled: boolean }
+  | SocialActionFailure;
+
+export type VisitGardenResult =
+  | {
+      ok: true;
+      petCount: number;
+      petRecorded: boolean;
+      giftDelivered: boolean;
+      cheerDelivered: boolean;
+    }
+  | SocialActionFailure;
+
+export type AckGardenVisitsResult = { ok: true } | SocialActionFailure;
+
+export type GetMyGardenFeedResult = { ok: true; feed: VisitEntry[] } | SocialActionFailure;
+
+/** summary=null: friend exists but isn't sharing (no row) — render a closed garden. */
+export type GetFriendSummaryResult =
+  | { ok: true; summary: PublishedSummary | null }
+  | SocialActionFailure;
+
+export type GetPendingGardenVisitsResult =
+  | { ok: true; visits: VisitEntry[] }
+  | SocialActionFailure;
+
+/**
+ * Recompute and publish my habit/pet summary for friends to see. If
+ * sharing_enabled=false in profiles, this deletes the summary row (opt-out).
+ * Returns { ok: true, sharingEnabled: bool } or { ok: false, reason }.
+ */
+export async function refreshMySummary(): Promise<RefreshMySummaryResult> {
+  const ctx = await getAuthedContext();
+
+  if (!ctx) return { ok: false, reason: "no-session" };
+
+  try {
+    const { data, error } = await ctx.supabase.rpc("refresh_my_summary");
+
+    if (error) return rpcFailure(error);
+
+    const obj = asObject(data ?? null);
+
+    if (obj?.status !== "ok") return { ok: false, reason: "bad-response" };
+
+    return { ok: true, sharingEnabled: asBoolean(obj.sharingEnabled, false) };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+/**
+ * The explicit sharing opt-in write path (spec §0.4 — "chia sẻ là opt-in
+ * riêng"). Flips profiles.sharing_enabled and publishes/deletes the summary in
+ * the SAME transaction server-side (enable -> row appears; disable -> silent
+ * delete). Returns { ok: true, sharingEnabled } mirroring refreshMySummary.
+ */
+export async function setSharingEnabled(enabled: boolean): Promise<SetSharingEnabledResult> {
+  const ctx = await getAuthedContext();
+
+  if (!ctx) return { ok: false, reason: "no-session" };
+
+  try {
+    const { data, error } = await ctx.supabase.rpc("set_sharing_enabled", {
+      p_enabled: enabled === true
+    });
+
+    if (error) return rpcFailure(error);
+
+    const obj = asObject(data ?? null);
+
+    if (obj?.status !== "ok") return { ok: false, reason: "bad-response" };
+
+    return { ok: true, sharingEnabled: asBoolean(obj.sharingEnabled, false) };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+/**
+ * Visit a friend's garden, optionally gift food and/or cheer a milestone.
+ * Returns { ok: true, petCount, petRecorded, giftDelivered, cheerDelivered } or
+ * a failure. Typed errors: "invalid-host", "not-friends", "host-not-sharing",
+ * "no-active-pet", "insufficient-food", "milestone-not-found",
+ * "already-cheered", "gift-cap-reached". Over-cap petting is NOT an error — the
+ * RPC returns ok with petRecorded=false (animation + voice, no record, §4.2).
+ */
+export async function visitGarden(
+  hostUserId: string,
+  giftFood: boolean,
+  cheerMilestoneId: string | null
+): Promise<VisitGardenResult> {
+  const ctx = await getAuthedContext();
+
+  if (!ctx) return { ok: false, reason: "no-session" };
+  if (typeof hostUserId !== "string" || !UUID_RE.test(hostUserId)) {
+    return { ok: false, reason: "invalid-args" };
+  }
+
+  try {
+    const { data, error } = await ctx.supabase.rpc("visit_garden", {
+      p_host_user_id: hostUserId,
+      p_gift_food: giftFood === true,
+      p_cheer_milestone_id: cheerMilestoneId
+    });
+
+    if (error) return rpcFailure(error);
+
+    const obj = asObject(data ?? null);
+
+    if (obj?.status !== "ok") return { ok: false, reason: "bad-response" };
+
+    const petCount = typeof obj.petCount === "number" ? obj.petCount : 0;
+    const petRecorded = asBoolean(obj.petRecorded, false);
+    const giftDelivered = asBoolean(obj.giftDelivered, false);
+    const cheerDelivered = asBoolean(obj.cheerDelivered, false);
+
+    return { ok: true, petCount, petRecorded, giftDelivered, cheerDelivered };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+/**
+ * Host acknowledges visits (sets applied_at = now()). The client merges the
+ * ledger changes to local state; this RPC is just the ack. Also prunes applied
+ * visits older than 72h. Returns { ok: true } or failure.
+ */
+export async function ackGardenVisits(visitIds: string[]): Promise<AckGardenVisitsResult> {
+  const ctx = await getAuthedContext();
+
+  if (!ctx) return { ok: false, reason: "no-session" };
+  if (!Array.isArray(visitIds) || visitIds.length === 0) {
+    return { ok: false, reason: "invalid-args" };
+  }
+  // Validate all IDs are UUIDs.
+  if (!visitIds.every((id) => typeof id === "string" && UUID_RE.test(id))) {
+    return { ok: false, reason: "invalid-args" };
+  }
+
+  try {
+    const { error } = await ctx.supabase.rpc("ack_garden_visits", { p_visit_ids: visitIds });
+
+    if (error) return rpcFailure(error);
+
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+/**
+ * Fetch my recent applied garden visits (visitor names, species, gifts, cheers).
+ * Returns { ok: true, feed: VisitEntry[] } or failure. Default limit 20.
+ */
+export async function getMyGardenFeed(limit = 20): Promise<GetMyGardenFeedResult> {
+  const ctx = await getAuthedContext();
+
+  if (!ctx) return { ok: false, reason: "no-session" };
+
+  const safeLimit = typeof limit === "number" && limit > 0 ? limit : 20;
+
+  try {
+    const { data, error } = await ctx.supabase.rpc("get_my_garden_feed", { p_limit: safeLimit });
+
+    if (error) return rpcFailure(error);
+
+    const feed = parseFeed(data ?? null);
+
+    return feed !== null ? { ok: true, feed } : { ok: false, reason: "bad-response" };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+/**
+ * Read a friend's published summary — the ONLY projection friends can see
+ * (spec §4.1). Direct RLS-guarded SELECT (friends-only policy), same idiom as
+ * unfriend's direct DELETE. A missing row is NOT an error: it means the host
+ * isn't sharing (opt-out is silent) — the UI shows a gently closed garden.
+ */
+export async function getFriendSummary(hostUserId: string): Promise<GetFriendSummaryResult> {
+  const ctx = await getAuthedContext();
+
+  if (!ctx) return { ok: false, reason: "no-session" };
+  if (typeof hostUserId !== "string" || !UUID_RE.test(hostUserId)) {
+    return { ok: false, reason: "invalid-args" };
+  }
+
+  try {
+    const { data, error } = await ctx.supabase
+      .from("published_summaries")
+      .select(
+        "user_id, display_name, pet_name, pet_species, pet_stage, pet_bond_tier, milestones"
+      )
+      .eq("user_id", hostUserId)
+      .maybeSingle();
+
+    if (error) return { ok: false, reason: error.message || "select-failed" };
+    if (!data) return { ok: true, summary: null };
+
+    return { ok: true, summary: parsePublishedSummary(data) };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+/**
+ * Mailbox fetch (spec §4.2.1): my garden_visits still waiting to be applied
+ * (applied_at IS NULL). Direct RLS-guarded SELECT — the host-or-visitor policy
+ * covers it; get_my_garden_feed only returns *applied* visits, so the pending
+ * mailbox needs this separate read. Ordered oldest-first so gifts apply in
+ * arrival order (earlier gifts get first claim on the overflow-bond cap).
+ */
+export async function getPendingGardenVisits(): Promise<GetPendingGardenVisitsResult> {
+  const ctx = await getAuthedContext();
+
+  if (!ctx) return { ok: false, reason: "no-session" };
+
+  try {
+    const { data, error } = await ctx.supabase
+      .from("garden_visits")
+      .select(
+        "visit_id, visitor_user_id, visit_date, visitor_pet_species, visitor_pet_name, gifted_food, cheered_milestone_id, applied_at"
+      )
+      .eq("host_user_id", ctx.userId)
+      .is("applied_at", null)
+      .order("created_at", { ascending: true });
+
+    if (error) return { ok: false, reason: error.message || "select-failed" };
+
+    const visits = (data ?? []).map((row): VisitEntry => {
+      const species = row.visitor_pet_species;
+
+      return {
+        visitId: row.visit_id,
+        visitorUserId: row.visitor_user_id,
+        visitorPetName: row.visitor_pet_name,
+        visitorPetSpecies: species === "dog" || species === "cat" ? species : null,
+        visitDate: row.visit_date,
+        giftedFood: typeof row.gifted_food === "number" ? row.gifted_food : 0,
+        cheeredMilestoneId: row.cheered_milestone_id,
+        appliedAt: row.applied_at
+      };
+    });
+
+    return { ok: true, visits };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2 parsing helpers
+// ---------------------------------------------------------------------------
+
+type PublishedSummaryRow = {
+  user_id: string;
+  display_name: string | null;
+  pet_name: string | null;
+  pet_species: string | null;
+  pet_stage: string | null;
+  pet_bond_tier: number | null;
+  milestones: Json;
+};
+
+function parseMilestone(value: Json): PublishedSummary["milestones"][number] | null {
+  const obj = asObject(value);
+
+  if (!obj) return null;
+
+  const id = asString(obj.id);
+  const kind = asString(obj.kind);
+  const at = asString(obj.at);
+
+  if (id === null || at === null) return null;
+  if (kind !== "evolve" && kind !== "bond_tier" && kind !== "bloom_week" && kind !== "new_pet") {
+    return null;
+  }
+
+  const detail = asString(obj.detail);
+
+  // Keep `detail` optional (never set it to undefined) so the shape stays
+  // clean under exactOptionalPropertyTypes.
+  return detail === null ? { id, kind, at } : { id, kind, at, detail };
+}
+
+function parsePublishedSummary(row: PublishedSummaryRow): PublishedSummary {
+  const species = row.pet_species;
+  const stage = row.pet_stage;
+  const tier = row.pet_bond_tier;
+  const milestonesRaw = row.milestones;
+
+  return {
+    userId: row.user_id,
+    displayName: row.display_name,
+    petName: row.pet_name,
+    petSpecies: species === "dog" || species === "cat" ? species : null,
+    petStage:
+      stage === "baby" ||
+      stage === "kid" ||
+      stage === "junior" ||
+      stage === "teen" ||
+      stage === "adult"
+        ? stage
+        : null,
+    petBondTier:
+      typeof tier === "number" && Number.isInteger(tier) && tier >= 1 && tier <= 5 ? tier : null,
+    milestones: Array.isArray(milestonesRaw)
+      ? milestonesRaw
+          .map(parseMilestone)
+          .filter((entry): entry is PublishedSummary["milestones"][number] => entry !== null)
+      : []
+  };
+}
+
+function parseVisitEntry(value: Json): VisitEntry | null {
+  const obj = asObject(value);
+
+  if (!obj) return null;
+
+  const visitId = asString(obj.visitId);
+  const visitorUserId = asString(obj.visitorUserId);
+  const visitDate = asString(obj.visitDate);
+
+  if (visitId === null || visitorUserId === null || visitDate === null) return null;
+
+  const petSpecies = asString(obj.visitorPetSpecies);
+  const giftedFood = typeof obj.giftedFood === "number" ? obj.giftedFood : 0;
+
+  return {
+    visitId,
+    visitorUserId,
+    visitorPetName: asString(obj.visitorPetName),
+    visitorPetSpecies: petSpecies === "dog" || petSpecies === "cat" ? petSpecies : null,
+    visitDate,
+    giftedFood,
+    cheeredMilestoneId: asString(obj.cheeredMilestoneId),
+    appliedAt: asString(obj.appliedAt)
+  };
+}
+
+function parseFeed(value: Json | null): VisitEntry[] | null {
+  if (!Array.isArray(value)) return null;
+
+  const entries = value.map(parseVisitEntry).filter((entry): entry is VisitEntry => entry !== null);
+
+  return entries;
+}

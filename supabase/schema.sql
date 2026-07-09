@@ -1313,3 +1313,906 @@ grant execute on function public.get_friends_overview() to authenticated;
 
 revoke execute on function public.update_my_profile(text, text) from public, anon;
 grant execute on function public.update_my_profile(text, text) to authenticated;
+
+-- =====================================================================
+-- ===== Social Garden Phase 2: garden visits & cheers =====
+-- Spec: docs/superpowers/specs/2026-07-08-social-garden-spec.md §4
+-- Idempotent — safe to re-run. Phase 2 builds the read-only projection
+-- (published_summaries) and gift/cheer mailbox (garden_visits). All writes
+-- flow through RPCs; no direct INSERT/UPDATE policies on these tables.
+-- =====================================================================
+
+-- Constants (inline, referenced in comments):
+-- OVERFLOW_BOND_CAP: 2 gifts/day that contribute overflow bond to host —
+--   enforced HOST-client-side at mailbox-apply time (spec §4.2.1), not here.
+-- PET_CAP_PER_DAY: 3 pets per (visitor, host) per day (§4.2)
+-- FEED_RETENTION: 72 hours for applied visits (pruned in ack RPC)
+
+-- ---------------------------------------------------------------------
+-- Helper: a user's local calendar date (§3.1 — profiles.timezone is the
+-- canonical clock for every social day label). profiles.timezone is
+-- owner-writable, so an invalid name must degrade to the default rather
+-- than break every RPC that labels a day.
+-- ---------------------------------------------------------------------
+
+create or replace function public.local_date_in(p_timezone text)
+returns date
+language plpgsql
+stable
+as $$
+begin
+  return (now() at time zone coalesce(p_timezone, 'Asia/Ho_Chi_Minh'))::date;
+exception when others then
+  return (now() at time zone 'Asia/Ho_Chi_Minh')::date;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- Migration: retire profiles.milestones. Milestones are SERVER-derived
+-- inside refresh_my_summary by diffing against the previously published row
+-- (spec §4.1: "client không bao giờ cung cấp nội dung milestone") — an
+-- owner-writable column let any JWT publish fabricated content verbatim,
+-- and nothing legitimate ever wrote it.
+-- ---------------------------------------------------------------------
+
+drop trigger if exists profiles_validate_milestones on public.profiles;
+alter table public.profiles drop column if exists milestones;
+
+-- ---------------------------------------------------------------------
+-- Table: published_summaries (§4.1)
+-- Read-only projection for friends. Owner writes only via refresh_my_summary RPC.
+-- Structural invariant (§0.3): NO column may let a friend infer miss days or
+-- inactive time — no streak counters, no last_refreshed/last_active stamps.
+-- Every opt-out column (all except user_id) must CHECK-allow NULL.
+-- ---------------------------------------------------------------------
+
+create table if not exists public.published_summaries (
+  user_id       uuid primary key references auth.users(id) on delete cascade,
+  display_name  text check (display_name is null or char_length(display_name) <= 30),
+  pet_name      text check (pet_name is null or char_length(pet_name) <= 20),
+  pet_species   text check (pet_species is null or pet_species in ('dog', 'cat')),
+  -- AS-BUILT vocabularies (spec §4.1/§4.3 "đúng growth stage thật"):
+  -- keep in lockstep with dashboard-data.ts PET_STAGE_THRESHOLDS /
+  -- BOND_TIER_THRESHOLDS — friends render the pet exactly as the owner sees it.
+  pet_stage     text check (pet_stage is null or pet_stage in ('baby', 'kid', 'junior', 'teen', 'adult')),
+  pet_bond_tier integer check (pet_bond_tier is null or pet_bond_tier between 1 and 5),
+  milestones    jsonb not null default '[]' -- shape validated by trigger below
+);
+
+-- Migration for already-provisioned databases (the create above is a no-op
+-- there): drop the leaky columns and re-align the pet columns. Nulled pet
+-- values self-heal on each owner's next refresh_my_summary call.
+alter table public.published_summaries drop column if exists current_streak;
+alter table public.published_summaries drop column if exists best_streak;
+alter table public.published_summaries drop column if exists last_refreshed;
+
+do $$
+begin
+  -- pet_bond_tier text ('sprout'|'bloom'|'fruit') -> integer 1..5.
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'published_summaries'
+      and column_name = 'pet_bond_tier' and data_type = 'text'
+  ) then
+    alter table public.published_summaries
+      drop constraint if exists published_summaries_pet_bond_tier_check;
+    alter table public.published_summaries
+      alter column pet_bond_tier type integer using null::integer;
+    alter table public.published_summaries
+      add constraint published_summaries_pet_bond_tier_check
+      check (pet_bond_tier is null or pet_bond_tier between 1 and 5);
+  end if;
+end $$;
+
+update public.published_summaries set pet_stage = null
+where pet_stage is not null
+  and pet_stage not in ('baby', 'kid', 'junior', 'teen', 'adult');
+
+alter table public.published_summaries
+  drop constraint if exists published_summaries_pet_stage_check;
+alter table public.published_summaries
+  add constraint published_summaries_pet_stage_check
+  check (pet_stage is null or pet_stage in ('baby', 'kid', 'junior', 'teen', 'adult'));
+
+alter table public.published_summaries enable row level security;
+
+-- ---------------------------------------------------------------------
+-- RLS (§4.1/§8): owner gets SELECT + DELETE (DELETE keeps opt-out silent and
+-- user-reachable even when refresh_my_summary never runs). Nobody has
+-- INSERT/UPDATE — writes are RPC-only.
+-- ---------------------------------------------------------------------
+
+drop policy if exists "Published summaries are readable by owner" on public.published_summaries;
+create policy "Published summaries are readable by owner" on public.published_summaries
+for select using (auth.uid() = user_id);
+
+drop policy if exists "Published summaries are deletable by owner" on public.published_summaries;
+create policy "Published summaries are deletable by owner" on public.published_summaries
+for delete using (auth.uid() = user_id);
+
+-- Helper for the friend policy below: profiles RLS is owner-only, so a bare
+-- subquery inside the policy would run under the querying FRIEND's RLS and
+-- always come back empty. SECURITY DEFINER exposes exactly one boolean.
+create or replace function public.is_sharing(p_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (select sharing_enabled from public.profiles where user_id = p_user_id),
+    false);
+$$;
+
+revoke execute on function public.is_sharing(uuid) from public, anon;
+grant execute on function public.is_sharing(uuid) to authenticated;
+
+-- Friends: SELECT only while accepted AND the owner is still sharing (§8
+-- "accepted + owner đang share") — opt-out is structural at read time, not
+-- just a write-time delete that a dropped RPC call could miss.
+drop policy if exists "Published summaries are readable by friends" on public.published_summaries;
+create policy "Published summaries are readable by friends" on public.published_summaries
+for select using (
+  public.is_sharing(published_summaries.user_id)
+  and exists (
+    select 1 from public.friendships f
+    where f.status = 'accepted'
+      and ((f.user_a = auth.uid() and f.user_b = published_summaries.user_id)
+        or (f.user_b = auth.uid() and f.user_a = published_summaries.user_id))
+  )
+);
+
+-- ---------------------------------------------------------------------
+-- Milestone shape validation (§4.1): BEFORE insert/update on
+-- published_summaries. Milestones are server-built inside refresh_my_summary;
+-- this trigger is defense-in-depth (there is no direct write path). Shape:
+-- array of {id, kind, at} plus an optional enum-ish 'detail', max 10 items,
+-- kind in the fixed spec vocabulary, and NO free-text 'value' key — the
+-- positive-only invariant is structural: content never comes from a client.
+-- ---------------------------------------------------------------------
+
+create or replace function public.validate_milestones()
+returns trigger
+language plpgsql
+as $$
+declare
+  v_elem jsonb;
+  v_key text;
+begin
+  if new.milestones is null then
+    new.milestones := '[]'::jsonb;
+  end if;
+  if jsonb_typeof(new.milestones) != 'array' then
+    raise exception using errcode = 'P0004', message = 'milestones-must-be-array';
+  end if;
+  if jsonb_array_length(new.milestones) > 10 then
+    raise exception using errcode = 'P0004', message = 'milestones-max-10';
+  end if;
+  for v_elem in select * from jsonb_array_elements(new.milestones) loop
+    if jsonb_typeof(v_elem) != 'object' then
+      raise exception using errcode = 'P0004', message = 'milestone-item-must-be-object';
+    end if;
+    if not (v_elem ? 'id' and v_elem ? 'kind' and v_elem ? 'at') then
+      raise exception using errcode = 'P0004', message = 'milestone-missing-required-keys';
+    end if;
+    for v_key in select jsonb_object_keys(v_elem) loop
+      if v_key not in ('id', 'kind', 'at', 'detail') then
+        raise exception using errcode = 'P0004', message = 'milestone-unknown-key';
+      end if;
+    end loop;
+    if v_elem->>'kind' not in ('evolve', 'bond_tier', 'bloom_week', 'new_pet') then
+      raise exception using errcode = 'P0004', message = 'milestone-invalid-kind';
+    end if;
+    if char_length(v_elem->>'id') > 40 then
+      raise exception using errcode = 'P0004', message = 'milestone-id-too-long';
+    end if;
+    begin
+      perform (v_elem->>'at')::date;
+    exception when others then
+      raise exception using errcode = 'P0004', message = 'milestone-invalid-date';
+    end;
+    if pg_column_size(v_elem) > 200 then
+      raise exception using errcode = 'P0004', message = 'milestone-item-too-large';
+    end if;
+  end loop;
+  return new;
+end;
+$$;
+
+drop trigger if exists published_summaries_validate_milestones on public.published_summaries;
+create trigger published_summaries_validate_milestones
+before insert or update on public.published_summaries
+for each row execute function public.validate_milestones();
+
+-- ---------------------------------------------------------------------
+-- Milestone helpers for refresh_my_summary. Ids are DETERMINISTIC
+-- (kind || ':' || detail): the one-cheer-per-milestone unique index and the
+-- client's cheered state key off them, so a refresh must never re-mint ids.
+-- Dedupe-by-id also makes the diff append-only under repeated refreshes.
+-- ---------------------------------------------------------------------
+
+create or replace function public.pet_stage_rank(p_stage text)
+returns integer
+language sql
+immutable
+as $$
+  select case p_stage
+    when 'baby' then 1
+    when 'kid' then 2
+    when 'junior' then 3
+    when 'teen' then 4
+    when 'adult' then 5
+    else 0
+  end;
+$$;
+
+create or replace function public.append_milestone(
+  p_milestones jsonb,
+  p_kind text,
+  p_detail text,
+  p_at date
+)
+returns jsonb
+language plpgsql
+immutable
+as $$
+declare
+  v_id text := p_kind || ':' || p_detail;
+  v_next jsonb := coalesce(p_milestones, '[]'::jsonb);
+begin
+  if exists (
+    select 1 from jsonb_array_elements(v_next) m where m->>'id' = v_id
+  ) then
+    return v_next;
+  end if;
+
+  v_next := v_next || jsonb_build_array(jsonb_build_object(
+    'id', v_id, 'kind', p_kind, 'at', p_at::text, 'detail', p_detail));
+
+  -- Keep the 10 most recent (append order = chronological); never rewrite
+  -- surviving entries (spec §4.1: append-only, positive-only).
+  while jsonb_array_length(v_next) > 10 loop
+    v_next := v_next - 0;
+  end loop;
+
+  return v_next;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- Backstop trigger (§4.1): identity/consent changes propagate to the summary
+-- even when no client follow-up call ever lands (the client's
+-- refreshMySummary calls are fire-and-forget). SECURITY DEFINER because
+-- published_summaries deliberately has no INSERT/UPDATE/owner-DELETE-only
+-- policies — the writes below share the RPC trust model.
+-- ---------------------------------------------------------------------
+
+create or replace function public.profiles_propagate_summary()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.sharing_enabled is distinct from true then
+    -- Opt-out is immediate and silent at the data layer (§4.1 "tắt → xóa
+    -- row"), even when sharing_enabled flips via a direct PATCH.
+    delete from public.published_summaries where user_id = new.user_id;
+  else
+    -- Update-if-exists only; never resurrects an opted-out/deleted summary
+    -- (re-publish stays with refresh_my_summary). avatar_kind sits in the
+    -- UPDATE OF list for when the summary grows an avatar column.
+    update public.published_summaries
+    set display_name = new.display_name
+    where user_id = new.user_id;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_propagate_summary on public.profiles;
+create trigger profiles_propagate_summary
+after update of display_name, avatar_kind, sharing_enabled on public.profiles
+for each row execute function public.profiles_propagate_summary();
+
+-- ---------------------------------------------------------------------
+-- Table: garden_visits (§4.2)
+-- Mailbox for gifts/cheers. Writes via visit_garden RPC only.
+-- Partial unique indexes enforce: one gift per (host, visitor, visit_date)
+-- across ack states; one cheer per milestone per (visitor, host).
+-- ---------------------------------------------------------------------
+
+create table if not exists public.garden_visits (
+  visit_id            uuid primary key default gen_random_uuid(),
+  host_user_id        uuid not null references auth.users(id) on delete cascade,
+  visitor_user_id     uuid not null references auth.users(id) on delete cascade,
+  visit_date          date not null,
+  visitor_pet_species text check (visitor_pet_species in ('dog', 'cat')),
+  visitor_pet_name    text check (char_length(visitor_pet_name) <= 20),
+  gifted_food         integer not null default 0 check (gifted_food between 0 and 1),
+  cheered_milestone_id text, -- references host's milestones array (validated in RPC)
+  applied_at          timestamptz, -- null = pending in mailbox; not-null = applied
+  created_at          timestamptz not null default now()
+);
+
+alter table public.garden_visits enable row level security;
+
+-- RLS: SELECT for the HOST only (the mailbox read). The visitor needs no read
+-- path — caps are enforced by unique indexes + typed RPC errors — and a
+-- visitor-readable applied_at would leak exactly when the host came online
+-- (§0.3: no last_active-shaped data leaves a user's garden). No INSERT/UPDATE
+-- policies (RPC-only writes).
+drop policy if exists "Garden visits readable by host or visitor" on public.garden_visits;
+drop policy if exists "Garden visits readable by host" on public.garden_visits;
+create policy "Garden visits readable by host" on public.garden_visits
+for select using (auth.uid() = host_user_id);
+
+-- Gift cap (§4.2): UNIQUE over the GIFT rows themselves — keyed on gift-ness,
+-- not mailbox state. No applied_at predicate: acking mail must not reopen the
+-- daily cap (the 72h prune only removes rows applied >72h ago, never today's).
+-- Migration note: the old index covered pending rows of EVERY kind; drop it
+-- and remove over-cap same-day gift duplicates it allowed (keep the earliest —
+-- extras exceeded the 1/day cap and only exist because of the old predicate).
+drop index if exists public.garden_visits_one_gift_per_host_visitor_date;
+
+delete from public.garden_visits gv
+using public.garden_visits keeper
+where gv.gifted_food = 1
+  and keeper.gifted_food = 1
+  and gv.host_user_id = keeper.host_user_id
+  and gv.visitor_user_id = keeper.visitor_user_id
+  and gv.visit_date = keeper.visit_date
+  and (keeper.created_at, keeper.visit_id) < (gv.created_at, gv.visit_id);
+
+create unique index if not exists garden_visits_one_gift_per_host_visitor_date
+on public.garden_visits (host_user_id, visitor_user_id, visit_date)
+where gifted_food = 1;
+
+-- Cheer cap (§4.2): one cheer per milestone PER (visitor, host) — the old
+-- index omitted visitor_user_id, so only the FIRST friend could ever cheer a
+-- milestone. Loosening-only relative to the old key: safe on live data.
+drop index if exists public.garden_visits_one_cheer_per_milestone;
+create unique index if not exists garden_visits_one_cheer_per_milestone
+on public.garden_visits (visitor_user_id, host_user_id, cheered_milestone_id)
+where cheered_milestone_id is not null;
+
+-- PET_CAP_PER_DAY = 3 pets per (visitor, host) per day: soft cap counted in
+-- visit_garden under the pair advisory lock (a unique index cannot express
+-- "at most 3"); over-cap is a silent ok — animation without a record (§4.2).
+
+-- Indexes for queries.
+create index if not exists garden_visits_host_idx on public.garden_visits (host_user_id);
+create index if not exists garden_visits_host_applied_idx on public.garden_visits (host_user_id, applied_at);
+
+-- ---------------------------------------------------------------------
+-- RPC: refresh_my_summary (§4.1)
+-- Recomputes published_summaries from companions + profiles, and SERVER-
+-- derives milestones by diffing against the previously published row — the
+-- client never supplies milestone content, and no streak/last_active-shaped
+-- field is ever published (§0.3). Returns {"status":"ok","sharingEnabled":b}.
+-- If sharing is not enabled (or no profiles row), DELETEs the summary row.
+-- ---------------------------------------------------------------------
+
+create or replace function public.refresh_my_summary()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid;
+  v_sharing_enabled boolean;
+  v_display_name text;
+  v_timezone text;
+  v_today date;
+  v_pet record;
+  v_pet_name text;
+  v_pet_species text;
+  v_pet_stage text;
+  v_pet_bond_tier integer;
+  v_prev record;
+  v_milestones jsonb := '[]'::jsonb;
+begin
+  v_uid := auth.uid();
+  if v_uid is null then
+    raise exception using errcode = 'P0001', message = 'not-authenticated';
+  end if;
+
+  -- Advisory lock on own uid (same pattern as merge_companion_state).
+  perform pg_advisory_xact_lock(hashtext('betterme.summary:' || v_uid::text));
+
+  select sharing_enabled, display_name, timezone
+  into v_sharing_enabled, v_display_name, v_timezone
+  from public.profiles
+  where user_id = v_uid;
+
+  -- Fail CLOSED on a missing profiles row (null): plain `if not null` would
+  -- skip this branch and publish for a user who never opted in. Missing row
+  -- = opted out, matching the column's `default false` posture.
+  if v_sharing_enabled is distinct from true then
+    -- Opt-out: delete summary row.
+    delete from public.published_summaries where user_id = v_uid;
+    return jsonb_build_object('status', 'ok', 'sharingEnabled', false);
+  end if;
+
+  -- Day label for milestone stamps: the OWNER's local calendar (§3.1).
+  v_today := public.local_date_in(v_timezone);
+
+  -- Active companion -> the AS-BUILT scales (spec §4.1 "đúng ngưỡng
+  -- PET_STAGE_THRESHOLDS/BOND_TIER_THRESHOLDS as-built"). KEEP IN LOCKSTEP
+  -- with dashboard-data.ts:
+  --   PET_STAGE_THRESHOLDS: baby 0 / kid 5 / junior 15 / teen 30 / adult 50
+  --   BOND_TIER_THRESHOLDS: 0 / 60 / 180 / 420 / 840  -> tiers 1..5
+  select c.name, c.species, c.growth_days, c.bond
+  into v_pet
+  from public.companions c
+  join public.companion_meta m on m.user_id = c.user_id and m.active_species = c.species
+  where c.user_id = v_uid;
+
+  if found then
+    v_pet_name := v_pet.name;
+    v_pet_species := v_pet.species;
+    v_pet_stage := case
+      when v_pet.growth_days >= 50 then 'adult'
+      when v_pet.growth_days >= 30 then 'teen'
+      when v_pet.growth_days >= 15 then 'junior'
+      when v_pet.growth_days >= 5 then 'kid'
+      else 'baby'
+    end;
+    v_pet_bond_tier := case
+      when v_pet.bond >= 840 then 5
+      when v_pet.bond >= 420 then 4
+      when v_pet.bond >= 180 then 3
+      when v_pet.bond >= 60 then 2
+      else 1
+    end;
+  else
+    v_pet_name := null;
+    v_pet_species := null;
+    v_pet_stage := null;
+    v_pet_bond_tier := null;
+  end if;
+
+  -- Server-side milestone diff (§4.1: "tự append milestones bằng cách diff
+  -- với row trước"): fixed vocabulary, deterministic ids, no free text,
+  -- forward-transitions only (nothing is appended on a regression — positive
+  -- only, structurally). No previous row -> nothing to diff: a first publish
+  -- starts with an empty history rather than invented backstory.
+  select ps.pet_species, ps.pet_stage, ps.pet_bond_tier, ps.milestones
+  into v_prev
+  from public.published_summaries ps
+  where ps.user_id = v_uid;
+
+  if found then
+    v_milestones := coalesce(v_prev.milestones, '[]'::jsonb);
+
+    -- new_pet: the active species appeared or changed.
+    if v_pet_species is not null and v_pet_species is distinct from v_prev.pet_species then
+      v_milestones := public.append_milestone(v_milestones, 'new_pet', v_pet_species, v_today);
+    end if;
+
+    -- evolve: growth stage advanced (same pet only; forward-only).
+    if v_pet_species is not null and v_pet_species = v_prev.pet_species
+      and public.pet_stage_rank(v_pet_stage) > public.pet_stage_rank(v_prev.pet_stage) then
+      v_milestones := public.append_milestone(v_milestones, 'evolve', v_pet_stage, v_today);
+    end if;
+
+    -- bond_tier: bond tier climbed (same pet only; forward-only).
+    if v_pet_species is not null and v_pet_species = v_prev.pet_species
+      and v_pet_bond_tier > coalesce(v_prev.pet_bond_tier, 0) then
+      v_milestones := public.append_milestone(v_milestones, 'bond_tier', v_pet_bond_tier::text, v_today);
+    end if;
+    -- ('bloom_week' lands with Phase 3's weekly rollover.)
+  end if;
+
+  -- Upsert published_summaries.
+  insert into public.published_summaries (
+    user_id, display_name, pet_name, pet_species, pet_stage, pet_bond_tier, milestones
+  ) values (
+    v_uid, v_display_name, v_pet_name, v_pet_species, v_pet_stage, v_pet_bond_tier, v_milestones
+  )
+  on conflict (user_id) do update set
+    display_name = excluded.display_name,
+    pet_name = excluded.pet_name,
+    pet_species = excluded.pet_species,
+    pet_stage = excluded.pet_stage,
+    pet_bond_tier = excluded.pet_bond_tier,
+    milestones = excluded.milestones;
+
+  return jsonb_build_object('status', 'ok', 'sharingEnabled', true);
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- RPC: set_sharing_enabled (§0.4 — "chia sẻ là opt-in riêng")
+-- The explicit consent write path for the projection: flips
+-- profiles.sharing_enabled and publishes/deletes the summary in the SAME
+-- transaction (enable -> row appears immediately; disable -> silent delete;
+-- the profiles_propagate_summary trigger backstops direct PATCHes).
+-- Returns refresh_my_summary's {"status":"ok","sharingEnabled":bool}.
+-- ---------------------------------------------------------------------
+
+create or replace function public.set_sharing_enabled(p_enabled boolean)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid;
+begin
+  v_uid := auth.uid();
+  if v_uid is null then
+    raise exception using errcode = 'P0001', message = 'not-authenticated';
+  end if;
+  if p_enabled is null then
+    raise exception using errcode = 'P0004', message = 'invalid-args';
+  end if;
+
+  update public.profiles
+  set sharing_enabled = p_enabled
+  where user_id = v_uid;
+
+  return public.refresh_my_summary();
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- RPC: visit_garden (§4.2)
+-- Visit a friend's garden, optionally gift food and/or cheer a milestone.
+-- Returns {"status":"ok","petCount":N,"petRecorded":b,"giftDelivered":b,
+-- "cheerDelivered":b}. Validates friendship + host sharing (fail-closed on a
+-- missing profiles row). Every day label uses the VISITOR's timezone
+-- (§4.2 "nhãn ngày theo timezone của VISITOR"; §3.1).
+-- Typed errors (all P0004): invalid-host / not-friends / host-not-sharing /
+-- no-active-pet / insufficient-food / milestone-not-found / already-cheered /
+-- gift-cap-reached. Over-cap pets are a silent ok — animation without a
+-- record, never an error (§4.2).
+-- Gift: deducts 1 food from the visitor's ledger; the HOST receives via
+-- their own client mailbox (§4.2.1) — this RPC never writes host state.
+-- ---------------------------------------------------------------------
+
+create or replace function public.visit_garden(
+  p_host_user_id uuid,
+  p_gift_food boolean default false,
+  p_cheer_milestone_id text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_visitor_uid uuid;
+  v_visitor_tz text;
+  v_today date;
+  v_host_sharing boolean;
+  v_friendship_exists boolean;
+  v_visitor_pet record;
+  v_is_pure_pet boolean;
+  v_pet_count integer;
+  v_food_balance integer;
+  v_gift_delivered boolean := false;
+  v_cheer_delivered boolean := false;
+  v_milestone_exists boolean;
+  v_visit_id uuid;
+begin
+  v_visitor_uid := auth.uid();
+  if v_visitor_uid is null then
+    raise exception using errcode = 'P0001', message = 'not-authenticated';
+  end if;
+  if p_host_user_id is null or p_host_user_id = v_visitor_uid then
+    raise exception using errcode = 'P0004', message = 'invalid-host';
+  end if;
+
+  -- Pair lock (visitor, host): serializes the count-then-insert caps below.
+  perform pg_advisory_xact_lock(
+    hashtext('betterme.visit:' || least(v_visitor_uid, p_host_user_id)::text || ':' || greatest(v_visitor_uid, p_host_user_id)::text)
+  );
+
+  -- Validate friendship accepted.
+  select exists (
+    select 1 from public.friendships
+    where status = 'accepted'
+      and ((user_a = v_visitor_uid and user_b = p_host_user_id)
+        or (user_a = p_host_user_id and user_b = v_visitor_uid))
+  ) into v_friendship_exists;
+
+  if not v_friendship_exists then
+    raise exception using errcode = 'P0004', message = 'not-friends';
+  end if;
+
+  -- Validate host sharing. Fail CLOSED when the host has no profiles row:
+  -- plain `if not NULL` would skip the raise and let the visit proceed
+  -- against a user who never opted in. Same message either way — callers get
+  -- no oracle for whether the profile row exists.
+  select sharing_enabled into v_host_sharing
+  from public.profiles where user_id = p_host_user_id;
+
+  if v_host_sharing is distinct from true then
+    raise exception using errcode = 'P0004', message = 'host-not-sharing';
+  end if;
+
+  -- The visitor's local calendar date labels the visit, the caps, and the
+  -- ledger spend key. Missing profiles row / invalid timezone name degrade
+  -- to the default inside local_date_in.
+  select timezone into v_visitor_tz
+  from public.profiles where user_id = v_visitor_uid;
+
+  v_today := public.local_date_in(v_visitor_tz);
+
+  -- Fetch visitor's active companion (for visitor_pet_species, visitor_pet_name).
+  select c.species, c.name
+  into v_visitor_pet
+  from public.companions c
+  join public.companion_meta m on m.user_id = c.user_id and m.active_species = c.species
+  where c.user_id = v_visitor_uid;
+
+  if not found then
+    raise exception using errcode = 'P0004', message = 'no-active-pet';
+  end if;
+
+  v_is_pure_pet := not p_gift_food and p_cheer_milestone_id is null;
+
+  -- PET_CAP_PER_DAY (§4.2): 3 pets per (visitor, HOST) per day, counting
+  -- pet-kind rows only, regardless of ack state — acking mail must not
+  -- reopen the cap, and the 72h prune never removes same-day rows. Computed
+  -- for every call so the returned petCount stays meaningful, but enforced
+  -- only on pure pet calls: gifts/cheers have their own caps (unique
+  -- indexes) and must not be collateral damage of petting.
+  select count(*) into v_pet_count
+  from public.garden_visits
+  where visitor_user_id = v_visitor_uid
+    and host_user_id = p_host_user_id
+    and visit_date = v_today
+    and gifted_food = 0
+    and cheered_milestone_id is null;
+
+  if v_is_pure_pet and v_pet_count >= 3 then
+    -- Over cap: still animation + thoại, just no record (§4.2 mirrors
+    -- PETTING_CAP_PER_DAY) — affection is never an error.
+    return jsonb_build_object(
+      'status', 'ok',
+      'petCount', v_pet_count,
+      'petRecorded', false,
+      'giftDelivered', false,
+      'cheerDelivered', false
+    );
+  end if;
+
+  -- Handle gift (if requested).
+  if p_gift_food then
+    -- Serialize with merge_companion_state / reset_companion: they hold this
+    -- per-user lock across their read-modify-write of companion_meta, so a
+    -- spend appended outside it could be overwritten by a concurrent merge's
+    -- pre-computed food_spent_events union — a silent refund while the host
+    -- still receives the gift. Holding it across the balance check also
+    -- makes check+append atomic against concurrent gifts to DIFFERENT hosts
+    -- (those hold different pair locks). Lock order is pair -> companion
+    -- here; merge/reset take only the companion lock and never wait on a
+    -- pair lock, so no deadlock cycle is possible.
+    perform pg_advisory_xact_lock(hashtext('betterme.companion:' || v_visitor_uid::text));
+
+    -- Canonical balance (§2.3, mirrors deriveFoodBalance and the merge
+    -- prune): clamp(carryover + Σ granted + Σ gifts_received − Σ|spent|, 0, 21).
+    -- Sums ledger VALUES — never counts keys: overflow-absorbed gifts are
+    -- stored with value 0 and would otherwise mint food. Malformed values
+    -- degrade to 0 via safe_int. FOR UPDATE pins the row under the lock.
+    select least(21, greatest(0,
+        m.food_carryover
+      + coalesce((select sum(public.safe_int(g.value, 0))
+          from jsonb_each_text(m.food_granted_by_date) g), 0)
+      + coalesce((select sum(public.safe_int(r.value, 0))
+          from jsonb_each_text(m.food_gifts_received) r), 0)
+      - coalesce((select sum(jsonb_array_length(s.value))
+          from jsonb_each(m.food_spent_events) s
+          where jsonb_typeof(s.value) = 'array'), 0)))::integer
+    into v_food_balance
+    from public.companion_meta m
+    where m.user_id = v_visitor_uid
+    for update;
+
+    if v_food_balance is null or v_food_balance < 1 then
+      raise exception using errcode = 'P0004', message = 'insufficient-food';
+    end if;
+
+    -- Deduct 1 food: append a server-minted spend event to today's bucket.
+    -- (OVERFLOW_BOND_CAP — 2/day — is enforced HOST-client-side at
+    -- mailbox-apply time per §4.2.1; nothing to read here.)
+    v_visit_id := gen_random_uuid();
+    update public.companion_meta
+    set food_spent_events = jsonb_set(
+      food_spent_events,
+      array[v_today::text],
+      coalesce(food_spent_events->v_today::text, '[]'::jsonb)
+        || jsonb_build_array('gift:' || p_host_user_id::text || ':' || v_today::text || ':' || v_visit_id::text),
+      true
+    )
+    where user_id = v_visitor_uid;
+
+    v_gift_delivered := true;
+  end if;
+
+  -- Handle cheer (if requested).
+  if p_cheer_milestone_id is not null then
+    -- Validate milestone_id exists in host's published_summaries.milestones array.
+    select exists (
+      select 1 from public.published_summaries ps,
+      jsonb_array_elements(ps.milestones) m
+      where ps.user_id = p_host_user_id
+        and m->>'id' = p_cheer_milestone_id
+    ) into v_milestone_exists;
+
+    if not v_milestone_exists then
+      raise exception using errcode = 'P0004', message = 'milestone-not-found';
+    end if;
+
+    -- Typed duplicate check — 1 cheer per milestone per (visitor, host); the
+    -- unique index below is the backstop. Race-safe: the pair advisory lock
+    -- taken above covers the index's full key. Raising here (instead of
+    -- leaking a raw 23505 off the insert) also rolls back any gift-food
+    -- deduction made in the same call.
+    if exists (
+      select 1 from public.garden_visits
+      where visitor_user_id = v_visitor_uid
+        and host_user_id = p_host_user_id
+        and cheered_milestone_id = p_cheer_milestone_id
+    ) then
+      raise exception using errcode = 'P0004', message = 'already-cheered';
+    end if;
+
+    v_cheer_delivered := true;
+  end if;
+
+  -- Insert the mailbox row (applied_at null = pending). Unique indexes
+  -- enforce: one gift per (host, visitor, visit_date); one cheer per
+  -- milestone per (visitor, host). Cheer duplicates were pre-checked above,
+  -- so a unique_violation here is the gift cap — surface it as a typed error
+  -- (rolling back the food deduction) instead of a raw 23505 the client
+  -- would misread as a network problem.
+  begin
+    insert into public.garden_visits (
+      host_user_id, visitor_user_id, visit_date, visitor_pet_species, visitor_pet_name,
+      gifted_food, cheered_milestone_id, applied_at
+    ) values (
+      p_host_user_id, v_visitor_uid, v_today, v_visitor_pet.species, v_visitor_pet.name,
+      case when p_gift_food then 1 else 0 end,
+      p_cheer_milestone_id,
+      null
+    );
+  exception when unique_violation then
+    raise exception using errcode = 'P0004', message = 'gift-cap-reached';
+  end;
+
+  -- Only a pet-kind row advances the pet count.
+  if v_is_pure_pet then
+    v_pet_count := v_pet_count + 1;
+  end if;
+
+  return jsonb_build_object(
+    'status', 'ok',
+    'petCount', v_pet_count,
+    'petRecorded', v_is_pure_pet,
+    'giftDelivered', v_gift_delivered,
+    'cheerDelivered', v_cheer_delivered
+  );
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- RPC: ack_garden_visits (§4.2)
+-- Host acknowledges visits (sets applied_at = now()). The CLIENT merges
+-- the ledger changes to local state (spec §4.2.1) — this RPC is just the ack.
+-- Prunes applied visits older than FEED_RETENTION (72 hours).
+-- Returns void.
+-- ---------------------------------------------------------------------
+
+create or replace function public.ack_garden_visits(p_visit_ids uuid[])
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_host_uid uuid;
+begin
+  v_host_uid := auth.uid();
+  if v_host_uid is null then
+    raise exception using errcode = 'P0001', message = 'not-authenticated';
+  end if;
+  if p_visit_ids is null or array_length(p_visit_ids, 1) is null then
+    raise exception using errcode = 'P0004', message = 'invalid-visit-ids';
+  end if;
+
+  -- Set applied_at = now() for those visit_ids where host_user_id = v_host_uid and applied_at is null.
+  update public.garden_visits
+  set applied_at = now()
+  where visit_id = any(p_visit_ids)
+    and host_user_id = v_host_uid
+    and applied_at is null;
+
+  -- Prune applied visits older than FEED_RETENTION (72 hours) — EXCEPT cheer
+  -- rows whose milestone is still live in the host's summary: they carry the
+  -- one-cheer-per-milestone uniqueness, and pruning would let the same
+  -- visitor re-cheer after 3 days. Growth stays bounded: milestones rotate
+  -- out of the 10-slot array, at which point their cheer rows become
+  -- prunable (and visit_garden rejects departed ids with milestone-not-found).
+  delete from public.garden_visits gv
+  where gv.host_user_id = v_host_uid
+    and gv.applied_at is not null
+    and gv.applied_at < now() - interval '72 hours'
+    and (gv.cheered_milestone_id is null or not exists (
+      select 1
+      from public.published_summaries ps,
+      jsonb_array_elements(ps.milestones) m
+      where ps.user_id = gv.host_user_id
+        and m->>'id' = gv.cheered_milestone_id
+    ));
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- Helper view: get_my_garden_feed (§4.2)
+-- Returns recent applied visits (visitor names, species, dates) as jsonb array.
+-- Ordered by applied_at desc, limited to p_limit (default 20).
+-- Shape: [{"visitId", "visitorPetName", "visitorPetSpecies", "visitDate", "giftedFood", "cheeredMilestoneId", "appliedAt"}]
+-- ---------------------------------------------------------------------
+
+create or replace function public.get_my_garden_feed(p_limit integer default 20)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_host_uid uuid;
+  v_feed jsonb;
+begin
+  v_host_uid := auth.uid();
+  if v_host_uid is null then
+    raise exception using errcode = 'P0001', message = 'not-authenticated';
+  end if;
+
+  select coalesce(jsonb_agg(
+    jsonb_build_object(
+      'visitId', visit_id,
+      'visitorUserId', visitor_user_id,
+      'visitorPetName', visitor_pet_name,
+      'visitorPetSpecies', visitor_pet_species,
+      'visitDate', visit_date,
+      'giftedFood', gifted_food,
+      'cheeredMilestoneId', cheered_milestone_id,
+      'appliedAt', applied_at
+    ) order by applied_at desc
+  ), '[]'::jsonb) into v_feed
+  from (
+    select *
+    from public.garden_visits
+    where host_user_id = v_host_uid and applied_at is not null
+    order by applied_at desc
+    limit p_limit
+  ) sub;
+
+  return v_feed;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- Grants: all Phase 2 RPCs are for authenticated users only.
+-- ---------------------------------------------------------------------
+
+revoke execute on function public.refresh_my_summary() from public, anon;
+grant execute on function public.refresh_my_summary() to authenticated;
+
+revoke execute on function public.set_sharing_enabled(boolean) from public, anon;
+grant execute on function public.set_sharing_enabled(boolean) to authenticated;
+
+revoke execute on function public.visit_garden(uuid, boolean, text) from public, anon;
+grant execute on function public.visit_garden(uuid, boolean, text) to authenticated;
+
+revoke execute on function public.ack_garden_visits(uuid[]) from public, anon;
+grant execute on function public.ack_garden_visits(uuid[]) to authenticated;
+
+revoke execute on function public.get_my_garden_feed(integer) from public, anon;
+grant execute on function public.get_my_garden_feed(integer) to authenticated;

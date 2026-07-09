@@ -227,6 +227,44 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["friendships"]["Insert"]>;
         Relationships: [];
       };
+      // Social Garden Phase 2 (§4.1). Friends have SELECT via RLS; ALL writes
+      // go through the refresh_my_summary RPC — no Insert/Update policies.
+      // No streak/last_active-shaped column may exist here (§0.3): the row is
+      // a positive-only projection. pet_stage/pet_bond_tier mirror the
+      // as-built dashboard-data.ts scales (baby..adult / tiers 1..5).
+      published_summaries: {
+        Row: {
+          user_id: string;
+          display_name: string | null;
+          pet_name: string | null;
+          pet_species: string | null;
+          pet_stage: string | null;
+          pet_bond_tier: number | null;
+          milestones: Json;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      // Social Garden Phase 2 (§4.2). Host/visitor have SELECT via RLS; ALL
+      // writes go through visit_garden / ack_garden_visits RPCs.
+      garden_visits: {
+        Row: {
+          visit_id: string;
+          host_user_id: string;
+          visitor_user_id: string;
+          visit_date: string;
+          visitor_pet_species: string | null;
+          visitor_pet_name: string | null;
+          gifted_food: number;
+          cheered_milestone_id: string | null;
+          applied_at: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     // Sync RPCs (supabase/schema.sql, Social Garden Phase 0 §2). jsonb-returning
@@ -292,6 +330,31 @@ export type Database = {
       };
       update_my_profile: {
         Args: { p_display_name: string; p_avatar_kind: string };
+        Returns: Json;
+      };
+      // Social Garden Phase 2 RPCs (supabase/schema.sql §4).
+      refresh_my_summary: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      set_sharing_enabled: {
+        Args: { p_enabled: boolean };
+        Returns: Json;
+      };
+      visit_garden: {
+        Args: {
+          p_host_user_id: string;
+          p_gift_food?: boolean;
+          p_cheer_milestone_id?: string | null;
+        };
+        Returns: Json;
+      };
+      ack_garden_visits: {
+        Args: { p_visit_ids: string[] };
+        Returns: undefined;
+      };
+      get_my_garden_feed: {
+        Args: { p_limit?: number };
         Returns: Json;
       };
     };

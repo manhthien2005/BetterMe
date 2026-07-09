@@ -22,6 +22,7 @@ export type PetEvent =
   | "evolve"
   | "idle"
   | "friendVisit"
+  | "friendVisitGift"
   | "fairLantern"
   | "sharedRhythm";
 
@@ -79,7 +80,12 @@ const DOG_VOICE: VoicePack = {
     friendVisit: [
       "Sếp ơi, có bạn ghé thăm vườn mình đó! Em vẫy đuôi chào liền luôn, gâu!",
       "Hôm nay vườn mình có khách nè Sếp! Vui hẳn lên luôn á, gâu gâu!",
-      "Bạn của Sếp ghé còn để lại quà nữa đó! Em canh kỹ lắm nha, gâu!"
+      "Có bạn sang chơi vườn mình nè Sếp! Em dẫn đi một vòng khoe liền, gâu!"
+    ],
+    friendVisitGift: [
+      "Bạn của Sếp ghé còn để lại quà nữa đó! Em canh kỹ lắm nha, gâu!",
+      "Có bạn mang quà sang cho vườn mình nè Sếp! Thơm ghê luôn á, gâu gâu!",
+      "Khách để lại món quà xinh ghê Sếp ơi! Em giữ cẩn thận cho Sếp, gâu!"
     ],
     fairLantern: [
       "Sếp ơi, vườn mình được treo lồng đèn nè!! Đẹp lung linh ghê, gâu gâu!!",
@@ -141,7 +147,12 @@ const DOG_VOICE: VoicePack = {
     friendVisit: [
       "Bạn thân ơi, có bạn ghé vườn nè! Em khoe mấy ô xanh của Sếp luôn đó, gâu!",
       "Khách quý tới thăm! Em dẫn đi xem vườn mình một vòng rồi nè, gâu gâu!",
-      "Bạn Sếp gửi quà cho vườn mình nè! Em chưa đụng vô đâu nha, gâu!"
+      "Có bạn ghé thăm nè bạn thân! Em vui tới mức quên cả sủa luôn á, gâu!"
+    ],
+    friendVisitGift: [
+      "Bạn Sếp gửi quà cho vườn mình nè! Em chưa đụng vô đâu nha, gâu!",
+      "Bạn thân ơi, có bạn gửi quà tới nè! Em vui muốn nhảy cẫng lên, gâu gâu!",
+      "Có món quà bạn để lại cho vườn mình đó! Em canh cho Sếp nha, gâu!"
     ],
     fairLantern: [
       "Bạn thân ơi, mình có lồng đèn hội chợ nè!! Cả tuần chăm chỉ mà, gâu!",
@@ -203,7 +214,12 @@ const DOG_VOICE: VoicePack = {
     friendVisit: [
       "Nhà mình có khách nè Sếp! Em tiếp đón chu đáo lắm luôn đó, gâu!",
       "Bạn của Sếp khen vườn mình ấm ghê! Em nở mũi luôn nè, gâu gâu!",
-      "Có quà bạn gửi nè Sếp! Người nhà mình được thương ghê đó, gâu~"
+      "Người nhà mình có bạn tới thăm nè Sếp! Em mừng quýnh cả lên, gâu gâu!"
+    ],
+    friendVisitGift: [
+      "Có quà bạn gửi nè Sếp! Người nhà mình được thương ghê đó, gâu~",
+      "Nhà mình được bạn tặng quà nè Sếp! Ấm lòng ghê luôn á, gâu gâu!",
+      "Bạn quý gửi quà sang cho người nhà mình nè! Em cảm động ghê, gâu~"
     ],
     fairLantern: [
       "Nhà mình có lồng đèn nè Sếp!! Mình ngắm chung một lát nha, gâu~",
@@ -268,7 +284,12 @@ const CAT_VOICE: VoicePack = {
     friendVisit: [
       "Có người ghé vườn đấy. Tôi có ra chào. Một cái gật đầu. Meo.",
       "Khách của cậu tới lúc nãy. Tôi… có cho ngồi ghế đấy.",
-      "Có quà ai để lại kìa. Tôi trông giúp thôi, đừng hiểu lầm. Meo."
+      "Vườn mình có khách ghé đấy. Tôi ngó một cái thôi. …Hai cái. Meo."
+    ],
+    friendVisitGift: [
+      "Có quà ai để lại kìa. Tôi trông giúp thôi, đừng hiểu lầm. Meo.",
+      "Khách để lại món quà đấy. Tôi giữ hộ thôi… Cảm ơn nhé. Meo.",
+      "Có người gửi quà tới kìa. Tôi canh cho, đừng nghĩ ngợi gì. Meo~"
     ],
     fairLantern: [
       "Vườn có lồng đèn kìa. Tôi không ngắm đâu. …Ngắm một chút. Meo.",
@@ -330,7 +351,12 @@ const CAT_VOICE: VoicePack = {
     friendVisit: [
       "Bạn cậu ghé vườn đấy. Tôi có tiếp chuyện… theo kiểu của mèo. Meo.",
       "Có khách tới thăm. Vườn hôm nay… đông vui phết. Nói nhỏ thôi.",
-      "Bạn cậu gửi quà này. Tôi giữ nguyên chưa đụng. Khen tôi đi. Meo~"
+      "Khách của cậu ghé chơi đấy. Vườn mình cũng nhộn nhịp phết. Meo~"
+    ],
+    friendVisitGift: [
+      "Bạn cậu gửi quà này. Tôi giữ nguyên chưa đụng. Khen tôi đi. Meo~",
+      "Có món quà bạn cậu để lại đấy. Tôi trông kỹ lắm… Meo.",
+      "Khách gửi quà cho vườn mình nè. Tôi… thấy vui phết đấy. Meo~"
     ],
     fairLantern: [
       "Lồng đèn hội chợ đấy. Vườn mình tuần này… ra dáng phết. Meo~",
@@ -392,7 +418,12 @@ const CAT_VOICE: VoicePack = {
     friendVisit: [
       "Bạn cậu ghé chơi đấy. Nhà mình có khách cũng… ấm ra phết. Meo~",
       "Có người tới thăm vườn. Tôi khoe cậu với người ta rồi. Ừ, tôi khoe đấy.",
-      "Quà của bạn cậu đây. Nhà mình được quý thật đấy. Meo~"
+      "Khách tới thăm nhà mình đấy. Tôi thấy… cũng vui ra phết. Meo~"
+    ],
+    friendVisitGift: [
+      "Quà của bạn cậu đây. Nhà mình được quý thật đấy. Meo~",
+      "Nhà mình được bạn tặng quà đấy. Ấm ghê… Tôi nói thật. Meo~",
+      "Có món quà bạn quý gửi sang nè. Người nhà mình hên phết. Meo~"
     ],
     fairLantern: [
       "Lồng đèn nhà mình đẹp nhỉ. Ừ, tôi nói 'nhà mình' đấy. Meo~",
@@ -414,14 +445,20 @@ const VOICE: Record<PetSpecies, VoicePack> = {
 
 /**
  * Guest-side voice — the host's pet greeting a *visiting friend*.
- * Keyed by species only: a visitor has no bond with the host's pet.
+ * Keyed by species only: a visitor has no bond with the host's pet, and the
+ * pet addresses them as a guest ("bạn"/"khách"), never as its owner ("Sếp").
  */
-export type GuestEvent = "guestPet" | "guestGift";
+export type GuestEvent = "guestGreeting" | "guestPet" | "guestGift";
 
 type GuestVoicePack = Record<GuestEvent, string[]>;
 
 const GUEST_VOICE: Record<PetSpecies, GuestVoicePack> = {
   dog: {
+    guestGreeting: [
+      "Oa, bạn của Sếp ghé chơi nè!! Em vẫy đuôi chào bạn liền luôn, gâu gâu!!",
+      "Bạn tới thăm vườn hả? Em mừng ghê! Cứ tự nhiên như nhà mình nha, gâu!",
+      "Chào bạn nha! Bạn của Sếp là quý khách của em đó, vào chơi đi, gâu!"
+    ],
     guestPet: [
       "Oa!! Bạn của Sếp xoa đầu em nè! Đuôi em vẫy tít mù luôn, gâu gâu!!",
       "Hehe, tay bạn ấm ghê! Em lăn ra sân cho xoa bụng luôn nè, gâu!",
@@ -434,6 +471,11 @@ const GUEST_VOICE: Record<PetSpecies, GuestVoicePack> = {
     ]
   },
   cat: {
+    guestGreeting: [
+      "Khách à. Cứ tự nhiên đi. …Tôi có dọn sẵn chỗ ngồi đấy. Meo.",
+      "Ồ, khách tới thăm vườn à. …Ngồi đi. Đừng đụng chậu cây là được. Meo~",
+      "Người nhà tôi có khách quý ghé nè. …Tôi ra tiếp một chút thôi. Meo."
+    ],
     guestPet: [
       "Khách à. Cho chạm ba giây thôi đấy. …Thêm hai giây nữa cũng được. Meo.",
       "Tôi không quen người lạ đâu. …Grừ grừ. Tiếng đó tự phát thôi. Meo~",

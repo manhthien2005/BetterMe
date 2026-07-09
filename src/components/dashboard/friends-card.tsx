@@ -7,14 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   getFriendsOverview,
+  getMyGardenFeed,
+  refreshMySummary,
   respondFriendRequest,
   sendFriendRequest,
+  setSharingEnabled,
   unfriend,
   updateMyProfile,
   type AvatarKind,
   type FriendEntry,
   type FriendsOverview,
-  type SendFriendRequestResult
+  type SendFriendRequestResult,
+  type VisitEntry
 } from "@/lib/server/social-actions";
 import { cn } from "@/lib/utils";
 
@@ -96,19 +100,55 @@ function friendLabel(entry: FriendEntry): string {
   return entry.displayName || "Một vườn chưa đặt tên";
 }
 
+const FEED_WINDOW_MS = 72 * 60 * 60 * 1000;
+
+/**
+ * Feed rule (spec §4.3a): filter ON-READ to the last 72h so a returning owner
+ * never faces a wall of accumulated visits. Grouped per visitor — one subtle
+ * line under the matching friend, never a numbers board.
+ */
+export function groupRecentVisits(
+  feed: VisitEntry[],
+  now: number = Date.now()
+): Map<string, { count: number; hasGift: boolean }> {
+  const byVisitor = new Map<string, { count: number; hasGift: boolean }>();
+
+  for (const visit of feed) {
+    const appliedMs = visit.appliedAt === null ? Number.NaN : Date.parse(visit.appliedAt);
+
+    if (Number.isNaN(appliedMs) || now - appliedMs > FEED_WINDOW_MS) continue;
+
+    const entry = byVisitor.get(visit.visitorUserId) ?? { count: 0, hasGift: false };
+
+    entry.count += 1;
+    entry.hasGift = entry.hasGift || visit.giftedFood > 0;
+    byVisitor.set(visit.visitorUserId, entry);
+  }
+
+  return byVisitor;
+}
+
 type LoadPhase = "loading" | "ready" | "error";
 
-export function FriendsCard() {
+export function FriendsCard({
+  onVisitFriend
+}: {
+  onVisitFriend?: (friendUserId: string) => void;
+} = {}) {
   const [overview, setOverview] = useState<FriendsOverview | null>(null);
   const [phase, setPhase] = useState<LoadPhase>("loading");
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [savingSharing, setSavingSharing] = useState(false);
   const [codeDraft, setCodeDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendNote, setSendNote] = useState<string | null>(null);
   const [busyFriendId, setBusyFriendId] = useState<string | null>(null);
   const [confirmingUnfriendId, setConfirmingUnfriendId] = useState<string | null>(null);
+  const [recentVisits, setRecentVisits] = useState<
+    Map<string, { count: number; hasGift: boolean }>
+  >(new Map());
   const codeChipRef = useRef<HTMLElement | null>(null);
 
   const refresh = useCallback(async () => {
@@ -128,6 +168,22 @@ export function FriendsCard() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // Recent-visit whispers (spec §4.3): last 20 applied visits, filtered
+  // on-read to 72h. Quiet failure — the feed is decoration, never a blocker.
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      const result = await getMyGardenFeed(20);
+
+      if (!cancelled && result.ok) setRecentVisits(groupRecentVisits(result.feed));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function copyInviteCode() {
     const code = overview?.me.inviteCode;
@@ -174,7 +230,48 @@ export function FriendsCard() {
       });
       setEditingName(false);
       void refresh();
+      // Companion-state hook (spec §4.1): identity changed — refresh the
+      // published summary in the background. Fire-and-forget: silent failure
+      // is fine, the summary self-heals on the next refresh.
+      void refreshMySummary().catch(() => undefined);
     } else {
+      toast(QUIET_NETWORK_NOTE);
+    }
+  }
+
+  /**
+   * Sharing opt-in toggle (spec §0.4): flips profiles.sharing_enabled, which
+   * publishes (enable) or silently deletes (disable) the friend-visible
+   * summary in the same server transaction. Optimistic + reconcile; a quiet,
+   * never-alarming note on failure. Without this toggle every garden stays
+   * shut (sharing_enabled defaults false).
+   */
+  async function handleToggleSharing(nextEnabled: boolean) {
+    if (!overview || savingSharing) return;
+
+    const previous = overview.me.sharingEnabled;
+
+    setSavingSharing(true);
+    // Optimistic: reflect the new state right away.
+    setOverview({ ...overview, me: { ...overview.me, sharingEnabled: nextEnabled } });
+
+    const result = await setSharingEnabled(nextEnabled);
+
+    setSavingSharing(false);
+
+    if (result.ok) {
+      // Reconcile with the server's truth, then re-fetch in the background.
+      setOverview((current) =>
+        current
+          ? { ...current, me: { ...current.me, sharingEnabled: result.sharingEnabled } }
+          : current
+      );
+      void refresh();
+    } else {
+      // Revert the optimistic flip — quiet, no blame.
+      setOverview((current) =>
+        current ? { ...current, me: { ...current.me, sharingEnabled: previous } } : current
+      );
       toast(QUIET_NETWORK_NOTE);
     }
   }
@@ -303,6 +400,40 @@ export function FriendsCard() {
               <p className="mt-2 text-xs font-semibold text-mauve">
                 Gửi mã này cho bạn để hai vườn tìm thấy nhau.
               </p>
+
+              <div className="mt-3 flex items-center justify-between gap-3 border-t border-wafer pt-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-plum">
+                    Mở cổng vườn cho bạn ghé thăm 🌿
+                  </p>
+                  <p className="mt-0.5 text-xs font-semibold text-mauve">
+                    Bật để bạn bè sang thăm, vuốt ve và cổ vũ vườn của Sếp.
+                  </p>
+                </div>
+                <button
+                  aria-checked={overview.me.sharingEnabled}
+                  aria-label="Mở cổng vườn cho bạn ghé thăm"
+                  className={cn(
+                    "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition",
+                    FOCUS_RING,
+                    overview.me.sharingEnabled
+                      ? "border-matcha/50 bg-matcha/70"
+                      : "border-wafer bg-wafer"
+                  )}
+                  disabled={savingSharing}
+                  onClick={() => void handleToggleSharing(!overview.me.sharingEnabled)}
+                  role="switch"
+                  type="button"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "inline-block h-5 w-5 transform rounded-full bg-white shadow-mochi transition",
+                      overview.me.sharingEnabled ? "translate-x-5" : "translate-x-0.5"
+                    )}
+                  />
+                </button>
+              </div>
             </div>
 
             <div className="rounded-2xl border border-wafer bg-white/75 p-3">
@@ -515,6 +646,7 @@ export function FriendsCard() {
                 <ul className="mt-2 grid gap-2">
                   {accepted.map((entry) => {
                     const isConfirming = confirmingUnfriendId === entry.otherUserId;
+                    const recent = recentVisits.get(entry.otherUserId);
 
                     return (
                       <li
@@ -529,21 +661,50 @@ export function FriendsCard() {
                             {/* Plain text node — never markup (spec §8). */}
                             <span className="truncate">{friendLabel(entry)}</span>
                           </span>
+                          <span className="flex shrink-0 items-center gap-1.5">
+                            {onVisitFriend ? (
+                              <button
+                                aria-label={`Thăm vườn của ${friendLabel(entry)}`}
+                                className={cn(
+                                  "squishy rounded-full border border-matcha/40 bg-matcha/10 px-3 py-1.5 text-xs font-bold text-matcha-deep transition hover:bg-matcha/20",
+                                  FOCUS_RING
+                                )}
+                                onClick={() => onVisitFriend(entry.otherUserId)}
+                                type="button"
+                              >
+                                Thăm vườn 🏡
+                              </button>
+                            ) : null}
+                            <button
+                              aria-expanded={isConfirming}
+                              aria-label={`Tùy chọn với ${friendLabel(entry)}`}
+                              className={cn(
+                                "squishy flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-mauve transition hover:bg-rice",
+                                FOCUS_RING
+                              )}
+                              onClick={() =>
+                                setConfirmingUnfriendId(isConfirming ? null : entry.otherUserId)
+                              }
+                              type="button"
+                            >
+                              ⋯
+                            </button>
+                          </span>
+                        </div>
+                        {recent ? (
                           <button
-                            aria-expanded={isConfirming}
-                            aria-label={`Tùy chọn với ${friendLabel(entry)}`}
                             className={cn(
-                              "squishy flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-mauve transition hover:bg-rice",
+                              "squishy mt-1 block rounded-full px-1.5 py-0.5 text-left text-xs font-semibold text-mauve transition hover:text-plum",
                               FOCUS_RING
                             )}
-                            onClick={() =>
-                              setConfirmingUnfriendId(isConfirming ? null : entry.otherUserId)
-                            }
+                            onClick={() => onVisitFriend?.(entry.otherUserId)}
                             type="button"
                           >
-                            ⋯
+                            {recent.hasGift
+                              ? "Vừa ghé thăm và để lại quà cho vườn của Sếp 🎁"
+                              : "Vừa ghé thăm vườn của Sếp 🌸"}
                           </button>
-                        </div>
+                        ) : null}
                         {isConfirming ? (
                           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-rice/70 p-2.5">
                             <p className="text-xs font-semibold text-mauve">

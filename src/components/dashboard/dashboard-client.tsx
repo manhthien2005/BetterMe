@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import {
   addHabitToState,
   adoptPet,
+  applyGiftToState,
   buildDashboardViewModel,
   checkComebackGift,
   createInitialDashboardState,
@@ -44,8 +45,14 @@ import {
   type PetSpecies
 } from "@/components/dashboard/dashboard-data";
 import { FriendsCard } from "@/components/dashboard/friends-card";
+import { GardenVisitOverlay } from "@/components/dashboard/garden-visit-overlay";
 import { GiftBox, Pet, PetAdoption } from "@/components/dashboard/pet";
 import { getPetLine, type PetEvent } from "@/components/dashboard/pet-voice";
+import {
+  ackGardenVisits,
+  getPendingGardenVisits,
+  refreshMySummary
+} from "@/lib/server/social-actions";
 import {
   loadSyncOptIn,
   saveSyncOptIn,
@@ -92,6 +99,56 @@ async function hasSupabaseSession(): Promise<boolean> {
   }
 }
 
+// Mailbox celebration dedupe (spec §4.2.1): which garden-visit ids have already
+// been celebrated, so a stuck/unacked visit never re-fires the toast + bubble
+// on the next mount. Map visitId -> visitDate, pruned to a 30-day window to
+// match the other ledger horizons.
+const MAILBOX_SEEN_KEY = "betterme.mailboxseen.v1";
+const MAILBOX_SEEN_RETENTION_DAYS = 30;
+
+type MailboxSeen = Record<string, string>;
+
+/** today − days as an ISO YYYY-MM-DD (UTC arithmetic; lexicographically ordered). */
+function isoDaysBefore(today: string, days: number): string {
+  const date = new Date(`${today}T00:00:00Z`);
+
+  date.setUTCDate(date.getUTCDate() - days);
+
+  return date.toISOString().slice(0, 10);
+}
+
+/** Load the celebrated-visit map, dropping entries older than the retention window. */
+function loadMailboxSeen(today: string): MailboxSeen {
+  try {
+    const raw = window.localStorage.getItem(MAILBOX_SEEN_KEY);
+
+    if (!raw) return {};
+
+    const parsed: unknown = JSON.parse(raw);
+
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+
+    const cutoff = isoDaysBefore(today, MAILBOX_SEEN_RETENTION_DAYS);
+    const seen: MailboxSeen = {};
+
+    for (const [visitId, visitDate] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof visitDate === "string" && visitDate >= cutoff) seen[visitId] = visitDate;
+    }
+
+    return seen;
+  } catch {
+    return {};
+  }
+}
+
+function saveMailboxSeen(seen: MailboxSeen) {
+  try {
+    window.localStorage.setItem(MAILBOX_SEEN_KEY, JSON.stringify(seen));
+  } catch {
+    // Best-effort: a full/blocked store just means we might re-celebrate later.
+  }
+}
+
 const DASHBOARD_WEATHER = {
   location: "Bangkok",
   temperature: "31°C",
@@ -117,10 +174,13 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
   const [bubble, setBubble] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("disabled");
   const [showSyncOnboarding, setShowSyncOnboarding] = useState(false);
+  const [visitingFriendId, setVisitingFriendId] = useState<string | null>(null);
   // The engine reads state through this ref so merges/flushes always see the
   // latest value synchronously — even mid-flush, before React re-renders.
   const stateRef = useRef(state);
   const engineRef = useRef<SyncEngine | null>(null);
+  // One mailbox delivery per mount — re-runs happen on the next visit anyway.
+  const mailboxDeliveredRef = useRef(false);
   const viewModel = useMemo(() => buildDashboardViewModel(state, today), [state, today]);
   const activePet = viewModel.companion.activePet;
 
@@ -162,6 +222,100 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
   const markCompanionDirty = useCallback(() => {
     markSyncDirty({ kind: "companionSnapshot", clientTs: new Date().toISOString() });
   }, [markSyncDirty]);
+
+  /**
+   * Mailbox delivery (spec §4.2.1): after the sync hydrate, fetch my pending
+   * garden_visits (applied_at IS NULL), absorb each one into local state via
+   * applyGiftToState (ledger key `date:visitId` dedupes — same visit twice is
+   * a no-op), ack the absorbed ones, and greet the owner with one collective,
+   * name-free toast — but ONLY for visits not yet celebrated (persisted in
+   * betterme.mailboxseen.v1). Visits that found no room (pantry + overflow both
+   * full) stay un-acked and retry silently on a later day.
+   */
+  const deliverGardenMailbox = useCallback(async () => {
+    if (mailboxDeliveredRef.current) return;
+
+    mailboxDeliveredRef.current = true;
+
+    const result = await getPendingGardenVisits();
+
+    if (!result.ok || result.visits.length === 0) return;
+
+    // Which visits have we already celebrated? (persisted, pruned to 30d.)
+    const seen = loadMailboxSeen(today);
+    const unseen = result.visits.filter((visit) => seen[visit.visitId] === undefined);
+
+    let next = stateRef.current;
+    const appliedIds: string[] = [];
+    let giftApplied = false;
+
+    for (const visit of result.visits) {
+      const before = next;
+      const outcome = applyGiftToState(
+        next,
+        { visitId: visit.visitId, visitDate: visit.visitDate, giftedFood: visit.giftedFood },
+        today
+      );
+
+      if (outcome.applied) appliedIds.push(visit.visitId);
+
+      // A fresh gift for the celebration voice = an UNSEEN visit whose gift
+      // newly entered the ledger this pass (state actually changed). The
+      // date:visitId dedupe key means an already-absorbed gift is a no-op —
+      // not a fresh gift — so it must never flip the 🎁 variant (spec §7).
+      if (
+        seen[visit.visitId] === undefined &&
+        visit.giftedFood > 0 &&
+        outcome.state !== before
+      ) {
+        giftApplied = true;
+      }
+
+      next = outcome.state;
+    }
+
+    if (next !== stateRef.current) {
+      commitState(next);
+      markCompanionDirty();
+    }
+
+    if (appliedIds.length > 0) {
+      void ackGardenVisits(appliedIds);
+    }
+
+    // Nothing new to celebrate — but we still ran the apply/ack loop above so
+    // stuck gifts keep retrying silently.
+    if (unseen.length === 0) return;
+
+    // Mark EVERY fetched visit celebrated (applied or not): a stuck gift must
+    // not re-toast next mount, and a fire-and-forget ack that fails must not
+    // replay the celebration either.
+    const nextSeen: MailboxSeen = { ...seen };
+
+    for (const visit of result.visits) nextSeen[visit.visitId] = visit.visitDate;
+
+    saveMailboxSeen(nextSeen);
+
+    // Collective and gentle — no individual names (spec §4.2.1).
+    const visitorCount = new Set(unseen.map((visit) => visit.visitorUserId)).size;
+
+    toast(`${visitorCount} bạn đã ghé thăm vườn 🌸`);
+
+    // friendVisit voice for EVERY unseen batch, gift or not — the kind picks
+    // the variant (🎁 only with a real gift, spec §4.2.1/§7).
+    const species = next.companion.activeSpecies;
+    const pet = species ? next.companion.pets[species] : undefined;
+
+    if (species && pet) {
+      setBubble(
+        getPetLine(
+          species,
+          getBondTier(pet.bond),
+          giftApplied ? "friendVisitGift" : "friendVisit"
+        )
+      );
+    }
+  }, [commitState, markCompanionDirty, today]);
 
   useEffect(() => {
     const saved =
@@ -214,7 +368,13 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
       if (!(await hasSupabaseSession()) || cancelled) return;
 
       if (loadSyncOptIn()) {
-        void startSyncEngine().hydrate();
+        // Mailbox gifts land AFTER the sync hydrate (spec §4.2.1) so they are
+        // absorbed into the merged state, never a pre-merge snapshot.
+        void startSyncEngine()
+          .hydrate()
+          .then(() => {
+            if (!cancelled) void deliverGardenMailbox();
+          });
       } else if (shouldAskSyncOptIn(today)) {
         setShowSyncOnboarding(true);
       }
@@ -225,7 +385,7 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
       engineRef.current?.dispose();
       engineRef.current = null;
     };
-  }, [hydrated, startSyncEngine, today]);
+  }, [deliverGardenMailbox, hydrated, startSyncEngine, today]);
 
   /**
    * Spec §2.5 — the user picked how their garden goes to the cloud.
@@ -358,6 +518,11 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
     commitState(next);
     markCompanionDirty();
 
+    // Companion-state hook (spec §4.1): the published summary derives pet
+    // species/stage/bond from the ACTIVE pet — refresh it in the background.
+    // Fire-and-forget: silent failure is fine, it self-heals on next refresh.
+    if (engineRef.current) void refreshMySummary();
+
     if (pet) setBubble(getPetLine(species, getBondTier(pet.bond), "idle"));
   }
 
@@ -474,7 +639,9 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
             {/* Social layer rides on sync (spec §3.3): the card exists ONLY
                 while the engine is enabled — live Supabase session + sync
                 opt-in. Logged out / dev bypass: absent, zero layout change. */}
-            {syncStatus !== "disabled" ? <FriendsCard /> : null}
+            {syncStatus !== "disabled" ? (
+              <FriendsCard onVisitFriend={setVisitingFriendId} />
+            ) : null}
           </div>
           <aside
             aria-label="Weather and Spotify highlights"
@@ -490,6 +657,19 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
 
       {showSyncOnboarding ? (
         <SyncOnboarding onChoose={handleSyncChoice} onDismiss={handleSyncDismiss} />
+      ) : null}
+
+      {visitingFriendId ? (
+        <GardenVisitOverlay
+          hostUserId={visitingFriendId}
+          myFood={viewModel.companion.food}
+          onClose={() => setVisitingFriendId(null)}
+          // The gift RPC already appended the spend event server-side with an
+          // id only the server knows — mirroring locally with a NEW id would
+          // double-spend after union-merge. Re-hydrate instead: the merged
+          // ledger carries the server's spend event (spec §4.2 + §2.3).
+          onGiftSent={() => void engineRef.current?.hydrate()}
+        />
       ) : null}
     </main>
   );
