@@ -1,10 +1,19 @@
 # Phase 2 review findings — bàn giao (2026-07-09)
 
+> **[CẬP NHẬT 2026-07-09 chiều] TOÀN BỘ DEFECT PHÍA SQL ĐÃ VÁ trong working tree** —
+> `supabase/schema.sql` banner Phase 2 giờ là bản đã sửa (projection §4.1 không streak/last_refreshed,
+> milestones server-diff, index gift/cheer đúng spec, `set_sharing_enabled`, opt-out structural,
+> companion advisory lock, pet cap per-(visitor,host), timezone visitor, công thức food chuẩn §2.3,
+> prune chừa row cheer, lỗi typed `already-cheered`/`gift-cap-reached`). **Các defect phía
+> TypeScript CHƯA vá** (overlay voice/vocab/streak-badge, mailbox dedupe, toggle sharing,
+> types/select đang gọi cột đã DROP). Việc còn lại + contract chính xác từng file: `HANDOFF.md` §4b.
+> File này giữ nguyên làm hồ sơ tra cứu reasoning/refined-fix của từng defect.
+
 > Nguồn: workflow `phase2-garden-visits` (run wf_831c5d70-84d, 2026-07-08). Hai lăng kính review
 > (security-RLS + product-invariants) tìm defect, mỗi finding được một agent verify độc lập xác nhận
-> trên code thật. **23 finding CONFIRMED — CHƯA VÁ** (agent vá + agent gates chết vì lỗi hạ tầng 503).
-> Code Phase 2 nằm ở working tree (chưa commit); suite hiện tại vẫn xanh 167/167 vì các defect này
-> là sai-so-với-spec (đa số trong SQL chưa chạy được test), không phải lỗi compile/test.
+> trên code thật. 23 finding CONFIRMED (thời điểm review: chưa vá — agent vá + agent gates chết vì
+> lỗi hạ tầng 503). Code Phase 2 nằm ở working tree (chưa commit); suite hiện tại vẫn xanh 167/167
+> vì các defect này là sai-so-với-spec (đa số trong SQL chưa chạy được test), không phải lỗi compile/test.
 
 ---
 ## Reviewer 1 — 12 findings
