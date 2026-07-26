@@ -166,6 +166,40 @@ alter table public.habits add column if not exists client_updated_at timestamptz
 -- habit_logs: per-cell LWW stamp (§2.4).
 alter table public.habit_logs add column if not exists mutated_at timestamptz not null default now();
 
+-- habit_logs: v3 detail (Amendment 2026-07-27). `done` stays the boolean
+-- truth — the client computes it with isEntryComplete because only the client
+-- knows the tracking rule, and refresh_my_summary (§5.2) / shared_rhythms
+-- (§5.1) read `done` directly. These two columns are additive detail, never a
+-- substitute for it.
+--   value        NULL = written by a pre-v3 client (or under an old schema);
+--                the merge then falls back to "a remote tick keeps whatever
+--                richer value that device already had".
+--   completed_at LOCAL "HH:mm" only. The day already lives in `date`, and
+--                keeping it clock-only sidesteps timezone drift on the wire.
+alter table public.habit_logs add column if not exists value integer;
+alter table public.habit_logs add column if not exists completed_at text;
+
+-- habits: the v3 definition (Amendment 2026-07-27). Until now a habit that
+-- travelled between devices arrived as a v2 shadow and was re-defaulted
+-- locally — the other device never learned it was a 5-step checklist every
+-- Tuesday evening.
+-- paused_at / archived_at are text, not date: the client compares them as
+-- plain ISO labels (`date >= habit.pausedAt`) and never does date arithmetic
+-- server-side, so text keeps a malformed value harmless instead of turning it
+-- into a 22007 permanent-error drop that would silently lose a pause.
+alter table public.habits add column if not exists icon text not null default '';
+alter table public.habits add column if not exists tracking_type text not null default 'check';
+alter table public.habits add column if not exists target numeric(8, 2) not null default 1;
+alter table public.habits add column if not exists unit text;
+alter table public.habits add column if not exists steps jsonb not null default '[]'::jsonb;
+alter table public.habits add column if not exists repeat_days jsonb not null default '[1,2,3,4,5,6,7]'::jsonb;
+alter table public.habits add column if not exists times_of_day jsonb not null default '["anytime"]'::jsonb;
+alter table public.habits add column if not exists scheduled_at text;
+alter table public.habits add column if not exists color text not null default 'clay';
+alter table public.habits add column if not exists motivation text not null default '';
+alter table public.habits add column if not exists paused_at text;
+alter table public.habits add column if not exists archived_at text;
+
 drop trigger if exists companions_set_updated_at on public.companions;
 create trigger companions_set_updated_at
 before update on public.companions
@@ -373,10 +407,20 @@ $$;
 -- mutation and continues (no head-of-line blocking). Everything else retries.
 -- ---------------------------------------------------------------------
 
+-- Signature widened in U1c. `create or replace` with a new argument list would
+-- OVERLOAD the old function rather than replace it, and PostgREST's
+-- named-argument call would then fail with 42725 'function is not unique' —
+-- so the old one is dropped first. Dropping also drops its grants; the new
+-- signature is re-granted in the grants block below.
+drop function if exists public.apply_habit_log(text, date, boolean, timestamptz);
+
 -- Per-cell LWW upsert (spec §2.4): newer mutated_at wins; equal stamps -> tick
 -- (done = true) wins. Stale writes are silently skipped, never overwrite.
+-- p_value / p_completed_at ride along with the cell under the SAME stamp:
+-- there is one LWW decision per cell, not one per column.
 create or replace function public.apply_habit_log(
-  p_habit_key text, p_date date, p_done boolean, p_mutated_at timestamptz)
+  p_habit_key text, p_date date, p_done boolean, p_mutated_at timestamptz,
+  p_value integer default null, p_completed_at text default null)
 returns void
 language plpgsql
 set search_path = public
@@ -398,10 +442,16 @@ begin
   if v_habit.deleted_at is not null then
     raise exception using errcode = 'P0003', message = 'habit-tombstoned';
   end if;
-  insert into public.habit_logs as l (user_id, habit_id, date, done, mutated_at)
-  values (auth.uid(), v_habit.id, p_date, p_done, coalesce(p_mutated_at, now()))
+  insert into public.habit_logs as l
+    (user_id, habit_id, date, done, mutated_at, value, completed_at)
+  values
+    (auth.uid(), v_habit.id, p_date, p_done, coalesce(p_mutated_at, now()),
+     p_value, p_completed_at)
   on conflict (user_id, habit_id, date) do update
-    set done = excluded.done, mutated_at = excluded.mutated_at
+    set done = excluded.done,
+        mutated_at = excluded.mutated_at,
+        value = excluded.value,
+        completed_at = excluded.completed_at
     where l.mutated_at < excluded.mutated_at
        or (l.mutated_at = excluded.mutated_at and excluded.done);
 end;
@@ -412,10 +462,24 @@ $$;
 -- p_expect_create = true marks a client-side CREATE: an existing live row with
 -- a different name is then a slug collision (two devices invented the same
 -- key for different habits) — the client must re-key, never merge silently.
+-- Signature widened in U1c — same overload hazard as apply_habit_log above.
+drop function if exists public.upsert_habit(
+  text, text, text, numeric, boolean, text, integer, timestamptz, boolean);
+
+-- The v3 block (p_icon .. p_archived_at) is written under the same
+-- client_updated_at stamp as the v2 fields: one habit, one LWW decision.
 create or replace function public.upsert_habit(
   p_key text, p_name text, p_category text, p_max_score numeric, p_active boolean,
   p_description text, p_sort_order integer, p_client_ts timestamptz,
-  p_expect_create boolean default false)
+  p_expect_create boolean default false,
+  p_icon text default '', p_tracking_type text default 'check',
+  p_target numeric default 1, p_unit text default null,
+  p_steps jsonb default '[]'::jsonb,
+  p_repeat_days jsonb default '[1,2,3,4,5,6,7]'::jsonb,
+  p_times_of_day jsonb default '["anytime"]'::jsonb,
+  p_scheduled_at text default null, p_color text default 'clay',
+  p_motivation text default '', p_paused_at text default null,
+  p_archived_at text default null)
 returns jsonb
 language plpgsql
 set search_path = public
@@ -434,10 +498,17 @@ begin
   where user_id = auth.uid() and key = p_key;
   if not found then
     insert into public.habits
-      (user_id, key, name, category, max_score, active, description, sort_order, client_updated_at)
+      (user_id, key, name, category, max_score, active, description, sort_order,
+       client_updated_at, icon, tracking_type, target, unit, steps, repeat_days,
+       times_of_day, scheduled_at, color, motivation, paused_at, archived_at)
     values
       (auth.uid(), p_key, p_name, coalesce(p_category, ''), coalesce(p_max_score, 1),
-       coalesce(p_active, true), coalesce(p_description, ''), coalesce(p_sort_order, 0), v_ts);
+       coalesce(p_active, true), coalesce(p_description, ''), coalesce(p_sort_order, 0), v_ts,
+       coalesce(p_icon, ''), coalesce(p_tracking_type, 'check'), coalesce(p_target, 1),
+       p_unit, coalesce(p_steps, '[]'::jsonb),
+       coalesce(p_repeat_days, '[1,2,3,4,5,6,7]'::jsonb),
+       coalesce(p_times_of_day, '["anytime"]'::jsonb), p_scheduled_at,
+       coalesce(p_color, 'clay'), coalesce(p_motivation, ''), p_paused_at, p_archived_at);
     return jsonb_build_object('status', 'inserted');
   end if;
   if p_expect_create and v_row.deleted_at is null and v_row.name <> p_name then
@@ -457,6 +528,18 @@ begin
       active = coalesce(p_active, true),
       description = coalesce(p_description, ''),
       sort_order = coalesce(p_sort_order, 0),
+      icon = coalesce(p_icon, ''),
+      tracking_type = coalesce(p_tracking_type, 'check'),
+      target = coalesce(p_target, 1),
+      unit = p_unit,
+      steps = coalesce(p_steps, '[]'::jsonb),
+      repeat_days = coalesce(p_repeat_days, '[1,2,3,4,5,6,7]'::jsonb),
+      times_of_day = coalesce(p_times_of_day, '["anytime"]'::jsonb),
+      scheduled_at = p_scheduled_at,
+      color = coalesce(p_color, 'clay'),
+      motivation = coalesce(p_motivation, ''),
+      paused_at = p_paused_at,
+      archived_at = p_archived_at,
       client_updated_at = v_ts,
       deleted_at = null -- re-create after tombstone: newer client_ts wins (§2.4)
   where user_id = auth.uid() and key = p_key;
@@ -790,7 +873,19 @@ as $$
         'description', h.description,
         'sortOrder', h.sort_order,
         'clientUpdatedAt', h.client_updated_at,
-        'deletedAt', h.deleted_at) order by h.sort_order)
+        'deletedAt', h.deleted_at,
+        'icon', h.icon,
+        'trackingType', h.tracking_type,
+        'target', h.target,
+        'unit', h.unit,
+        'steps', h.steps,
+        'repeatDays', h.repeat_days,
+        'timesOfDay', h.times_of_day,
+        'scheduledAt', h.scheduled_at,
+        'color', h.color,
+        'motivation', h.motivation,
+        'pausedAt', h.paused_at,
+        'archivedAt', h.archived_at) order by h.sort_order)
       from public.habits h
       where h.user_id = auth.uid()), '[]'::jsonb),
     'logs', coalesce((
@@ -798,7 +893,9 @@ as $$
         'habitKey', h.key,
         'date', l.date,
         'done', l.done,
-        'mutatedAt', l.mutated_at))
+        'mutatedAt', l.mutated_at,
+        'value', l.value,
+        'completedAt', l.completed_at))
       from public.habit_logs l
       join public.habits h on h.id = l.habit_id and h.user_id = l.user_id
       where l.user_id = auth.uid()), '[]'::jsonb),
@@ -818,10 +915,13 @@ grant execute on function public.merge_companion_state(jsonb) to authenticated;
 -- NOTE: revoking from anon alone is a no-op — functions get EXECUTE granted
 -- to PUBLIC by default and anon inherits it, so every revoke below must name
 -- `public, anon` (matching reset_companion/merge_companion_state above).
-revoke execute on function public.apply_habit_log(text, date, boolean, timestamptz) from public, anon;
-grant execute on function public.apply_habit_log(text, date, boolean, timestamptz) to authenticated;
-revoke execute on function public.upsert_habit(text, text, text, numeric, boolean, text, integer, timestamptz, boolean) from public, anon;
-grant execute on function public.upsert_habit(text, text, text, numeric, boolean, text, integer, timestamptz, boolean) to authenticated;
+-- U1c widened these two signatures; the old ones were dropped above, which
+-- also dropped their grants. A function is EXECUTE-granted to PUBLIC by
+-- default, so forgetting to re-grant here leaves the new one open to anon.
+revoke execute on function public.apply_habit_log(text, date, boolean, timestamptz, integer, text) from public, anon;
+grant execute on function public.apply_habit_log(text, date, boolean, timestamptz, integer, text) to authenticated;
+revoke execute on function public.upsert_habit(text, text, text, numeric, boolean, text, integer, timestamptz, boolean, text, text, numeric, text, jsonb, jsonb, jsonb, text, text, text, text, text) from public, anon;
+grant execute on function public.upsert_habit(text, text, text, numeric, boolean, text, integer, timestamptz, boolean, text, text, numeric, text, jsonb, jsonb, jsonb, text, text, text, text, text) to authenticated;
 revoke execute on function public.delete_habit(text, timestamptz) from public, anon;
 grant execute on function public.delete_habit(text, timestamptz) to authenticated;
 revoke execute on function public.get_sync_snapshot() from public, anon;
