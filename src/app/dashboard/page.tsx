@@ -8,10 +8,19 @@ import { createClient } from "@/lib/supabase/server";
 export default async function DashboardPage() {
   const devAuthBypassEnabled = isDevAuthBypassEnabled();
   const supabase = await createClient();
-  const {
-    data: { user },
-    error
-  } = await supabase.auth.getUser();
+  let user = null;
+  let error = null;
+
+  // Supabase unreachable must degrade to "no session", never a crashed page —
+  // the dashboard itself runs from localStorage.
+  try {
+    ({
+      data: { user },
+      error
+    } = await supabase.auth.getUser());
+  } catch {
+    user = null;
+  }
 
   if (error || !user) {
     if (devAuthBypassEnabled) {

@@ -30,7 +30,13 @@ export async function middleware(request: NextRequest) {
     }
   });
 
-  await supabase.auth.getUser();
+  try {
+    await supabase.auth.getUser();
+  } catch {
+    // Supabase unreachable (network down / project paused or deleted) must
+    // never take the whole app down — the middleware's only job is refreshing
+    // session cookies. Page-level auth decides what to do without a session.
+  }
 
   return response;
 }

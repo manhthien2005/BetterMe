@@ -8,9 +8,16 @@ import { createClient } from "@/lib/supabase/server";
 export default async function LoginPage() {
   const devAuthBypassEnabled = isDevAuthBypassEnabled();
   const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  let user = null;
+
+  // Supabase unreachable → treat as signed out and render the form anyway.
+  try {
+    ({
+      data: { user }
+    } = await supabase.auth.getUser());
+  } catch {
+    user = null;
+  }
 
   if (user) {
     redirect("/dashboard");
