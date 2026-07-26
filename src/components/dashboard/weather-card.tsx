@@ -1,23 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CloudRain, Droplets, LocateFixed, MapPin, Pencil, Sun, Wind } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-import {
-  fetchWeather,
-  searchPlace,
-  type WeatherSnapshot
-} from "@/components/dashboard/weather-data";
-import {
-  DEFAULT_WEATHER_PLACE,
-  loadWidgetSettings,
-  saveWidgetSettings,
-  type WeatherPlace
-} from "@/components/dashboard/widget-settings";
+import { searchPlace, type WeatherSnapshot } from "@/components/dashboard/weather-data";
+import { useAppState } from "@/components/app/state-provider";
+import type { WeatherPlace } from "@/components/dashboard/widget-settings";
 import { cn } from "@/lib/utils";
-
-type WeatherStatus = "loading" | "ready" | "error";
 
 type WeatherMetric = {
   key: string;
@@ -77,42 +67,18 @@ const WEATHER_METRICS: WeatherMetric[] = [
  * real text for accessibility, and the icon tiles keep their ambient motion.
  */
 export function WeatherCard() {
-  const [place, setPlace] = useState<WeatherPlace>(DEFAULT_WEATHER_PLACE);
-  const [snapshot, setSnapshot] = useState<WeatherSnapshot | null>(null);
-  const [status, setStatus] = useState<WeatherStatus>("loading");
+  // The reading itself belongs to StateProvider — one fetch for the whole app,
+  // so this card and the hero's date line can never show two temperatures.
+  // What stays here is UI state: whether the place picker is open, and what
+  // the user has typed into it.
+  const { refreshWeather, setWeatherPlace, weather } = useAppState();
+  const { place, snapshot, status } = weather;
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState("");
   const [editNote, setEditNote] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  useEffect(() => {
-    const stored = loadWidgetSettings().weather;
-
-    if (stored) setPlace(stored);
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    setStatus("loading");
-
-    fetchWeather(place, controller.signal)
-      .then((result) => {
-        if (controller.signal.aborted) return;
-
-        setSnapshot(result);
-        setStatus(result ? "ready" : "error");
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setStatus("error");
-      });
-
-    return () => controller.abort();
-  }, [place, refreshKey]);
 
   function pickPlace(next: WeatherPlace) {
-    setPlace(next);
-    saveWidgetSettings({ ...loadWidgetSettings(), weather: next });
+    setWeatherPlace(next);
     setEditing(false);
     setEditNote(null);
     setQuery("");
@@ -244,7 +210,7 @@ export function WeatherCard() {
                 Mạng đang nghỉ ngơi một chút.{" "}
                 <button
                   className="font-bold text-matcha-deep underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep"
-                  onClick={() => setRefreshKey((key) => key + 1)}
+                  onClick={refreshWeather}
                   type="button"
                 >
                   Thử lại nhé
