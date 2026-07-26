@@ -4,27 +4,19 @@ import { CheckCircle2, Flower2, Sprout } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { CelebrationOverlay } from "@/components/dashboard/celebration-overlay";
-import { CompanionPanel, type CompanionHandlers } from "@/components/dashboard/companion-panel";
 import { STATUS_LABELS, type DashboardViewModel } from "@/components/dashboard/dashboard-data";
 import { cn, formatPercent } from "@/lib/utils";
 
 /**
- * The hero — the dashboard's emotional hook (ui-system.md). A two-zone banner:
- * the greeting, motivation, quick stats, and 7-day chain on one side; the
- * companion on the other. When every habit is done, gentle fireworks bloom
- * across the whole banner via the CelebrationOverlay.
+ * The hero — the Hôm nay space's emotional hook: the greeting, motivation,
+ * quick stats and the 7-day chain. The companion used to sit alongside; from
+ * U0 it has its own space at /nep (spec §3). When every habit is done, gentle
+ * fireworks bloom across the whole banner via the CelebrationOverlay.
  */
 export function HeroBanner({
-  bubble,
   celebrate,
-  eating,
-  onAdopt,
-  onFeed,
-  onOpenGift,
-  onPet,
-  onSwitch,
   viewModel
-}: CompanionHandlers & {
+}: {
   celebrate: boolean;
   viewModel: DashboardViewModel;
 }) {
@@ -40,7 +32,7 @@ export function HeroBanner({
         <div className="absolute -right-12 -top-16 h-52 w-52 rounded-full bg-sakura/20 blur-3xl" />
       </div>
 
-      <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className="relative z-10 flex flex-col gap-6">
         <div className="max-w-xl">
           <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-matcha-deep">
             <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-matcha-deep" />
@@ -92,20 +84,6 @@ export function HeroBanner({
             </div>
             <p className="text-sm font-bold text-mauve">{viewModel.streak.protectionMessage}</p>
           </div>
-        </div>
-
-        <div className="flex justify-center lg:pr-2">
-          <CompanionPanel
-            bubble={bubble}
-            celebrate={celebrate}
-            eating={eating}
-            onAdopt={onAdopt}
-            onFeed={onFeed}
-            onOpenGift={onOpenGift}
-            onPet={onPet}
-            onSwitch={onSwitch}
-            viewModel={viewModel}
-          />
         </div>
       </div>
 

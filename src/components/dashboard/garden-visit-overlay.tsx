@@ -311,7 +311,7 @@ export function GardenVisitOverlay({
                     disabled={busy}
                     onClick={() => void handlePet()}
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                   >
                     Vuốt ve 💗
                   </Button>

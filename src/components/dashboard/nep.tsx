@@ -248,7 +248,7 @@ export function Nep({
           {stage === "asleep" ? (
             <g
               fill={MAUVE}
-              fontFamily="var(--font-display), 'Baloo 2', sans-serif"
+              fontFamily="var(--font-display), 'Bricolage Grotesque', sans-serif"
               fontWeight="700"
             >
               <text className="nep-zzz" fontSize="11" x="102" y="48">

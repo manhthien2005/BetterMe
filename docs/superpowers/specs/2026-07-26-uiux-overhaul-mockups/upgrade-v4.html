@@ -1,0 +1,239 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  .v4 { font-family:'Be Vietnam Pro',sans-serif; color:#1C1917; text-align:left; }
+  .v4 * { box-sizing:border-box; }
+  .v4-card { background:#fff; border:1px solid #F0EADC; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.06); }
+  .v4-row { display:flex; align-items:center; gap:12px; }
+  .v4-ico { width:38px; height:38px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:19px; flex-shrink:0; }
+  .v4-check { width:28px; height:28px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:15px; }
+  .v4-chip { display:inline-flex; align-items:center; gap:4px; border-radius:99px; padding:3px 10px; font-size:11px; font-weight:600; }
+  .v4-cell { width:26px; height:26px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-size:12px; }
+  .v4-day { font-size:10px; color:#A8A29E; font-weight:600; width:26px; text-align:center; }
+</style>
+
+<div class="v4">
+<h2>Bản v4 — hero mới, icon riêng, ngày/tuần, habit chia nhỏ</h2>
+<p class="subtitle">Cuộn xuống xem 4 phần: ① Hero nâng cấp · ② Hai chế độ xem · ③ Habit tùy biến sâu · ④ Những bất ngờ thêm vào. Bấm chọn ở cuối trang.</p>
+
+<!-- ① HERO -->
+<div class="label" style="margin-top:22px;">① Hero banner nâng cấp — "bầu trời buổi sáng"</div>
+<div class="v4-card" style="margin-top:8px; background:linear-gradient(115deg,#FFF6E0 0%,#FFE9C2 55%,#FFDFA8 100%); border-color:#F5D9A0; position:relative; padding:24px 28px;">
+  <div style="position:absolute; top:14px; right:120px; font-size:20px; opacity:.7;">☁️</div>
+  <div style="position:absolute; top:34px; right:56px; font-size:26px; opacity:.85;">🌤️</div>
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap;">
+    <div style="min-width:250px;">
+      <div style="font-size:12px; color:#A16207; font-weight:600;">Thứ Hai, 27 tháng 7 · ⛅ 31° mưa chiều nhẹ</div>
+      <div style="font-family:'Bricolage Grotesque',sans-serif; font-size:26px; font-weight:800; margin-top:4px; letter-spacing:-.01em;">Chào buổi sáng, Thiện 👋</div>
+      <div style="margin-top:10px; display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,.75); border-radius:12px; padding:7px 12px; font-size:12.5px; color:#57534E;">
+        <span style="font-size:17px;">🐌</span> “Hôm nay trời đẹp để đọc sách đó anh Thiện ơi.”
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:22px;">
+      <div style="text-align:center;">
+        <div style="font-family:'Bricolage Grotesque',sans-serif; font-size:38px; font-weight:800; color:#B45309; line-height:1;">🔥 26</div>
+        <div style="font-size:10.5px; color:#A16207; font-weight:600; margin-top:3px;">ngày liền nhịp · kỷ lục 26 ✦</div>
+        <div style="margin-top:8px; display:flex; gap:5px; justify-content:center;">
+          <span title="T2" style="width:14px;height:14px;border-radius:50%;background:#16A34A;"></span>
+          <span style="width:14px;height:14px;border-radius:50%;background:#16A34A;"></span>
+          <span style="width:14px;height:14px;border-radius:50%;background:#16A34A;"></span>
+          <span style="width:14px;height:14px;border-radius:50%;background:#F59E0B; box-shadow:0 0 0 3px rgba(245,158,11,.25);"></span>
+          <span style="width:14px;height:14px;border-radius:50%;background:#EDE4D3;"></span>
+          <span style="width:14px;height:14px;border-radius:50%;background:#EDE4D3;"></span>
+          <span style="width:14px;height:14px;border-radius:50%;background:#EDE4D3;"></span>
+        </div>
+        <div style="font-size:9.5px; color:#B9A075; margin-top:4px;">T2 · T3 · T4 · <b style="color:#B45309;">HÔM NAY</b> · T6 · T7 · CN</div>
+      </div>
+      <div style="width:74px; height:74px; border-radius:50%; background:conic-gradient(#16A34A 0 50%, rgba(146,64,14,.12) 50% 100%); display:flex; align-items:center; justify-content:center;">
+        <div style="width:56px; height:56px; border-radius:50%; background:#FFF9EC; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+          <span style="font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:15px;">2/4</span>
+          <span style="font-size:8.5px; color:#A16207; font-weight:600;">hôm nay</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="subtitle" style="font-size:12.5px; margin-top:6px;">Nền gradient đổi theo buổi (sáng vàng mật → chiều cam đào → tối tím than có sao). Thời tiết nhét gọn vào dòng ngày. Nếp nói một câu mới mỗi ngày. Chuỗi 7 chấm T2→CN + vòng tiến độ hôm nay.</p>
+
+<!-- ② DAY / WEEK -->
+<div class="label" style="margin-top:26px;">② Hai chế độ xem — bấm tab chuyển "Hôm nay" ↔ "Tuần này"</div>
+<div class="split" style="margin-top:8px;">
+
+  <!-- Day view -->
+  <div class="mockup">
+    <div class="mockup-header">Xem theo ngày (kèm icon + chia nhỏ việc)</div>
+    <div class="mockup-body" style="background:#FEFBF3; padding:16px;">
+      <div style="display:inline-flex; background:#F0EADC; border-radius:11px; padding:3px; margin-bottom:12px;">
+        <span style="background:#fff; border-radius:8px; padding:5px 16px; font-size:12px; font-weight:700; box-shadow:0 1px 3px rgba(0,0,0,.08);">Hôm nay</span>
+        <span style="padding:5px 16px; font-size:12px; font-weight:600; color:#A8A29E;">Tuần này</span>
+      </div>
+
+      <div style="font-size:10.5px; letter-spacing:.08em; color:#B9A075; font-weight:700; margin:4px 0 6px;">☀️ BUỔI SÁNG</div>
+
+      <div class="v4-row" style="padding:11px 12px; background:#F2FBF3; border:1px solid #CDEDD2; border-radius:13px; margin-bottom:7px;">
+        <span class="v4-ico" style="background:#DBEAFE;">💧</span>
+        <div style="flex:1;">
+          <div style="font-size:13.5px; font-weight:600; color:#6BA379;">Uống đủ nước</div>
+          <div style="font-size:11px; color:#3B82F6; font-weight:600;">6/8 ly · còn 2 ly nữa</div>
+        </div>
+        <span class="v4-chip" style="background:#fff; color:#3B82F6; border:1px solid #BFDBFE;">＋ 1 ly</span>
+        <span class="v4-check" style="background:conic-gradient(#16A34A 0 75%, #D6E8D9 75% 100%); border-radius:50%;"><span style="width:20px;height:20px;border-radius:50%;background:#F2FBF3;display:flex;align-items:center;justify-content:center;font-size:10px;color:#16A34A;font-weight:700;">75%</span></span>
+      </div>
+
+      <div style="padding:11px 12px; background:#fff; border:1.5px solid #E7E0D2; border-radius:13px; margin-bottom:7px;">
+        <div class="v4-row">
+          <span class="v4-ico" style="background:#FFEDD5;">🏃</span>
+          <div style="flex:1;">
+            <div style="font-size:13.5px; font-weight:600;">Chạy bộ 20 phút</div>
+            <div style="font-size:11px; color:#A8A29E;">2/3 bước · 🔥 12 ngày</div>
+          </div>
+          <span class="v4-check" style="background:conic-gradient(#16A34A 0 66%, #EDE7DA 66% 100%); border-radius:50%;"><span style="width:20px;height:20px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;">▾</span></span>
+        </div>
+        <div style="margin:8px 0 0 50px; border-left:2px solid #EDE7DA; padding-left:12px;">
+          <div class="v4-row" style="gap:8px; padding:4px 0;"><span style="width:16px;height:16px;border-radius:5px;background:#16A34A;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;">✓</span><span style="font-size:12px; color:#A8A29E; text-decoration:line-through;">Khởi động giãn cơ</span></div>
+          <div class="v4-row" style="gap:8px; padding:4px 0;"><span style="width:16px;height:16px;border-radius:5px;background:#16A34A;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;">✓</span><span style="font-size:12px; color:#A8A29E; text-decoration:line-through;">Chạy 20 phút</span></div>
+          <div class="v4-row" style="gap:8px; padding:4px 0;"><span style="width:16px;height:16px;border-radius:5px;border:1.5px solid #D6CDBB;"></span><span style="font-size:12px; font-weight:600;">Thả lỏng + ghi thời gian</span></div>
+        </div>
+      </div>
+
+      <div style="font-size:10.5px; letter-spacing:.08em; color:#B9A075; font-weight:700; margin:10px 0 6px;">🌙 BUỔI TỐI</div>
+
+      <div class="v4-row" style="padding:11px 12px; background:#fff; border:1.5px solid #E7E0D2; border-radius:13px; margin-bottom:7px;">
+        <span class="v4-ico" style="background:#FEF3C7;">📖</span>
+        <div style="flex:1;">
+          <div style="font-size:13.5px; font-weight:600;">Đọc 10 trang sách</div>
+          <div style="font-size:11px; color:#A8A29E;">🔥 8 ngày · thường lúc 21:00</div>
+        </div>
+        <span class="v4-check" style="border:2px solid #D6CDBB;"></span>
+      </div>
+      <div class="v4-row" style="padding:11px 12px; background:#fff; border:1.5px solid #E7E0D2; border-radius:13px;">
+        <span class="v4-ico" style="background:#EDE9FE;">✍️</span>
+        <div style="flex:1;">
+          <div style="font-size:13.5px; font-weight:600;">Viết nhật ký tối</div>
+          <div style="font-size:11px; color:#A8A29E;">🔥 26 ngày · dài nhất của anh</div>
+        </div>
+        <span class="v4-check" style="border:2px solid #D6CDBB;"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Week view -->
+  <div class="mockup">
+    <div class="mockup-header">Xem theo tuần (T2 → CN)</div>
+    <div class="mockup-body" style="background:#FEFBF3; padding:16px;">
+      <div style="display:inline-flex; background:#F0EADC; border-radius:11px; padding:3px; margin-bottom:12px;">
+        <span style="padding:5px 16px; font-size:12px; font-weight:600; color:#A8A29E;">Hôm nay</span>
+        <span style="background:#fff; border-radius:8px; padding:5px 16px; font-size:12px; font-weight:700; box-shadow:0 1px 3px rgba(0,0,0,.08);">Tuần này</span>
+      </div>
+
+      <div style="display:flex; gap:6px; margin:0 0 6px 118px;">
+        <span class="v4-day">T2</span><span class="v4-day">T3</span><span class="v4-day">T4</span><span class="v4-day" style="color:#B45309; font-weight:800;">T5</span><span class="v4-day">T6</span><span class="v4-day">T7</span><span class="v4-day">CN</span>
+      </div>
+
+      <div class="v4-row" style="padding:8px 0; border-bottom:1px dashed #EDE7DA;">
+        <span style="font-size:15px; width:24px;">💧</span><span style="font-size:12px; font-weight:600; width:88px;">Uống nước</span>
+        <div style="display:flex; gap:6px;">
+          <span class="v4-cell" style="background:#16A34A; color:#fff;">✓</span><span class="v4-cell" style="background:#16A34A; color:#fff;">✓</span><span class="v4-cell" style="background:#86D89A; color:#fff;">◕</span><span class="v4-cell" style="background:#FFF; border:2px solid #F59E0B; color:#B45309; font-weight:700;">◔</span><span class="v4-cell" style="background:#F3EEE3;"></span><span class="v4-cell" style="background:#F3EEE3;"></span><span class="v4-cell" style="background:#F3EEE3;"></span>
+        </div>
+        <span style="margin-left:auto; font-size:11px; font-weight:700; color:#B45309;">🔥 18</span>
+      </div>
+      <div class="v4-row" style="padding:8px 0; border-bottom:1px dashed #EDE7DA;">
+        <span style="font-size:15px; width:24px;">🏃</span><span style="font-size:12px; font-weight:600; width:88px;">Chạy bộ</span>
+        <div style="display:flex; gap:6px;">
+          <span class="v4-cell" style="background:#16A34A; color:#fff;">✓</span><span class="v4-cell" style="background:#F3EEE3;"></span><span class="v4-cell" style="background:#16A34A; color:#fff;">✓</span><span class="v4-cell" style="background:#FFF; border:2px solid #F59E0B; color:#B45309;">◑</span><span class="v4-cell" style="background:#F3EEE3;"></span><span class="v4-cell" style="background:#FBF8F1; color:#D6CDBB;">·</span><span class="v4-cell" style="background:#FBF8F1; color:#D6CDBB;">·</span>
+        </div>
+        <span style="margin-left:auto; font-size:11px; font-weight:700; color:#B45309;">🔥 12</span>
+      </div>
+      <div class="v4-row" style="padding:8px 0; border-bottom:1px dashed #EDE7DA;">
+        <span style="font-size:15px; width:24px;">📖</span><span style="font-size:12px; font-weight:600; width:88px;">Đọc sách</span>
+        <div style="display:flex; gap:6px;">
+          <span class="v4-cell" style="background:#16A34A; color:#fff;">✓</span><span class="v4-cell" style="background:#16A34A; color:#fff;">✓</span><span class="v4-cell" style="background:#16A34A; color:#fff;">✓</span><span class="v4-cell" style="background:#FFF; border:2px solid #F59E0B;"></span><span class="v4-cell" style="background:#F3EEE3;"></span><span class="v4-cell" style="background:#F3EEE3;"></span><span class="v4-cell" style="background:#F3EEE3;"></span>
+        </div>
+        <span style="margin-left:auto; font-size:11px; font-weight:700; color:#B45309;">🔥 8</span>
+      </div>
+      <div class="v4-row" style="padding:8px 0;">
+        <span style="font-size:15px; width:24px;">✍️</span><span style="font-size:12px; font-weight:600; width:88px;">Nhật ký</span>
+        <div style="display:flex; gap:6px;">
+          <span class="v4-cell" style="background:#16A34A; color:#fff;">✓</span><span class="v4-cell" style="background:#16A34A; color:#fff;">✓</span><span class="v4-cell" style="background:#16A34A; color:#fff;">✓</span><span class="v4-cell" style="background:#FFF; border:2px solid #F59E0B;"></span><span class="v4-cell" style="background:#F3EEE3;"></span><span class="v4-cell" style="background:#F3EEE3;"></span><span class="v4-cell" style="background:#F3EEE3;"></span>
+        </div>
+        <span style="margin-left:auto; font-size:11px; font-weight:700; color:#B45309;">🔥 26</span>
+      </div>
+
+      <div style="margin-top:12px; padding:10px 14px; background:#FFF; border:1px solid #F0EADC; border-radius:12px; font-size:12px; color:#57534E; display:flex; justify-content:space-between;">
+        <span>Tuần này: <b>11/13 lượt</b> — hơn tuần trước +3 🎉</span>
+        <span style="color:#B45309; font-weight:700;">Xem tháng ▸</span>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="subtitle" style="font-size:12.5px; margin-top:6px;">Ô tuần thể hiện mức hoàn thành (✓ đủ, ◕ gần đủ với habit đếm, ô viền cam = hôm nay, mờ = ngày chưa tới). Cột cuối: streak riêng của từng habit.</p>
+
+<!-- ③ CUSTOM HABIT -->
+<div class="label" style="margin-top:26px;">③ Tạo / sửa habit — tùy biến sâu</div>
+<div class="v4-card" style="margin-top:8px; max-width:520px; padding:20px 22px;">
+  <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:16px;">Thói quen mới</div>
+  <div class="v4-row" style="margin-top:14px;">
+    <span class="v4-ico" style="background:#DBEAFE; width:46px; height:46px; font-size:23px; border:2px dashed #93C5FD;">💧</span>
+    <div style="flex:1; border:1.5px solid #E7E0D2; border-radius:11px; padding:10px 14px; font-size:14px; color:#A8A29E;">Uống đủ nước mỗi ngày…</div>
+  </div>
+  <div style="font-size:11px; color:#B9A075; font-weight:700; margin:14px 0 6px;">KIỂU THEO DÕI</div>
+  <div style="display:flex; gap:6px; flex-wrap:wrap;">
+    <span class="v4-chip" style="background:#FEF0D3; color:#92400E; border:1px solid #F5D9A0;">✓ Đánh dấu</span>
+    <span class="v4-chip" style="background:#fff; color:#78716C; border:1px solid #E7E0D2; font-weight:800;">123 Đếm số lượng ✓</span>
+    <span class="v4-chip" style="background:#fff; color:#78716C; border:1px solid #E7E0D2;">⏱ Thời lượng</span>
+    <span class="v4-chip" style="background:#fff; color:#78716C; border:1px solid #E7E0D2;">☰ Checklist nhỏ</span>
+  </div>
+  <div style="display:flex; gap:18px; margin-top:14px; flex-wrap:wrap;">
+    <div>
+      <div style="font-size:11px; color:#B9A075; font-weight:700; margin-bottom:6px;">MỤC TIÊU</div>
+      <span class="v4-chip" style="background:#fff; border:1.5px solid #E7E0D2; font-size:13px; padding:6px 14px;">8 ly / ngày</span>
+    </div>
+    <div>
+      <div style="font-size:11px; color:#B9A075; font-weight:700; margin-bottom:6px;">BUỔI NHẮC</div>
+      <span class="v4-chip" style="background:#FEF0D3; color:#92400E;">☀️ Sáng</span>
+      <span class="v4-chip" style="background:#fff; color:#78716C; border:1px solid #E7E0D2;">🌤 Chiều</span>
+      <span class="v4-chip" style="background:#FEF0D3; color:#92400E;">🌙 Tối</span>
+    </div>
+  </div>
+  <div style="margin-top:14px;">
+    <div style="font-size:11px; color:#B9A075; font-weight:700; margin-bottom:6px;">LẶP VÀO THỨ</div>
+    <div style="display:flex; gap:5px;">
+      <span class="v4-cell" style="background:#B45309; color:#fff; font-weight:700;">T2</span><span class="v4-cell" style="background:#B45309; color:#fff; font-weight:700;">T3</span><span class="v4-cell" style="background:#B45309; color:#fff; font-weight:700;">T4</span><span class="v4-cell" style="background:#B45309; color:#fff; font-weight:700;">T5</span><span class="v4-cell" style="background:#B45309; color:#fff; font-weight:700;">T6</span><span class="v4-cell" style="background:#F3EEE3; color:#A8A29E;">T7</span><span class="v4-cell" style="background:#F3EEE3; color:#A8A29E;">CN</span>
+    </div>
+    <div style="font-size:11px; color:#78716C; margin-top:6px;">→ T7 &amp; CN nghỉ có chủ đích: <b>không tính lỡ nhịp</b>, chuỗi vẫn giữ 🍃</div>
+  </div>
+</div>
+
+<!-- ④ SURPRISES -->
+<div class="label" style="margin-top:26px;">④ Bất ngờ em muốn thêm (chọn được nhiều)</div>
+<div class="options" data-multiselect style="margin-top:8px;">
+  <div class="option" data-choice="s1-la-chan" onclick="toggleSelect(this)">
+    <div class="letter">🍃</div>
+    <div class="content"><h3>Lá chắn của Nếp</h3><p>Tích 🌾 đủ thì đổi 1 "lá chắn": hôm nào lỡ bận thật sự, chuỗi không đứt — Nếp che cho. Nghỉ ngơi có kế hoạch cũng là kỷ luật (đúng tinh thần no-guilt).</p></div>
+  </div>
+  <div class="option" data-choice="s2-thu-vien-nhip" onclick="toggleSelect(this)">
+    <div class="letter">📔</div>
+    <div class="content"><h3>Cuốn album của Nếp</h3><p>Mỗi mốc (7-30-100 ngày, habit mới, lần đầu đủ 100% tuần) thành 1 trang album có hình Nếp + con số kỷ niệm — nhìn lại hành trình như lật album ảnh.</p></div>
+  </div>
+  <div class="option" data-choice="s3-gio-vang" onclick="toggleSelect(this)">
+    <div class="letter">✨</div>
+    <div class="content"><h3>Giờ vàng cá nhân</h3><p>App tự nhận ra anh hay hoàn thành lúc nào ("21h là giờ đọc sách vàng của anh") và gợi ý xếp habit mới vào khung giờ thành công nhất.</p></div>
+  </div>
+  <div class="option" data-choice="s4-tuong-thuat" onclick="toggleSelect(this)">
+    <div class="letter">📊</div>
+    <div class="content"><h3>Tổng kết tuần kể chuyện</h3><p>Tối CN, Nếp "viết" 1 bản tin nhỏ: tuần này mạnh nhất thứ mấy, habit nào lên nhịp, kèm 1 gợi ý duy nhất cho tuần sau — thay vì bảng số khô khan.</p></div>
+  </div>
+</div>
+
+<div class="options" style="margin-top:18px;">
+  <div class="option" data-choice="v4-ok" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content"><h3>Chốt v4 + các bất ngờ đã tick</h3><p>Đủ rồi — tổng hợp thành thiết kế hoàn chỉnh để anh duyệt lần cuối.</p></div>
+  </div>
+  <div class="option" data-choice="v4-adjust" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content"><h3>Chỉnh tiếp vài chỗ</h3><p>Nói em ở terminal: phần nào (hero / ngày / tuần / custom habit) cần đổi gì.</p></div>
+  </div>
+</div>
+</div>

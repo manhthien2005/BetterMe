@@ -1,7 +1,7 @@
 # HANDOFF — Nếp's Garden / Vườn Có Bạn
 
-> **Ngày cập nhật:** 2026-07-26 · **Trạng thái tree:** sạch, 4 gates xanh (**221/221 test, 21 file**)
-> **Nhánh:** `main` · File này là điểm vào duy nhất cho người nhận bàn giao.
+> **Ngày cập nhật:** 2026-07-27 · **Trạng thái tree:** sạch, 4 gates xanh (**304/304 test, 36 file**)
+> **Nhánh:** `u0-shell-and-tokens` (chưa merge vào `main`) · File này là điểm vào duy nhất cho người nhận bàn giao.
 > Quy ước cho agent: đọc `AGENTS.md`. Spec hành vi: `docs/superpowers/specs/`.
 
 ---
@@ -25,6 +25,8 @@ App: **Nếp's Garden** — habit tracker tiếng Việt, cozy, có pet nuôi đ
 
 | Commit | Nội dung |
 |---|---|
+| `u0-shell-and-tokens` (8 commit, chưa merge) | **U0 đại tu UI**: design token + gate tương phản AA, font Bricolage/Be Vietnam Pro, bộ `ui/` (Button 3 cấp, Card, Chip, Icon, NavRail, BottomTabBar), `StateProvider`, 4 route trong group `(app)`, badge tin mới. Kèm `fix`: `.font-display` trước nay vô hiệu vì fallback `Baloo 2` không phải ident CSS hợp lệ — mọi tiêu đề đang rơi về font body |
+| `b3a372e` | **Spec đại tu UI/UX**: 4 không gian, habit model v3, luật streak + 🍃 lá chắn, Nếp & 4 tính năng mới, lộ trình U0→U4 + 5 mockup đã duyệt |
 | `bc2ea68` | **Agent instruction layer**: `AGENTS.md` + `.kiro/` (steering, skills: verification / schema conventions / sync-engine / pet-voice / ui-styling / ui-ux-pro-max). `.gitignore` chặn `__pycache__`, giữ `.kiro/settings/mcp.json` (token) ngoài git |
 | `3987a31` | **Refactor dashboard**: tách `dashboard-client.tsx` (~600 dòng gọn lại) thành `HeroBanner`/`CompanionPanel`/`CelebrationOverlay`/`WeatherCard`/`AnalyticsPanel`/`ProfileMenu`/`SiteFooter`, mỗi cái có test riêng (167 → 221 test); email tài khoản chuyển vào ProfileMenu dropdown (trang hồ sơ/cài đặt còn là toast placeholder) |
 | `0e631f6` | **Auth email+password + OTP signup**: `auth-actions.ts` (4 server action, không throw), login form 3 mode (login/signup/verify) với copy VN cozy + anti-enumeration; `docs/auth-email-config.md` ghi config GoTrue tái lập được (template OTP-only `{{ .Token }}`, invariant `mailer_otp_length=6` ≤ độ dài input, custom SMTP). Root cause đã fix: OTP 8 số bị form cắt còn 6 → mọi verify fail `otp_expired` |
@@ -63,7 +65,26 @@ pnpm dev         # next dev
 ## 4. Việc tiếp theo (theo thứ tự ưu tiên)
 
 ### A. Đại tu giao diện (ĐANG LÀM — chỉ đạo owner 2026-07-26)
-UI hiện tại "khá chán", chưa có yếu tố giữ chân người theo dõi. Cách làm: **phân tích cùng owner trước, chốt hướng rồi mới code** — không tự ý redesign một mạch. Gợi ý phạm vi phân tích: hero/first-impression, vòng lặp quay-lại-mỗi-ngày (pet + streak + social có đang được "bán" đủ không), các widget tĩnh chiếm chỗ (WeatherCard đang là dữ liệu cứng Bangkok, Spotify iframe), tính khám phá của social layer. Tôn trọng 2 invariant §1 và design system hiện có (rice-paper/matcha/sakura tokens trong `tailwind.config.ts`, font Baloo 2 + Nunito). Skill hỗ trợ: `.kiro/skills/ui-styling`, `.kiro/skills/ui-ux-pro-max`, `frontend-design`.
+
+**Spec đã duyệt:** `docs/superpowers/specs/2026-07-26-uiux-overhaul-design.md` (11 mục, 5 mockup kèm theo trong `2026-07-26-uiux-overhaul-mockups/`). Lộ trình 5 bước U0→U4 ở §10.
+
+**U0 — XONG** (nhánh `u0-shell-and-tokens`, 8 commit, 304 test xanh). Plan: `docs/superpowers/plans/2026-07-26-u0-shell-and-tokens.md`. Nội dung:
+
+- **Design token ngữ nghĩa** trong `globals.css` `:root`, map sang Tailwind bằng `var(--token)`; `src/app/design-tokens.test.ts` gác cả sự hiện diện lẫn tương phản AA. Palette v2 (rice/matcha/sakura) vẫn còn nguyên trong config, gỡ dần ở U1–U4.
+- **Font mới**: Bricolage Grotesque (display) + Be Vietnam Pro (body), subset `vietnamese`, nạp qua `next/font/google`.
+- **Bộ `ui/`**: Button 3 cấp (primary/secondary/ghost), Card, Chip, Icon, NavRail, BottomTabBar.
+- **4 không gian**: `/dashboard` (Hôm nay) · `/calendar` (Lịch & nhịp) · `/nep` (Nhà của Nếp) · `/friends` (Bạn vườn), nằm trong route group `(app)` với một cổng auth duy nhất ở `(app)/layout.tsx`.
+- **StateProvider**: toàn bộ state/effects/sync engine rời `dashboard-client.tsx` (đã xoá) lên `src/components/app/state-provider.tsx`; 4 page đọc qua `useAppState()`.
+- **Nhà mới của từng panel cũ**: hero + habit list + weather/spotify → `/dashboard`; lịch tháng + sự kiện + analytics → `/calendar`; CompanionPanel → `/nep`; FriendsCard + Hội chợ → `/friends`; mọi overlay + ProfileMenu + footer → `AppShell`.
+
+**3 quyết định trong lúc lập plan (owner lật lại được bằng 1 câu):**
+1. Icon nav dùng **line-icon Lucide**, không phải emoji như mockup — theo spec §2.4 ("line-icon = mọi hành động UI: nav…"). Wordmark vẫn giữ 🌾.
+2. Tách `--success` (nền/hình, 3.2:1) khỏi `--success-ink` (chữ, 4.75:1) vì `#16A34A` làm chữ trượt AA. Không có token "chữ mờ": `#A8A29E` chỉ 2.5:1.
+3. `TabSwitch` + `ProgressRing` **hoãn sang U2** — U0 không có màn nào dùng.
+
+**Hệ quả có chủ đích:** bong bóng thoại của Nếp hiện chỉ xuất hiện ở `/nep` (nó sống trong `CompanionPanel`). U2 dựng hero bầu trời có câu nói của Nếp, U4.4 thêm thẻ Nếp thu gọn ở cột phải desktop.
+
+**Bước kế tiếp — U1** (habit model v3 + migration v2→v3 + editor + day view mới). ⚠️ **Owner export JSON localStorage để backup TRƯỚC khi thử data thật ở U1** — migration đụng vào cấu trúc ô log.
 
 ### B. Test DB-level theo spec §12 (chưa làm — môi trường dev không có Postgres/supabase CLI)
 RLS matrix 3 user (§8), race tests (2 visitor cùng tặng, double-click), rate-limit đếm cả mã sai, invite-code re-roll, trigger no-decay + `reset_companion`, merge 2 thiết bị. Khuyến nghị: `supabase start` (docker) + pgTAP hoặc script SQL tay.
@@ -91,7 +112,9 @@ Owner dùng sync đa thiết bị 1 tuần, xem log lỗi, RỒI mới mở soci
 | State thuần (pure functions, kinh tế pet) | `src/components/dashboard/dashboard-data.ts` (+ test) |
 | Sync engine | `src/lib/sync/{types,time,storage,queue,shadow,merge,importer,engine}.ts` (+ tests) |
 | Server actions | `src/lib/server/{sync-actions,social-actions,auth-actions,actions}.ts` |
-| UI dashboard | `src/components/dashboard/{dashboard-client,hero-banner,companion-panel,celebration-overlay,weather-card,analytics-panel,profile-menu,site-footer,friends-card,garden-fair,garden-visit-overlay,sync-onboarding,pet,nep}.tsx` |
+| Shell + state toàn app | `src/components/app/{state-provider,app-shell,nav-items,sync-status-dot,today-page,calendar-page,nep-page,friends-page}.tsx` |
+| Primitive design system | `src/components/ui/{button,card,chip,icon,nav-rail,bottom-tab-bar}.tsx` + token trong `src/app/globals.css` `:root` |
+| Panel UI | `src/components/dashboard/{hero-banner,todays-habits,calendar-panel,companion-panel,celebration-overlay,weather-card,analytics-panel,profile-menu,site-footer,friends-card,garden-fair,garden-visit-overlay,sync-onboarding,pet,nep}.tsx` |
 | Voice + invariant tests | `src/components/dashboard/pet-voice.ts` + `pet-voice.test.ts` |
 
 ---

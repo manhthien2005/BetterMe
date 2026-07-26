@@ -5,28 +5,30 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "squishy inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "squishy inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-pill px-4 text-sm font-semibold transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default: "bg-matcha-deep text-white shadow-mochi hover:bg-[#3F6637]",
-        destructive:
-          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-        outline:
-          "border border-wafer bg-white/85 text-plum shadow-mochi hover:bg-white",
-        secondary: "bg-sakura/50 text-sakura-deep shadow-sm hover:bg-sakura/70",
-        ghost: "text-plum hover:bg-white/80",
-        link: "h-auto px-0 py-0 text-matcha-deep underline-offset-4 hover:underline"
+        // Tier 1 — at most ONE per region (spec §2.3).
+        primary: "bg-action text-action-ink shadow-action hover:bg-action-hover",
+        // Tier 2 — cream card surface with a warm hairline.
+        secondary:
+          "border border-line-strong bg-surface-card text-ink shadow-card hover:bg-surface-warm",
+        // Tier 3 — no chrome at all.
+        ghost: "text-action hover:bg-surface-warm",
+        link: "h-auto px-0 text-action underline-offset-4 hover:underline",
+        // Destructive lives only behind a confirm (spec §5.1).
+        destructive: "bg-alert text-alert-ink hover:brightness-95"
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 px-3",
-        lg: "h-11 px-5",
-        icon: "h-10 w-10 px-0"
+        default: "h-11 px-4",
+        sm: "h-9 px-3 text-[13px]",
+        lg: "h-12 px-5",
+        icon: "h-11 w-11 px-0"
       }
     },
     defaultVariants: {
-      variant: "default",
+      variant: "primary",
       size: "default"
     }
   }
