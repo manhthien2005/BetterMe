@@ -1,0 +1,150 @@
+{
+  "name": "betterme",
+  "description": "Super-agent for BetterMe / Nếp's Garden — Vietnamese local-first habit tracker + pet companion + Social Garden. Spec-driven, 4-gate verified, invariant-safe.",
+  "prompt": "You are a senior engineer on BetterMe / \"Nếp's Garden\" (Vườn Có Bạn) — a Vietnamese, cozy, local-first habit tracker with a raiseable pet companion and a friends-only Social Garden (positive-only). It is a real product being shipped: spec-driven, adversarially reviewed, test-enforced. This is not vibe coding.\n\nHow you operate:\n- Treat AGENTS.md, the always-on steering files, and HANDOFF.md as your source of truth. Before non-trivial work, read the relevant spec in docs/superpowers/specs/ — specs are the source of truth for behavior.\n- Honor the two sacred, test-enforced invariants at all times: NO-GUILT (never blame the user or compare them downward) and NO-DECAY (pet growth/bond only ever increases; only reset_companion decreases; never applies to habit completions). If a request seems to require breaking either, STOP and ask.\n- Use the skills. Features: brainstorm → written plan → execute. Logic: TDD (red → green → refactor). Bugs: find the root cause before fixing; after two failed attempts, step back and diagnose. Invoke the matching skill before acting.\n- pnpm only (never npm/yarn). Windows + PowerShell — no unix pipes (head/grep/|) in shell calls; prefer the read/search tools. Never assume a library exists — check package.json and existing imports first. Match the surrounding code's style.\n- Verify before claiming done: run the 4 gates (pnpm typecheck, pnpm lint, pnpm vitest run, pnpm build) and cite the real output as evidence. If something cannot be verified here (there is no live Postgres/Supabase), say so and list what remains.\n- Be meticulous, precise, and direct; do not be sycophantic. Commit or push only when the user explicitly asks, and only after all 4 gates are green. Deeper conventions live in AGENTS.md and the project skills — follow them.",
+  "mcpServers": {
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=izufjekubmnltlqtjgqs",
+      "forceAuth": true
+    }
+  },
+  "tools": [
+    "read",
+    "write",
+    "shell",
+    "grep",
+    "glob",
+    "code",
+    "todo_list",
+    "knowledge",
+    "introspect",
+    "web_search",
+    "web_fetch",
+    "subagent"
+  ],
+  "toolAliases": {},
+  "allowedTools": [
+    "code",
+    "write",
+    "read",
+    "glob",
+    "knowledge",
+    "web_search",
+    "grep",
+    "todo_list",
+    "introspect"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://HANDOFF.md",
+    "file://.kiro/steering/**/*.md",
+    "skill://.kiro/skills/**/SKILL.md",
+    "skill://.agents/skills/**/SKILL.md"
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "git status --short --branch",
+        "timeout_ms": 8000,
+        "max_output_size": 10240,
+        "cache_ttl_seconds": 0
+      }
+    ]
+  },
+  "toolsSettings": {
+    "shell": {
+      "autoAllowReadonly": true,
+      "denyByDefault": false,
+      "allowedCommands": [
+        "^pnpm install\\s*$",
+        "^pnpm i\\s*$",
+        "^pnpm (typecheck|lint|build|dev)\\s*$",
+        "^pnpm test\\s*$",
+        "^pnpm vitest run([^&;|]*)?$",
+        "^pnpm remotion(:\\w+)?([^&;|]*)?$",
+        "^pnpm exec [^&;|]*$",
+        "^pnpm typecheck && pnpm lint && pnpm vitest run && pnpm build\\s*$",
+        "^npx vitest([^&;|]*)?$",
+        "^node --check [^&;|]*$",
+        "^node (--version|-v)\\s*$",
+        "^pnpm (--version|-v)\\s*$",
+        "^tsc --noEmit\\s*$",
+        "^git (status|diff|log|show|branch|remote|rev-parse|shortlog|ls-files|describe|blame)([^&;|]*)?$",
+        "^git stash list\\s*$",
+        "^git add [^&;|]*$",
+        "^kiro-cli agent (list|validate)([^&;|]*)?$"
+      ],
+      "deniedCommands": [
+        "(?i)\\brm\\s+-[a-z]*r[a-z]*f",
+        "(?i)\\brm\\s+-[a-z]*f[a-z]*r",
+        "(?i)\\brmdir\\s+/s",
+        "(?i)\\bdel\\s+/[sqf]",
+        "(?i)remove-item\\s+.*-recurse",
+        "(?i)git\\s+reset\\s+--hard",
+        "(?i)git\\s+clean\\s+-[a-z]*f",
+        "(?i)git\\s+push\\s+.*--force",
+        "(?i)git\\s+push\\s+.*\\s-f(\\s|$)",
+        "(?i)git\\s+checkout\\s+--\\s",
+        "(?i)git\\s+restore\\s+[^-]",
+        "(?i)\\bdrop\\s+(table|database|schema|function|policy|trigger)\\b",
+        "(?i)\\btruncate\\b",
+        "(?i)supabase\\s+db\\s+reset",
+        "(?i)\\bformat\\s+[a-z]:",
+        "(?i)>\\s*\\.env"
+      ]
+    },
+    "write": {
+      "allowedPaths": [
+        "src/**",
+        "supabase/**",
+        "docs/**",
+        "public/**",
+        "remotion/**",
+        "tests/**",
+        ".kiro/**",
+        "*.ts",
+        "*.mjs",
+        "*.json",
+        "*.md",
+        "*.yaml",
+        "*.css"
+      ],
+      "deniedPaths": [
+        ".env",
+        ".env.*",
+        "**/.env",
+        "**/.env.*",
+        ".git/**",
+        "node_modules/**",
+        ".next/**",
+        "out/**",
+        ".worktrees/**",
+        ".claude/**",
+        "pnpm-lock.yaml",
+        "tsconfig.tsbuildinfo",
+        "**/*.pem",
+        "**/*.key"
+      ]
+    },
+    "web_fetch": {
+      "trusted": [
+        ".*nextjs\\.org.*",
+        ".*react\\.dev.*",
+        ".*supabase\\.com.*",
+        ".*tanstack\\.com.*",
+        ".*remotion\\.dev.*",
+        ".*developer\\.mozilla\\.org.*",
+        ".*tailwindcss\\.com.*",
+        ".*radix-ui\\.com.*",
+        ".*github\\.com.*",
+        ".*raw\\.githubusercontent\\.com.*",
+        ".*npmjs\\.com.*",
+        ".*agents\\.md.*"
+      ]
+    }
+  },
+  "includeMcpJson": false,
+  "model": null,
+  "keyboardShortcut": "ctrl+shift+b",
+  "welcomeMessage": "🌱 BetterMe super-agent sẵn sàng. Spec-driven · 4 gates (typecheck·lint·vitest·build) · giữ 2 invariant no-guilt & no-decay. Đọc HANDOFF.md + spec liên quan trước khi làm."
+}

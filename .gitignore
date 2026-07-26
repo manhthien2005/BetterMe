@@ -9,6 +9,9 @@ test-results
 *.tsbuildinfo
 vercel-debug.log
 .claude/settings.local.json
+.kiro/settings/mcp.json
+__pycache__/
+*.pyc
 .worktrees/
 .screenshots/
 pnpm-workspace.yaml.*
