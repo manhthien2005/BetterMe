@@ -25,8 +25,26 @@ import type {
   ServerHabit,
   ServerSnapshot,
   ShadowMap,
+  SyncHabitV3Fields,
   SyncMutation
 } from "./types";
+
+/** Every v3 field a wire habit must carry (U1c). Spread into a fixture. */
+const V3: SyncHabitV3Fields = {
+  icon: "📘",
+  trackingType: "check",
+  target: 1,
+  unit: null,
+  steps: [],
+  repeatDays: [1, 2, 3, 4, 5, 6, 7],
+  timesOfDay: ["anytime"],
+  scheduledAt: null,
+  color: "clay",
+  motivation: "",
+  pausedAt: null,
+  archivedAt: null
+};
+
 
 /** A v3 day record built from plain booleans — every habit here is `check`. */
 function dayRecord(date: string, completions: Record<string, boolean>): DashboardDayRecord {
@@ -82,6 +100,7 @@ function makeServerHabit(key: string, name: string, overrides: Partial<ServerHab
     sortOrder: 0,
     clientUpdatedAt: null,
     deletedAt: null,
+    ...V3,
     ...overrides
   };
 }
@@ -157,7 +176,7 @@ describe("mergeServerIntoLocal — completions (per-cell LWW)", () => {
     const shadow: ShadowMap = { "2026-07-01": { english: T_EARLY } };
     const server = makeSnapshot({
       habits: [makeServerHabit("english", "Học tiếng Anh")],
-      logs: [{ habitKey: "english", date: "2026-07-01", done: false, mutatedAt: T_MID }]
+      logs: [{ habitKey: "english", date: "2026-07-01", done: false, mutatedAt: T_MID, value: null, completedAt: null }]
     });
 
     const result = mergeServerIntoLocal(local, server, shadow, null);
@@ -177,7 +196,7 @@ describe("mergeServerIntoLocal — completions (per-cell LWW)", () => {
     const shadow: ShadowMap = { "2026-07-01": { english: T_LATE } };
     const server = makeSnapshot({
       habits: [makeServerHabit("english", "Học tiếng Anh")],
-      logs: [{ habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_MID }]
+      logs: [{ habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_MID, value: null, completedAt: null }]
     });
 
     const result = mergeServerIntoLocal(local, server, shadow, null);
@@ -201,8 +220,8 @@ describe("mergeServerIntoLocal — completions (per-cell LWW)", () => {
       habits: [makeServerHabit("english", "Học tiếng Anh")],
       logs: [
         // Postgres offset format vs client Z format: same instant.
-        { habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_MID_PG },
-        { habitKey: "english", date: "2026-07-02", done: false, mutatedAt: T_MID_PG }
+        { habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_MID_PG, value: null, completedAt: null },
+        { habitKey: "english", date: "2026-07-02", done: false, mutatedAt: T_MID_PG, value: null, completedAt: null }
       ]
     });
 
@@ -218,7 +237,7 @@ describe("mergeServerIntoLocal — completions (per-cell LWW)", () => {
     });
     const server = makeSnapshot({
       habits: [makeServerHabit("english", "Học tiếng Anh")],
-      logs: [{ habitKey: "english", date: "2026-07-02", done: true, mutatedAt: T_MID }]
+      logs: [{ habitKey: "english", date: "2026-07-02", done: true, mutatedAt: T_MID, value: null, completedAt: null }]
     });
 
     const result = mergeServerIntoLocal(local, server, {}, null);
@@ -275,7 +294,8 @@ describe("mergeServerIntoLocal — habits (union, LWW, tombstones)", () => {
           maxScore: 1,
           active: true,
           description: "",
-          sortOrder: 0
+          sortOrder: 0,
+          ...V3
         },
         clientTs: T_LATE
       }
@@ -302,7 +322,7 @@ describe("mergeServerIntoLocal — habits (union, LWW, tombstones)", () => {
         makeServerHabit("english", "Học tiếng Anh", { deletedAt: T_MID }),
         makeServerHabit("clean", "Dọn bàn")
       ],
-      logs: [{ habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_EARLY }]
+      logs: [{ habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_EARLY, value: null, completedAt: null }]
     });
 
     const result = mergeServerIntoLocal(local, server, shadow, null);
@@ -324,7 +344,8 @@ describe("mergeServerIntoLocal — habits (union, LWW, tombstones)", () => {
           maxScore: 1,
           active: true,
           description: "",
-          sortOrder: 0
+          sortOrder: 0,
+          ...V3
         },
         clientTs: T_LATE,
         expectCreate: true
@@ -346,7 +367,7 @@ describe("mergeServerIntoLocal — habits (union, LWW, tombstones)", () => {
     });
     const server = makeSnapshot({
       habits: [makeServerHabit("english", "Học tiếng Anh", { clientUpdatedAt: T_MID })],
-      logs: [{ habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_MID }]
+      logs: [{ habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_MID, value: null, completedAt: null }]
     });
 
     const result = mergeServerIntoLocal(local, server, {}, null);
@@ -391,7 +412,8 @@ describe("mergeServerIntoLocal — slug collision re-key (spec §2.2)", () => {
           maxScore: 1,
           active: true,
           description: "",
-          sortOrder: 0
+          sortOrder: 0,
+          ...V3
         },
         clientTs: T_LATE,
         expectCreate: true
@@ -401,7 +423,7 @@ describe("mergeServerIntoLocal — slug collision re-key (spec §2.2)", () => {
       habits: [
         makeServerHabit("custom_doc_sach", "Đọc sách báo", { clientUpdatedAt: T_EARLY })
       ],
-      logs: [{ habitKey: "custom_doc_sach", date: "2026-07-01", done: true, mutatedAt: T_EARLY }]
+      logs: [{ habitKey: "custom_doc_sach", date: "2026-07-01", done: true, mutatedAt: T_EARLY, value: null, completedAt: null }]
     });
 
     const result = mergeServerIntoLocal(local, server, shadow, null, pending);
@@ -670,7 +692,7 @@ describe("mergeServerIntoLocal — never touches fiction fields", () => {
     const local = createInitialDashboardState("2026-07-04");
     const server = makeSnapshot({
       habits: [makeServerHabit("english", "Học tiếng Anh", { clientUpdatedAt: T_MID })],
-      logs: [{ habitKey: "english", date: "2026-07-02", done: true, mutatedAt: T_MID }],
+      logs: [{ habitKey: "english", date: "2026-07-02", done: true, mutatedAt: T_MID, value: null, completedAt: null }],
       companion: makeServerCompanion()
     });
 
