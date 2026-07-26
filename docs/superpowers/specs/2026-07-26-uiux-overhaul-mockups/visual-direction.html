@@ -1,0 +1,189 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400&family=Nunito+Sans:wght@400;600;700;800&family=Bricolage+Grotesque:wght@400;600;800&family=Inter:wght@400;500;600;700&family=Baloo+2:wght@500;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  .vd-phone {
+    width: 100%; max-width: 320px; margin: 0 auto;
+    border-radius: 28px; overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.06);
+    text-align: left;
+  }
+  .vd-phone * { box-sizing: border-box; }
+  .vd-row { display: flex; align-items: center; gap: 10px; }
+  .vd-check { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px; }
+  .vd-nav { display: flex; justify-content: space-around; padding: 10px 8px 14px; font-size: 11px; }
+  .vd-traits { margin: 10px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+</style>
+
+<h2>Hướng thẩm mỹ mới cho Nếp's Garden — anh thấy mình muốn mở app nào mỗi sáng?</h2>
+<p class="subtitle">Cùng một màn hình chính (check-in hôm nay + streak), 3 tính cách khác nhau. Đây là phác thảo định hướng — chi tiết sẽ được tinh chỉnh sau. Bấm vào concept anh thích (có thể bấm thử vài cái rồi chốt).</p>
+
+<div class="cards">
+
+  <!-- A: Nhật ký giấy -->
+  <div class="card" data-choice="A-nhat-ky-giay" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#EDE7DB; padding:22px 14px;">
+      <div class="vd-phone" style="background:#FAF6EF; font-family:'Nunito Sans',sans-serif; color:#2C2620;">
+        <div style="padding:20px 18px 6px;">
+          <div style="font-size:12px; color:#8A7F6E;">Thứ Hai, 27 tháng 7</div>
+          <div style="font-family:'Lora',serif; font-size:21px; font-weight:600; margin-top:2px;">Chào buổi sáng, Thiện ✎</div>
+        </div>
+        <div style="margin:12px 18px; padding:14px 16px; background:#FFFDF8; border:1px solid #E5DCCA; border-radius:14px; display:flex; align-items:baseline; gap:10px;">
+          <span style="font-family:'Lora',serif; font-size:40px; font-weight:700; color:#B45309;">26</span>
+          <span style="font-size:13px; color:#6B6152;">ngày giữ nhịp<br><span style="font-size:11px; color:#9A8F7C;">kỷ lục của chính mình ✦</span></span>
+        </div>
+        <div style="margin:0 18px 8px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#9A8F7C;">Hôm nay · 2/4</div>
+        <div style="margin:0 18px;">
+          <div class="vd-row" style="padding:10px 0; border-bottom:1px dashed #DDD2BE;">
+            <span class="vd-check" style="background:#3D7A44; color:#fff;">✓</span>
+            <span style="font-size:14px; text-decoration:line-through; color:#9A8F7C;">Uống đủ nước</span>
+          </div>
+          <div class="vd-row" style="padding:10px 0; border-bottom:1px dashed #DDD2BE;">
+            <span class="vd-check" style="background:#3D7A44; color:#fff;">✓</span>
+            <span style="font-size:14px; text-decoration:line-through; color:#9A8F7C;">Chạy bộ 20 phút</span>
+          </div>
+          <div class="vd-row" style="padding:10px 0; border-bottom:1px dashed #DDD2BE;">
+            <span class="vd-check" style="border:1.5px solid #B8AB92;"></span>
+            <span style="font-size:14px; font-weight:600;">Đọc 10 trang sách</span>
+          </div>
+          <div class="vd-row" style="padding:10px 0;">
+            <span class="vd-check" style="border:1.5px solid #B8AB92;"></span>
+            <span style="font-size:14px; font-weight:600;">Viết nhật ký tối</span>
+          </div>
+        </div>
+        <div style="margin:10px 18px; padding:10px 12px; background:#F1EADC; border-radius:12px; font-size:12px; color:#6B6152;">
+          🐌 Nếp: “Từ từ thôi, mình đi cùng nhau mà.”
+        </div>
+        <div class="vd-nav" style="border-top:1px solid #E5DCCA; color:#9A8F7C;">
+          <span style="color:#2C2620; font-weight:700;">✎ Hôm nay</span><span>▤ Sổ</span><span>❀ Nếp</span><span>◔ Bạn</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A · Nhật ký giấy</h3>
+      <p>Cuốn sổ tay được đóng đẹp: giấy kem ấm, mực nâu đậm, serif Lora cho tiêu đề, gạch dòng kẻ. Streak là con dấu mực son. Trưởng thành mà vẫn ấm.</p>
+      <ul class="vd-traits">
+        <li>Cảm giác: quán cà phê + bullet journal</li>
+        <li>Nếp = bạn đồng hành vẽ nét mực, xuất hiện kín đáo</li>
+        <li>Ít màu, nhiều chất liệu (giấy, đường kẻ, con dấu)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- B: Tối giản có nhịp -->
+  <div class="card" data-choice="B-toi-gian-co-nhip" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#E4E6E1; padding:22px 14px;">
+      <div class="vd-phone" style="background:#FAFAF7; font-family:'Inter',sans-serif; color:#1F2422;">
+        <div style="padding:20px 18px 4px;">
+          <div style="font-size:12px; color:#8B908A; font-weight:500;">TH 2 · 27.07</div>
+          <div style="font-family:'Bricolage Grotesque',sans-serif; font-size:20px; font-weight:600; margin-top:2px;">Sáng nay làm gì nhỉ?</div>
+        </div>
+        <div style="margin:14px 18px; display:flex; align-items:flex-end; justify-content:space-between;">
+          <div>
+            <div style="font-family:'Bricolage Grotesque',sans-serif; font-size:56px; font-weight:800; line-height:.9; letter-spacing:-.02em;">26</div>
+            <div style="font-size:12px; color:#6E736D; margin-top:6px;">ngày liền nhịp</div>
+          </div>
+          <div style="display:flex; gap:4px; align-items:flex-end; padding-bottom:6px;">
+            <div style="width:8px; height:18px; background:#0D9488; border-radius:3px;"></div>
+            <div style="width:8px; height:26px; background:#0D9488; border-radius:3px;"></div>
+            <div style="width:8px; height:22px; background:#0D9488; border-radius:3px;"></div>
+            <div style="width:8px; height:34px; background:#0D9488; border-radius:3px;"></div>
+            <div style="width:8px; height:30px; background:#C9CCC7; border-radius:3px;"></div>
+          </div>
+        </div>
+        <div style="height:1px; background:#E3E5E0; margin:0 18px;"></div>
+        <div style="margin:10px 18px 0; font-size:11px; letter-spacing:.1em; color:#8B908A; font-weight:600;">HÔM NAY — 2/4</div>
+        <div style="margin:6px 18px;">
+          <div class="vd-row" style="padding:11px 12px; background:#F0F1EE; border-radius:10px; margin-bottom:6px;">
+            <span class="vd-check" style="background:#0D9488; color:#fff; border-radius:8px;">✓</span>
+            <span style="font-size:14px; color:#8B908A;">Uống đủ nước</span>
+          </div>
+          <div class="vd-row" style="padding:11px 12px; background:#F0F1EE; border-radius:10px; margin-bottom:6px;">
+            <span class="vd-check" style="background:#0D9488; color:#fff; border-radius:8px;">✓</span>
+            <span style="font-size:14px; color:#8B908A;">Chạy bộ 20 phút</span>
+          </div>
+          <div class="vd-row" style="padding:11px 12px; border:1px solid #E3E5E0; border-radius:10px; margin-bottom:6px; background:#fff;">
+            <span class="vd-check" style="border:1.5px solid #C9CCC7; border-radius:8px;"></span>
+            <span style="font-size:14px; font-weight:600;">Đọc 10 trang sách</span>
+          </div>
+          <div class="vd-row" style="padding:11px 12px; border:1px solid #E3E5E0; border-radius:10px; background:#fff;">
+            <span class="vd-check" style="border:1.5px solid #C9CCC7; border-radius:8px;"></span>
+            <span style="font-size:14px; font-weight:600;">Viết nhật ký tối</span>
+          </div>
+        </div>
+        <div style="margin:10px 18px; font-size:12px; color:#6E736D;">🐌 <em>“Còn 2 việc nhẹ nhàng nữa thôi.”</em></div>
+        <div class="vd-nav" style="border-top:1px solid #E3E5E0; color:#8B908A;">
+          <span style="color:#0D9488; font-weight:700;">● Hôm nay</span><span>◧ Lịch</span><span>◍ Nếp</span><span>◔ Bạn</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B · Tối giản có nhịp</h3>
+      <p>Off-white ấm, chữ số streak khổng lồ, một màu teal duy nhất làm điểm nhấn, khoảng trắng rộng rãi. Nhanh — mở, tick, đóng. Kiểu Things/Linear nhưng không lạnh.</p>
+      <ul class="vd-traits">
+        <li>Cảm giác: công cụ tinh gọn, premium, người lớn</li>
+        <li>Typography là ngôi sao — số streak to như poster</li>
+        <li>Motion tinh tế: tick nảy nhẹ, cột tuần mọc lên</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- C: Sân chơi streak -->
+  <div class="card" data-choice="C-san-choi-streak" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#DCE8D4; padding:22px 14px;">
+      <div class="vd-phone" style="background:#FFFBEB; font-family:'Be Vietnam Pro',sans-serif; color:#0F172A;">
+        <div style="padding:18px 18px 4px; display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-family:'Baloo 2',sans-serif; font-size:19px; font-weight:800;">Chào Thiện! 👋</div>
+          <div style="background:#FDE68A; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; color:#92400E;">🔥 26</div>
+        </div>
+        <div style="margin:10px 18px; padding:16px; background:linear-gradient(135deg,#FBBF24,#F59E0B); border-radius:20px; color:#fff; box-shadow:0 6px 16px rgba(245,158,11,.35);">
+          <div style="font-family:'Baloo 2',sans-serif; font-size:15px; font-weight:800;">Chuỗi 26 ngày! 🔥</div>
+          <div style="font-size:12px; opacity:.95; margin-top:2px;">Hôm nay tick 1 việc là giữ lửa liền</div>
+          <div style="margin-top:10px; height:8px; background:rgba(255,255,255,.35); border-radius:99px;">
+            <div style="width:50%; height:8px; background:#fff; border-radius:99px;"></div>
+          </div>
+          <div style="font-size:11px; margin-top:4px;">2/4 hôm nay</div>
+        </div>
+        <div style="margin:6px 18px;">
+          <div class="vd-row" style="padding:12px; background:#fff; border:2px solid #D1FAE5; border-radius:16px; margin-bottom:8px;">
+            <span class="vd-check" style="background:#059669; color:#fff; width:30px; height:30px; border-radius:10px; font-size:16px;">✓</span>
+            <span style="font-size:14px; font-weight:600; color:#94A3B8; text-decoration:line-through;">Uống đủ nước</span>
+            <span style="margin-left:auto; font-size:12px;">+🌾</span>
+          </div>
+          <div class="vd-row" style="padding:12px; background:#fff; border:2px solid #D1FAE5; border-radius:16px; margin-bottom:8px;">
+            <span class="vd-check" style="background:#059669; color:#fff; width:30px; height:30px; border-radius:10px; font-size:16px;">✓</span>
+            <span style="font-size:14px; font-weight:600; color:#94A3B8; text-decoration:line-through;">Chạy bộ 20 phút</span>
+            <span style="margin-left:auto; font-size:12px;">+🌾</span>
+          </div>
+          <div class="vd-row" style="padding:12px; background:#fff; border:2px solid #E2E8F0; border-radius:16px; margin-bottom:8px;">
+            <span class="vd-check" style="border:2.5px solid #CBD5E1; width:30px; height:30px; border-radius:10px;"></span>
+            <span style="font-size:14px; font-weight:700;">Đọc 10 trang sách</span>
+          </div>
+          <div class="vd-row" style="padding:12px; background:#fff; border:2px solid #E2E8F0; border-radius:16px;">
+            <span class="vd-check" style="border:2.5px solid #CBD5E1; width:30px; height:30px; border-radius:10px;"></span>
+            <span style="font-size:14px; font-weight:700;">Viết nhật ký tối</span>
+          </div>
+        </div>
+        <div style="margin:10px 18px; display:flex; align-items:center; gap:8px; background:#ECFDF5; border-radius:14px; padding:8px 12px;">
+          <span style="font-size:22px;">🐌</span>
+          <span style="font-size:12px; color:#065F46; font-weight:600;">Nếp no bụng rồi! Bond +2 💚</span>
+        </div>
+        <div class="vd-nav" style="border-top:2px solid #F1F5F9; color:#94A3B8; font-weight:700;">
+          <span style="color:#D97706;">🏠 Hôm nay</span><span>📅 Lịch</span><span>🐌 Nếp</span><span>🏡 Bạn</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C · Sân chơi streak</h3>
+      <p>Năng lượng Duolingo, phiên bản không-áp-lực: nền kem sáng, thẻ lửa amber, tick to đã tay, mỗi lần tick pet được ăn. Vui, nhiều dopamine, đậm chất game.</p>
+      <ul class="vd-traits">
+        <li>Cảm giác: trò chơi nhỏ mỗi sáng, muốn khoe bạn bè</li>
+        <li>Streak = ngọn lửa trung tâm, celebration đậm</li>
+        <li>Pet gắn thẳng vào vòng tick (+🌾 mỗi lần)</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:18px;">Cả 3 đều giữ nguyên tắc no-guilt (không trách móc, không so sánh xuống) và sẽ có bản desktop tương ứng. Anh cũng có thể trộn: ví dụ "khung B, năng lượng celebration của C".</p>

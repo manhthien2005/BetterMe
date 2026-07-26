@@ -15,3 +15,6 @@ __pycache__/
 .worktrees/
 .screenshots/
 pnpm-workspace.yaml.*
+
+# Superpowers brainstorm sessions (mockups da duyet duoc copy vao docs/)
+.superpowers/
