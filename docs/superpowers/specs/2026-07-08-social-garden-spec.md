@@ -652,3 +652,79 @@ Tổng: 66 câu thoại VN mới.
 - Tắt `fair_opt_in` → 3 cột fair về NULL; bạn bè vẫn SELECT được row (pet/rhythm/milestones)
   nhưng cột fair NULL.
 - Voice tests mở rộng (no-guilt + no-comparison, cả guest-side) xanh.
+
+---
+
+## Amendment 2026-07-27 — U1c: hợp đồng sync mang habit model v3
+
+Spec gốc (§2.2–§2.4) mô tả một ô log là **một boolean**. Habit model v3 (spec đại tu
+UI/UX §5) làm điều đó không còn đủ: một ô còn có *số đọc được* — mấy ly, mấy phút,
+những bước nào đã tick — và *giờ hoàn thành*. Bản sửa đổi này mở rộng hợp đồng theo
+hướng **thuần cộng thêm**.
+
+### Cái không đổi
+
+`habit_logs.done` vẫn là boolean nguồn sự thật, do **client** tính bằng
+`isEntryComplete` — chỉ client biết luật tracking của từng kiểu, server không suy diễn
+"xong" từ `value` vì server không biết mục tiêu. Nhờ vậy `refresh_my_summary`
+(§5.2, `weekly_good_days`) và vòng lặp `shared_rhythms` (§5.1) đọc `done` mà không phải
+sửa một dòng nào.
+
+### Cái thêm vào
+
+| Bảng | Cột | Ghi chú |
+|---|---|---|
+| `habit_logs` | `value integer` | NULL = ghi bởi client trước U1c, hoặc schema cũ |
+| `habit_logs` | `completed_at text` | `"HH:mm"` giờ **địa phương**; ngày đã nằm ở `date` |
+| `habits` | `icon`, `tracking_type`, `target`, `unit`, `steps`, `repeat_days`, `times_of_day`, `scheduled_at`, `color`, `motivation`, `paused_at`, `archived_at` | định nghĩa v3 (§5.1 spec đại tu) |
+
+`paused_at` / `archived_at` là `text` chứ không phải `date`: client so sánh chúng như
+nhãn ISO thuần (`date >= habit.pausedAt`) và không bao giờ làm số học ngày phía server,
+nên `text` giữ một giá trị hỏng ở mức vô hại thay vì biến nó thành lỗi 22007 —
+tức là một mutation bị **drop vĩnh viễn**, và lần tạm dừng đó im lặng biến mất.
+
+### LWW không đổi độ mịn
+
+Vẫn **một stamp cho cả ô** (`mutated_at`) và **một stamp cho cả habit**
+(`client_updated_at`). Bên nào thắng thì mang trọn cả cụm field sang — không có LWW
+theo từng cột.
+
+### Hai chiều đều chịu được đối phương ở schema cũ
+
+- *App mới, DB cũ*: RPC thiếu tham số → PostgREST trả `PGRST202`; client xếp loại
+  **retry**, không phải permanent, nên hàng đợi tự đẩy lại ngay khi chủ repo apply
+  `schema.sql`. Không mất ghi nào.
+- *DB cũ trả snapshot thiếu cột*: `value = null` ⇒ merge giữ đúng hành vi trước U1c —
+  tick từ xa giữ lại giá trị giàu hơn ở máy này, không dập "8 ly" thành 1. Habit thiếu
+  field v3 ⇒ parse ra đúng default mà `migrateHabitFields` vốn sẽ áp.
+
+### Bẫy chữ ký hàm
+
+`create or replace function` với danh sách tham số khác sẽ tạo **overload**, không thay
+thế. Hai overload cùng tên + gọi bằng named argument (PostgREST luôn gọi thế) =
+`42725 function is not unique`. Nên `apply_habit_log` và `upsert_habit` đều có
+`drop function if exists <chữ ký cũ>` đứng ngay trước. Drop cũng xoá grant cũ, mà hàm
+Postgres mặc định `EXECUTE` cho `PUBLIC` — nên chữ ký mới **bắt buộc** được
+`revoke ... from public, anon` + `grant ... to authenticated` lại, nếu không hàm mới mở
+cho `anon`. `tests/schema-contract.test.ts` canh cả hai điều này vì CI không có DB để
+chạy SQL.
+
+### Hai lỗ được vá cùng lúc (không có cột nào ở trên sẽ được ghi nếu thiếu)
+
+1. `setEntry` chỉ enqueue khi **số habit xong trong ngày** đổi. Uống 3 → 4 ly của mục
+   tiêu 8 không đổi con số đó, nên tiến độ dở dang **không bao giờ** rời máy. Điều kiện
+   đúng là "ô log này có đổi không".
+2. `pauseHabit`, `archiveHabit`, `moveHabit` **không enqueue gì cả**. Tạm dừng một thói
+   quen trên điện thoại thì nó ở lại trên điện thoại. Nay cả ba đều đẩy upsert; đổi thứ
+   tự đẩy **cả hai** habit đã hoán vị, vì gửi mỗi cái người dùng cầm sẽ để hàng xóm của
+   nó giữ nguyên `sort_order` cũ trên server.
+
+### Thứ tự triển khai (bắt buộc)
+
+Apply `supabase/schema.sql` lên Supabase **trước**, deploy app sau. Làm ngược lại thì
+app vẫn chạy và không mất dữ liệu (nhờ PGRST202-retry ở trên), nhưng sync đứng im cho
+tới khi SQL được apply. SQL idempotent — chạy lại nhiều lần vẫn an toàn.
+
+### Vẫn không bao giờ rời máy
+
+`seedCutoverDate`, `bestStreakFloor`, `events` — chúng không có mutation kind nào (§2.5).
