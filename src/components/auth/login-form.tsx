@@ -277,7 +277,7 @@ export function LoginForm({ devAuthBypassEnabled = false }: { devAuthBypassEnabl
       )}
 
       {devAuthBypassEnabled ? (
-        <Button asChild className="w-full" type="button" variant="outline">
+        <Button asChild className="w-full" type="button" variant="secondary">
           <Link href="/dashboard">Vào bằng tài khoản dev</Link>
         </Button>
       ) : null}

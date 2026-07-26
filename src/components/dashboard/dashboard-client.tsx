@@ -981,7 +981,7 @@ function TodaysHabits({
         </form>
       ) : (
         <div className="mt-5 flex flex-wrap gap-2">
-          <Button onClick={() => setShowForm(true)} type="button" variant="outline">
+          <Button onClick={() => setShowForm(true)} type="button" variant="secondary">
             <CirclePlus className="h-4 w-4" />
             Thêm thói quen
           </Button>
