@@ -19,6 +19,7 @@ import {
   buildDashboardViewModel,
   buildHabitDetail,
   checkComebackGift,
+  countCompletedOn,
   createInitialDashboardState,
   feedActivePet,
   getBondTier,
@@ -32,6 +33,7 @@ import {
   recordGrowthDay,
   removeEventFromState,
   removeHabitFromState,
+  setHabitEntry as setHabitEntryInState,
   switchActivePet,
   toggleHabitForDate,
   updateHabitInState,
@@ -61,8 +63,19 @@ import { createSyncEngine, type SyncEngine } from "@/lib/sync/engine";
 import { runSyncOnboarding, type InitialUploadMode } from "@/lib/sync/importer";
 import type { SyncStatus } from "@/lib/sync/types";
 
-const STORAGE_KEY = "betterme.dashboard.v2";
-const LEGACY_STORAGE_KEY = "betterme.dashboard.v1";
+const STORAGE_KEY = "betterme.dashboard.v3";
+/**
+ * Read-only from U1a on: migrated once into v3, then left exactly as they were
+ * so the owner keeps a working rollback snapshot on disk (spec §9.3).
+ */
+const LEGACY_STORAGE_KEYS = ["betterme.dashboard.v2", "betterme.dashboard.v1"] as const;
+
+/** Local wall clock as "HH:mm" — the stamp a completed cell carries (spec §6.3). */
+function clockHHmm(): string {
+  const now = new Date();
+
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
 
 /**
  * True only when a real Supabase browser session exists. Under the dev auth
@@ -101,6 +114,8 @@ export type AppState = {
   saveHabitEdit: (habitId: string, name: string, category: string) => void;
   openHabitDetail: (habitId: string) => void;
   closeHabitDetail: () => void;
+  /** Direct write for count / duration / checklist controls (spec §4.2). */
+  setHabitEntry: (habitId: string, value: number) => void;
   addEvent: (input: {
     title: string;
     at: string;
@@ -342,7 +357,10 @@ export function StateProvider({
   useEffect(() => {
     const saved =
       window.localStorage.getItem(STORAGE_KEY) ??
-      window.localStorage.getItem(LEGACY_STORAGE_KEY);
+      LEGACY_STORAGE_KEYS.map((key) => window.localStorage.getItem(key)).find(
+        (value) => value !== null
+      ) ??
+      null;
     let loaded: DashboardState | null = null;
 
     if (saved) {
@@ -457,7 +475,7 @@ export function StateProvider({
       window.setTimeout(() => setCelebrate(false), 1300);
     }
 
-    let next = toggleHabitForDate(state, today, habitId);
+    let next = toggleHabitForDate(state, today, habitId, clockHHmm());
 
     if (turningOn && state.companion.activeSpecies) {
       next = grantFoodForHabitCompletion(
@@ -489,6 +507,56 @@ export function StateProvider({
     // Ticking on feeds the companion economy (food/growth/all-done bonus) and
     // may advance a shared rhythm with a friend (spec §5.1).
     if (turningOn && state.companion.activeSpecies) {
+      markCompanionDirty();
+      maybeBumpSharedRhythms();
+    }
+  }
+
+  /**
+   * Direct write for count / duration / checklist controls (spec §4.2).
+   * Reaching a target IS completing the habit, so this must feed the companion
+   * economy on exactly the same terms as a tick (spec §5.2) — otherwise a
+   * count habit would silently earn nothing. `grantFoodForHabitCompletion`
+   * caps per day, so paying on both paths can never double-reward.
+   */
+  function setEntry(habitId: string, value: number) {
+    const before = countCompletedOn(state, today);
+    let next = setHabitEntryInState(state, today, habitId, value, clockHHmm());
+    const after = countCompletedOn(next, today);
+
+    if (after === before && next === state) return;
+
+    const total = viewModel.today.totalHabits;
+    const justCompleted = after > before;
+    const completesTheDay = justCompleted && total > 0 && after >= total;
+
+    if (completesTheDay) {
+      setCelebrate(true);
+      window.setTimeout(() => setCelebrate(false), 1300);
+    }
+
+    if (justCompleted && state.companion.activeSpecies) {
+      next = grantFoodForHabitCompletion(next, today, after, total);
+      next = recordGrowthDay(next, today);
+
+      if (completesTheDay) next = grantAllDoneBonus(next, today);
+
+      speakAfter(next, state, completesTheDay ? "allDone" : "habitDone");
+    }
+
+    commitState(next);
+
+    if (after !== before) {
+      markSyncDirty({
+        kind: "setHabitLog",
+        habitKey: habitId,
+        date: today,
+        done: justCompleted,
+        clientTs: new Date().toISOString()
+      });
+    }
+
+    if (justCompleted && state.companion.activeSpecies) {
       markCompanionDirty();
       maybeBumpSharedRhythms();
     }
@@ -697,6 +765,7 @@ export function StateProvider({
     newSocialCount,
     clearSocialBadge,
     toggleHabit,
+    setHabitEntry: setEntry,
     addHabit,
     removeHabit,
     saveHabitEdit,
