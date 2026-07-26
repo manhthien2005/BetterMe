@@ -18,20 +18,22 @@ describe("AnalyticsPanel", () => {
   it("keeps the Analytics heading, a ring gauge, and supporting counts", () => {
     render(<AnalyticsPanel viewModel={viewModel()} />);
 
-    expect(screen.getByRole("heading", { name: "Analytics" })).toBeTruthy();
-    expect(screen.getByRole("img", { name: /Average completion \d+ percent/ })).toBeTruthy();
-    expect(screen.getByText("Good days")).toBeTruthy();
-    expect(screen.getByText("Completed")).toBeTruthy();
-    expect(screen.getByText("Habit performance")).toBeTruthy();
-    expect(screen.getByText("Completion trend")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Phân tích" })).toBeTruthy();
+    expect(
+      screen.getByRole("img", { name: /Hoàn thành trung bình \d+ phần trăm/ })
+    ).toBeTruthy();
+    expect(screen.getByText("Ngày tốt")).toBeTruthy();
+    expect(screen.getByText("Lượt hoàn thành")).toBeTruthy();
+    expect(screen.getByText("Từng thói quen")).toBeTruthy();
+    expect(screen.getByText("Xu hướng hoàn thành")).toBeTruthy();
   });
 
   it("frames insights gently and exposes every trend value non-visually", () => {
     const model = viewModel();
     const { container } = render(<AnalyticsPanel viewModel={model} />);
 
-    expect(screen.getByText("Most steady")).toBeTruthy();
-    expect(screen.getByText("A little more love")).toBeTruthy();
+    expect(screen.getByText("Đều tay nhất")).toBeTruthy();
+    expect(screen.getByText("Cần thêm chút yêu thương")).toBeTruthy();
 
     const rows = container.querySelectorAll("ul.sr-only li");
     expect(rows.length).toBe(model.analytics.trend.length);

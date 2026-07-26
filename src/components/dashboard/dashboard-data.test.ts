@@ -27,14 +27,14 @@ import {
 const today = "2026-07-04";
 
 describe("dashboard habit data", () => {
-  it("formats dashboard dates in English", () => {
+  it("formats dashboard dates in Vietnamese", () => {
     const state = createInitialDashboardState("2026-07-05");
     const viewModel = buildDashboardViewModel(state, "2026-07-05");
 
-    expect(viewModel.date.longLabel).toBe("Sunday, July 5, 2026");
-    expect(viewModel.date.monthLabel).toBe("July 2026");
+    expect(viewModel.date.longLabel).toBe("Chủ Nhật, 5 tháng 7, 2026");
+    expect(viewModel.date.monthLabel).toBe("tháng 7 năm 2026");
     expect(viewModel.calendar.days.find((day) => day.date === "2026-07-05")?.label).toBe(
-      "July 5, 2026"
+      "5 tháng 7, 2026"
     );
   });
 

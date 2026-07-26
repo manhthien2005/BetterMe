@@ -121,6 +121,38 @@ export type DashboardState = {
 
 export type DashboardStatus = "Good" | "Okay" | "Bad" | "Planned" | "No data";
 
+// Status values are stable English keys (logic + tests compare them); the UI
+// renders them through this map. "Bad" reads as a garden that needs watering —
+// never blame (invariant 1).
+export const STATUS_LABELS: Record<DashboardStatus, string> = {
+  Good: "Tốt",
+  Okay: "Tạm ổn",
+  Bad: "Cần tưới thêm",
+  Planned: "Dự định",
+  "No data": "Chưa có dữ liệu"
+};
+
+// Category values are stable English keys (stored in state + DB, icon lookups);
+// the UI shows these labels.
+export const CATEGORY_LABELS: Record<string, string> = {
+  Discipline: "Kỷ luật",
+  Learning: "Học tập",
+  Work: "Công việc",
+  Health: "Sức khỏe",
+  Reflection: "Suy ngẫm"
+};
+
+export function categoryLabel(category: string): string {
+  return CATEGORY_LABELS[category] ?? category;
+}
+
+export const EVENT_CATEGORY_LABELS: Record<DashboardEvent["category"], string> = {
+  habit: "thói quen",
+  planning: "kế hoạch",
+  reflection: "suy ngẫm",
+  personal: "cá nhân"
+};
+
 export type DashboardHabitView = DashboardHabit & {
   completed: boolean;
 };
@@ -1054,7 +1086,7 @@ export function buildDashboardViewModel(
     return {
       date,
       day: parseIsoDate(date).getDate(),
-      label: formatEnglishCalendarDate(date),
+      label: formatVietnameseCalendarDate(date),
       inCurrentMonth: parseIsoDate(date).getMonth() === month,
       isToday: date === today,
       status: score.status,
@@ -1074,8 +1106,8 @@ export function buildDashboardViewModel(
   return {
     date: {
       iso: today,
-      longLabel: formatEnglishLongDate(today),
-      monthLabel: formatEnglishMonthLabel(today)
+      longLabel: formatVietnameseLongDate(today),
+      monthLabel: formatVietnameseMonthLabel(today)
     },
     greeting: buildGreeting(),
     motivation: buildMotivation(todayScore, rhythm),
@@ -1114,26 +1146,26 @@ function createSeedEvents(): DashboardEvent[] {
   return [
     {
       id: "event-weekly-review",
-      title: "Weekly review",
-      time: "Tonight, 20:30",
+      title: "Ôn lại tuần",
+      time: "Tối nay, 20:30",
       category: "reflection"
     },
     {
       id: "event-english-focus",
-      title: "English speaking block",
-      time: "Tomorrow, 07:45",
+      title: "Khối luyện nói tiếng Anh",
+      time: "Sáng mai, 07:45",
       category: "habit"
     },
     {
       id: "event-project-sprint",
-      title: "Project deep work",
-      time: "Tomorrow, 21:00",
+      title: "Tập trung sâu cho dự án",
+      time: "Tối mai, 21:00",
       category: "planning"
     },
     {
       id: "event-reset",
-      title: "Desk reset",
-      time: "Monday, 19:15",
+      title: "Dọn lại bàn làm việc",
+      time: "Thứ Hai, 19:15",
       category: "personal"
     }
   ];
@@ -1204,7 +1236,7 @@ function buildStreakChain(state: DashboardState, today: string) {
 
       return {
         date,
-        label: formatEnglishDayNumber(date),
+        label: formatVietnameseDayNumber(date),
         completed: score.status === "Good",
         status: score.status
       };
@@ -1235,7 +1267,7 @@ function buildAnalytics(state: DashboardState, today: string) {
 
       return {
         date,
-        label: formatEnglishTrendLabel(date),
+        label: formatVietnameseTrendLabel(date),
         completionRate: score.completionRate,
         status: score.status
       };
@@ -1273,13 +1305,13 @@ function findHabitByRate(
 
 function buildGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
+  if (hour < 12) return "Chào buổi sáng";
+  if (hour < 18) return "Chào buổi chiều";
+  return "Chào buổi tối";
 }
 
-function formatEnglishLongDate(date: string) {
-  return new Intl.DateTimeFormat("en-US", {
+function formatVietnameseLongDate(date: string) {
+  return new Intl.DateTimeFormat("vi-VN", {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -1287,30 +1319,30 @@ function formatEnglishLongDate(date: string) {
   }).format(parseIsoDate(date));
 }
 
-function formatEnglishMonthLabel(date: string) {
-  return new Intl.DateTimeFormat("en-US", {
+function formatVietnameseMonthLabel(date: string) {
+  return new Intl.DateTimeFormat("vi-VN", {
     month: "long",
     year: "numeric"
   }).format(parseIsoDate(date));
 }
 
-function formatEnglishCalendarDate(date: string) {
-  return new Intl.DateTimeFormat("en-US", {
+function formatVietnameseCalendarDate(date: string) {
+  return new Intl.DateTimeFormat("vi-VN", {
     month: "long",
     day: "numeric",
     year: "numeric"
   }).format(parseIsoDate(date));
 }
 
-function formatEnglishDayNumber(date: string) {
-  return new Intl.DateTimeFormat("en-US", {
+function formatVietnameseDayNumber(date: string) {
+  return new Intl.DateTimeFormat("vi-VN", {
     day: "numeric"
   }).format(parseIsoDate(date));
 }
 
-function formatEnglishTrendLabel(date: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
+function formatVietnameseTrendLabel(date: string) {
+  return new Intl.DateTimeFormat("vi-VN", {
+    month: "numeric",
     day: "numeric"
   }).format(parseIsoDate(date));
 }
@@ -1325,45 +1357,45 @@ function calculateRollingRhythm(state: DashboardState, today: string) {
   );
 }
 
-// Nếp speaks here: gentle roommate voice, never guilt. Misses are rest days,
-// and progress is anchored to the rolling 7-day rhythm, not a fragile streak.
+// Giọng của khu vườn: bạn cùng nhà dịu dàng, không bao giờ trách móc. Ngày lỡ
+// nhịp là ngày nghỉ, và tiến bộ neo vào nhịp 7 ngày, không phải streak mong manh.
 function buildMotivation(
   todayScore: { completedHabits: number; completionRate: number },
   rhythm: number
 ) {
   if (todayScore.completionRate >= 1) {
-    return "GIỎI QUÁ, Thiên! All done — my flower bloomed 🌸";
+    return "GIỎI QUÁ Sếp ơi! Trọn vẹn hôm nay — vườn mình nở hoa rồi 🌸";
   }
 
   if (todayScore.completionRate >= TARGET_COMPLETION_RATE) {
-    return "So close to a perfect day. One tiny habit left?";
+    return "Sắp trọn vẹn một ngày rồi. Còn một thói quen nhỏ xíu thôi?";
   }
 
   if (todayScore.completedHabits > 0) {
-    return "We're on our way. Pick the easiest one next?";
+    return "Mình đang trên đà rồi. Chọn việc dễ nhất làm tiếp nha?";
   }
 
   if (rhythm >= 0.5) {
-    return `Our 7-day rhythm is ${Math.round(rhythm * 100)}%. One tiny habit to wake me up? ☀️`;
+    return `Nhịp 7 ngày của mình đang ${Math.round(rhythm * 100)}%. Một việc nhỏ để khởi động hôm nay nè ☀️`;
   }
 
-  return "Chào Thiên! I saved your spot — today we start soft 🌱";
+  return "Chào Sếp! Chỗ của Sếp vẫn luôn ở đây — hôm nay mình bắt đầu nhẹ thôi 🌱";
 }
 
 function buildProtectionMessage(completionRate: number, rhythm: number) {
   if (completionRate >= TARGET_COMPLETION_RATE) {
-    return "Today is safe and cozy — the sprout is watered";
+    return "Hôm nay ấm áp đủ đầy — mầm cây đã được tưới";
   }
 
   if (completionRate > 0) {
-    return "One more habit keeps our rhythm going";
+    return "Thêm một thói quen nữa là giữ tròn nhịp hôm nay";
   }
 
   if (rhythm >= 0.5) {
-    return "Yesterday counts as rest. Today we start soft";
+    return "Hôm qua tính là ngày nghỉ ngơi. Hôm nay mình bắt đầu nhẹ nhàng";
   }
 
-  return "One tiny check-in is enough to begin again";
+  return "Chỉ cần một lần tick nhỏ để bắt đầu lại";
 }
 
 function average(values: number[]) {

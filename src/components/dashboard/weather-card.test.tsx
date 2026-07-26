@@ -7,9 +7,9 @@ describe("WeatherCard", () => {
   it("shows a compact location heading and the temperature as real text", () => {
     render(<WeatherCard />);
 
-    expect(screen.getByRole("heading", { name: "Bangkok" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Sài Gòn" })).toBeTruthy();
     expect(screen.getByText("31°C")).toBeTruthy();
-    expect(screen.getByText("Feels like 34°C")).toBeTruthy();
+    expect(screen.getByText("Cảm giác như 34°C")).toBeTruthy();
     expect(screen.getByText(DASHBOARD_WEATHER.planningNote)).toBeTruthy();
   });
 
@@ -17,9 +17,9 @@ describe("WeatherCard", () => {
     render(<WeatherCard />);
 
     for (const [label, value] of [
-      ["Humidity", DASHBOARD_WEATHER.humidity],
-      ["Wind", DASHBOARD_WEATHER.wind],
-      ["Rain", DASHBOARD_WEATHER.rainChance],
+      ["Độ ẩm", DASHBOARD_WEATHER.humidity],
+      ["Gió", DASHBOARD_WEATHER.wind],
+      ["Mưa", DASHBOARD_WEATHER.rainChance],
       ["UV", DASHBOARD_WEATHER.uvIndex]
     ] as const) {
       expect(screen.getByText(label)).toBeTruthy();

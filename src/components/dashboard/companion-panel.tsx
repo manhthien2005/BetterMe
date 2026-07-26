@@ -126,7 +126,7 @@ function BondMeter({ pet }: { pet: CompanionPetView }) {
   return (
     <div className="rounded-2xl border border-wafer bg-white/75 px-3 py-2">
       <div className="flex items-center justify-between text-xs font-bold text-mauve">
-        <span aria-label={`Bond tier ${pet.bondTier} of 5`} className="flex items-center gap-0.5">
+        <span aria-label={`Thân thiết cấp ${pet.bondTier} trên 5`} className="flex items-center gap-0.5">
           {[1, 2, 3, 4, 5].map((tier) => (
             <span
               aria-hidden="true"
@@ -162,7 +162,7 @@ function FoodTray({
 }) {
   return (
     <div className="flex items-center gap-2 rounded-2xl border border-wafer bg-white/75 py-1.5 pl-3 pr-1.5">
-      <span aria-label={`${food} treats in the pantry`} className="text-sm font-bold text-plum">
+      <span aria-label={`${food} món ăn trong tủ`} className="text-sm font-bold text-plum">
         {species === "dog" ? "🦴" : "🐟"} ×{food}
       </span>
       <Button disabled={disabled} onClick={onFeed} size="sm" type="button">

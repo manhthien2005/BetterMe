@@ -13,12 +13,12 @@ export function SiteFooter() {
           ·
         </span>
         <span className="inline-flex items-center gap-1">
-          Build with love
+          Được làm với
           <Heart aria-hidden="true" className="h-4 w-4 fill-sakura-deep text-sakura-deep" />
-          by
+          bởi
         </span>
         <a
-          aria-label="manhthien2005 on GitHub (opens in a new tab)"
+          aria-label="manhthien2005 trên GitHub (mở tab mới)"
           className="squishy inline-flex items-center gap-1 rounded-full border border-wafer bg-mochi px-2.5 py-1 font-bold text-matcha-deep shadow-mochi transition hover:bg-rice focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep focus-visible:ring-offset-2"
           href={GITHUB_URL}
           rel="noopener noreferrer"

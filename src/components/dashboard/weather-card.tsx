@@ -9,17 +9,17 @@ import { cn } from "@/lib/utils";
  * No live API — the shell is branded and cozy; values are real, readable text.
  */
 export const DASHBOARD_WEATHER = {
-  location: "Bangkok",
+  location: "Sài Gòn",
   temperature: "31°C",
-  condition: "Clear evening",
+  condition: "Trời quang buổi tối",
   feelsLike: "34°C",
   humidity: "68%",
   wind: "9 km/h",
   rainChance: "12%",
-  uvIndex: "Low",
-  planningNote: "Good window for a light walk after focus work.",
+  uvIndex: "Thấp",
+  planningNote: "Khung giờ đẹp để đi dạo nhẹ sau khi tập trung xong.",
   emoji: "☀️",
-  emojiLabel: "Clear weather"
+  emojiLabel: "Trời quang"
 } as const;
 
 type WeatherMetric = {
@@ -36,7 +36,7 @@ type WeatherMetric = {
 const WEATHER_METRICS: WeatherMetric[] = [
   {
     key: "humidity",
-    label: "Humidity",
+    label: "Độ ẩm",
     value: DASHBOARD_WEATHER.humidity,
     icon: Droplets,
     motion: "wx-humidity",
@@ -45,7 +45,7 @@ const WEATHER_METRICS: WeatherMetric[] = [
   },
   {
     key: "wind",
-    label: "Wind",
+    label: "Gió",
     value: DASHBOARD_WEATHER.wind,
     icon: Wind,
     motion: "wx-wind",
@@ -54,7 +54,7 @@ const WEATHER_METRICS: WeatherMetric[] = [
   },
   {
     key: "rain",
-    label: "Rain",
+    label: "Mưa",
     value: DASHBOARD_WEATHER.rainChance,
     icon: CloudRain,
     motion: "wx-rain",
@@ -110,7 +110,7 @@ export function WeatherCard() {
             {DASHBOARD_WEATHER.temperature}
           </p>
           <p className="mt-1 text-sm font-bold text-mauve">
-            Feels like {DASHBOARD_WEATHER.feelsLike}
+            Cảm giác như {DASHBOARD_WEATHER.feelsLike}
           </p>
           <p className="mt-3 max-w-md text-sm font-semibold leading-6 text-mauve">
             {DASHBOARD_WEATHER.planningNote}

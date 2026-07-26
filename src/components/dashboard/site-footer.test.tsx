@@ -9,7 +9,7 @@ describe("SiteFooter", () => {
 
     expect(screen.getByText("BetterMe")).toBeTruthy();
     expect(screen.getByText("© 2026")).toBeTruthy();
-    expect(screen.getByText(/Build with love/)).toBeTruthy();
+    expect(screen.getByText(/Được làm với/)).toBeTruthy();
   });
 
   it("embeds a GitHub link to manhthien2005 that opens safely in a new tab", () => {

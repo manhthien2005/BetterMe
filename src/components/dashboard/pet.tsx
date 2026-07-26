@@ -39,11 +39,11 @@ const STAGE_SCALE: Record<PetStage, number> = {
 };
 
 const STAGE_LABEL: Record<PetStage, string> = {
-  baby: "baby",
-  kid: "kid",
-  junior: "junior",
-  teen: "teen",
-  adult: "adult"
+  baby: "sơ sinh",
+  kid: "nhóc con",
+  junior: "thiếu nhi",
+  teen: "thiếu niên",
+  adult: "trưởng thành"
 };
 
 export type PetMood = "asleep" | "neutral" | "happy" | "delighted" | "party";
@@ -60,11 +60,11 @@ export function getPetMood(completedCount: number, totalCount: number): PetMood 
 }
 
 const MOOD_LABEL: Record<PetMood, string> = {
-  asleep: "fast asleep",
-  neutral: "waking up",
-  happy: "happy",
-  delighted: "delighted",
-  party: "celebrating a perfect day"
+  asleep: "đang ngủ say",
+  neutral: "vừa thức dậy",
+  happy: "đang vui",
+  delighted: "đang phấn khích",
+  party: "đang mở tiệc mừng ngày trọn vẹn"
 };
 
 const CONFETTI_PIECES = [
@@ -249,13 +249,13 @@ export function Pet({
       ) : null}
 
       <button
-        aria-label={`Pet ${name}`}
+        aria-label={`Vuốt ve ${name}`}
         className="squishy cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep focus-visible:ring-offset-2"
         onClick={handlePet}
         type="button"
       >
         <svg
-          aria-label={`${name} the ${species}, ${STAGE_LABEL[stage]} stage, ${MOOD_LABEL[mood]}`}
+          aria-label={`Bé ${species === "dog" ? "cún" : "mèo"} ${name}, giai đoạn ${STAGE_LABEL[stage]}, ${MOOD_LABEL[mood]}`}
           className={cn(
             squash || petting
               ? "nep-squash"
@@ -670,7 +670,7 @@ export function PetAdoption({
           }}
         >
           <label className="sr-only" htmlFor="pet-name">
-            Pet name
+            Tên bé cưng
           </label>
           <input
             autoFocus

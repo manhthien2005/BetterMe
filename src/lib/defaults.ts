@@ -4,64 +4,66 @@ export const DEFAULT_TIMEZONE = "Asia/Ho_Chi_Minh";
 export const DEFAULT_TRACKER_DAYS = 90;
 export const DEFAULT_TARGET_COMPLETION_RATE = 0.8;
 
-export const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+export const DAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"] as const;
 
+// Category values stay English keys (stored in state + DB and used for icon
+// lookups); the UI renders them through CATEGORY_LABELS in dashboard-data.
 export const DEFAULT_HABITS = [
   {
     key: "wake_up",
-    name: "Wake up on time",
+    name: "Dậy đúng giờ",
     category: "Discipline",
     maxScore: 1,
     active: true,
-    description: "Wake up at the time you planned."
+    description: "Thức dậy đúng giờ mình đã hẹn."
   },
   {
     key: "english",
-    name: "Study English",
+    name: "Học tiếng Anh",
     category: "Learning",
     maxScore: 1,
     active: true,
-    description: "Spend focused time practicing English."
+    description: "Dành thời gian tập trung luyện tiếng Anh."
   },
   {
     key: "coding",
-    name: "Code / project work",
+    name: "Code / làm dự án",
     category: "Work",
     maxScore: 2,
     active: true,
-    description: "Build, code, practice, or move a project forward."
+    description: "Viết code, luyện tập hoặc đẩy dự án tiến thêm một bước."
   },
   {
     key: "exercise",
-    name: "Exercise / sports",
+    name: "Vận động / thể thao",
     category: "Health",
     maxScore: 1,
     active: true,
-    description: "Move your body, train, walk, stretch, or play sports."
+    description: "Cho cơ thể vận động: tập luyện, đi bộ, giãn cơ, chơi thể thao."
   },
   {
     key: "focus",
-    name: "Avoid wasting time",
+    name: "Không lãng phí thời gian",
     category: "Discipline",
     maxScore: 1,
     active: true,
-    description: "Stay focused and reduce distractions."
+    description: "Giữ tập trung, hạn chế xao nhãng."
   },
   {
     key: "clean",
-    name: "Clean up / personal discipline",
+    name: "Dọn dẹp / nếp sống gọn gàng",
     category: "Discipline",
     maxScore: 1,
     active: true,
-    description: "Keep your space and personal discipline clean."
+    description: "Giữ không gian và nếp sinh hoạt gọn gàng."
   },
   {
     key: "review",
-    name: "End-of-day review",
+    name: "Nhìn lại cuối ngày",
     category: "Reflection",
     maxScore: 1,
     active: true,
-    description: "Reflect on the day and plan tomorrow."
+    description: "Nhìn lại một ngày và lên kế hoạch cho ngày mai."
   }
 ] as const;
 

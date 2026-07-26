@@ -67,7 +67,7 @@ describe("GardenVisitOverlay", () => {
 
     // The re-used <Pet> SVG carries the species/stage in its aria-label.
     expect(
-      screen.getByRole("img", { name: /Xoài the dog, junior stage/ })
+      screen.getByRole("img", { name: /Bé cún Xoài, giai đoạn thiếu nhi/ })
     ).toBeTruthy();
 
     // Milestone chips: FIXED kind(+detail) labels, one cheer button each.

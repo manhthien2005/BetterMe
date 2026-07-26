@@ -74,7 +74,7 @@ describe("dashboard route", () => {
     expect(
       screen.getByRole("button", { name: /dev@betterme\.local/i }).getAttribute("aria-haspopup")
     ).toBe("menu");
-    expect(screen.getByRole("heading", { name: "Bangkok" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Sài Gòn" })).toBeTruthy();
   });
 
   it("renders the habit dashboard for authenticated users", async () => {
@@ -92,38 +92,40 @@ describe("dashboard route", () => {
 
     expect(authMocks.ensureUserBootstrap).toHaveBeenCalledTimes(1);
     expect(
-      screen.getByRole("heading", { name: /good .*thiên/i })
+      screen.getByRole("heading", { name: /chào buổi .*sếp ơi/i })
     ).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Calendar" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Today's Habits" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Lịch tháng" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Thói quen hôm nay" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Personal Widgets" })).toBeNull();
     expect(screen.queryByLabelText("Add widget")).toBeNull();
     expect(screen.queryByText("Deep work")).toBeNull();
-    expect(screen.getByRole("heading", { name: "Bangkok" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Sài Gòn" })).toBeTruthy();
     expect(screen.getByText("31°C")).toBeTruthy();
-    expect(screen.getByText("Feels like 34°C")).toBeTruthy();
-    expect(screen.getByText("Humidity")).toBeTruthy();
-    expect(screen.getByText("Wind")).toBeTruthy();
-    expect(screen.getByText("Rain")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Focus session" })).toBeTruthy();
-    const rightRail = screen.getByLabelText("Weather and Spotify highlights");
-    expect(within(rightRail).getByRole("heading", { name: "Bangkok" })).toBeTruthy();
-    expect(within(rightRail).getByRole("heading", { name: "Focus session" })).toBeTruthy();
-    const spotifyFrame = screen.getByTitle("Spotify Deep Focus playlist");
+    expect(screen.getByText("Cảm giác như 34°C")).toBeTruthy();
+    expect(screen.getByText("Độ ẩm")).toBeTruthy();
+    expect(screen.getByText("Gió")).toBeTruthy();
+    expect(screen.getByText("Mưa")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Nhạc tập trung" })).toBeTruthy();
+    const rightRail = screen.getByLabelText("Thời tiết và nhạc tập trung");
+    expect(within(rightRail).getByRole("heading", { name: "Sài Gòn" })).toBeTruthy();
+    expect(within(rightRail).getByRole("heading", { name: "Nhạc tập trung" })).toBeTruthy();
+    const spotifyFrame = screen.getByTitle("Playlist Deep Focus trên Spotify");
     expect(spotifyFrame.getAttribute("src")).toContain(
       "https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKCadgRdKQ"
     );
     expect(
-      screen.getByRole("link", { name: "Open in Spotify" }).getAttribute("href")
+      screen.getByRole("link", { name: "Mở trong Spotify" }).getAttribute("href")
     ).toBe(
       "https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ"
     );
-    expect(screen.getByRole("heading", { name: "Upcoming Events" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Analytics" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Sự kiện sắp tới" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Phân tích" })).toBeTruthy();
     expect(
       screen.getByRole("link", { name: /manhthien2005/i }).getAttribute("href")
     ).toBe("https://github.com/manhthien2005");
-    expect(screen.getByLabelText("Exercise / sports emoji icon").textContent).toBe("💪");
+    expect(
+      screen.getByLabelText("Biểu tượng thói quen Vận động / thể thao").textContent
+    ).toBe("💪");
     expect(container.innerHTML).not.toContain("font-black");
 
     // First run: the hero invites you to adopt a pet — two wobbling eggs.
@@ -133,8 +135,8 @@ describe("dashboard route", () => {
     ).toBeTruthy();
     expect(screen.getByLabelText("Chọn trứng Cún con")).toBeTruthy();
     expect(screen.getByLabelText("Chọn trứng Mèo con")).toBeTruthy();
-    expect(screen.getByText("7-day rhythm")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /add a habit/i })).toBeTruthy();
+    expect(screen.getByText("Nhịp 7 ngày")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /thêm thói quen/i })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Tracker" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Habits" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
@@ -148,7 +150,7 @@ describe("dashboard route", () => {
       .getAllByRole("img")
       .find(
         (cell) =>
-          cell.getAttribute("aria-label")?.includes("habits") &&
+          cell.getAttribute("aria-label")?.includes("thói quen") &&
           cell.getAttribute("style")?.includes("radial-gradient")
       );
     expect(calendarDay).toBeTruthy();
@@ -165,16 +167,16 @@ describe("dashboard route", () => {
     render(await DashboardPage());
 
     fireEvent.click(screen.getByLabelText("Chọn trứng Cún con"));
-    fireEvent.change(screen.getByLabelText("Pet name"), {
+    fireEvent.change(screen.getByLabelText("Tên bé cưng"), {
       target: { value: "Xoài" }
     });
     fireEvent.click(screen.getByRole("button", { name: "Nhận nuôi 💕" }));
 
     // The pet renders with a baby-stage aria label, plus bond meter + food tray.
-    expect(screen.getByLabelText(/Xoài the dog, baby stage/)).toBeTruthy();
-    expect(screen.getByLabelText("Bond tier 1 of 5")).toBeTruthy();
+    expect(screen.getByLabelText(/Bé cún Xoài, giai đoạn sơ sinh/)).toBeTruthy();
+    expect(screen.getByLabelText("Thân thiết cấp 1 trên 5")).toBeTruthy();
     expect(screen.getByText("Lạ lẫm")).toBeTruthy();
-    expect(screen.getByLabelText("0 treats in the pantry")).toBeTruthy();
+    expect(screen.getByLabelText("0 món ăn trong tủ")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Cho ăn" })).toBeTruthy();
     expect(screen.getByText(/Ngày chăm: 0/)).toBeTruthy();
     // The cat egg still waits in the switcher.
@@ -193,7 +195,7 @@ describe("dashboard route", () => {
 
     render(await DashboardPage());
 
-    expect(screen.getByLabelText(/Mochi the cat, baby stage/)).toBeTruthy();
+    expect(screen.getByLabelText(/Bé mèo Mochi, giai đoạn sơ sinh/)).toBeTruthy();
 
     // Seed data sits at 6/7 — completing the last habit finishes the day,
     // which pays one treat plus the perfect-day bonus treat.
@@ -204,11 +206,11 @@ describe("dashboard route", () => {
     expect(unchecked).toBeTruthy();
     fireEvent.click(unchecked!);
 
-    expect(screen.getByLabelText("2 treats in the pantry")).toBeTruthy();
+    expect(screen.getByLabelText("2 món ăn trong tủ")).toBeTruthy();
 
     // Feeding spends one treat.
     fireEvent.click(screen.getByRole("button", { name: "Cho ăn" }));
-    expect(screen.getByLabelText("1 treats in the pantry")).toBeTruthy();
+    expect(screen.getByLabelText("1 món ăn trong tủ")).toBeTruthy();
   });
 
   it("uses the dashboard as the default landing route", () => {

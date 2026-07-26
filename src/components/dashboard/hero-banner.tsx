@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 
 import { CelebrationOverlay } from "@/components/dashboard/celebration-overlay";
 import { CompanionPanel, type CompanionHandlers } from "@/components/dashboard/companion-panel";
-import type { DashboardViewModel } from "@/components/dashboard/dashboard-data";
+import { STATUS_LABELS, type DashboardViewModel } from "@/components/dashboard/dashboard-data";
 import { cn, formatPercent } from "@/lib/utils";
 
 /**
@@ -47,7 +47,7 @@ export function HeroBanner({
             {viewModel.date.longLabel}
           </p>
           <h1 className="mt-3 font-display text-3xl font-bold text-plum sm:text-4xl">
-            {viewModel.greeting}, Thiên
+            {viewModel.greeting}, Sếp ơi
           </h1>
           <p className="mt-2 max-w-md text-sm font-semibold leading-6 text-mauve">
             {viewModel.motivation}
@@ -56,29 +56,29 @@ export function HeroBanner({
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <MetricPill
               icon={CheckCircle2}
-              label="Today"
+              label="Hôm nay"
               tone="matcha"
               value={`${viewModel.today.completedHabits}/${viewModel.today.totalHabits}`}
             />
             <MetricPill
               icon={Sprout}
-              label="7-day rhythm"
+              label="Nhịp 7 ngày"
               tone="sakura"
               value={formatPercent(viewModel.streak.rhythm)}
             />
             <MetricPill
               icon={Flower2}
-              label="Good days"
+              label="Ngày tốt"
               tone="butter"
-              value={`${goodDaysThisMonth} this month`}
+              value={`${goodDaysThisMonth} trong tháng`}
             />
           </div>
 
           <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-wafer bg-white/75 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div aria-label="Last seven days rhythm" className="flex items-center gap-2">
+            <div aria-label="Nhịp 7 ngày gần nhất" className="flex items-center gap-2">
               {viewModel.streak.chain.map((day) => (
                 <span
-                  aria-label={`${day.label}: ${day.status}`}
+                  aria-label={`Ngày ${day.label}: ${STATUS_LABELS[day.status]}`}
                   className={cn(
                     "h-3.5 w-3.5 rounded-full border transition",
                     day.completed
@@ -86,7 +86,7 @@ export function HeroBanner({
                       : "border-wafer bg-white"
                   )}
                   key={day.date}
-                  title={`${day.label}: ${day.status}`}
+                  title={`Ngày ${day.label}: ${STATUS_LABELS[day.status]}`}
                 />
               ))}
             </div>

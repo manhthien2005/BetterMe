@@ -29,8 +29,8 @@ export function AnalyticsPanel({ viewModel }: { viewModel: DashboardViewModel })
           <BarChart3 className="h-5 w-5 text-dawn-deep" />
         </span>
         <div>
-          <h2 className="font-display text-lg font-bold text-plum">Analytics</h2>
-          <p className="text-sm font-semibold text-mauve">Your rhythm at a glance</p>
+          <h2 className="font-display text-lg font-bold text-plum">Phân tích</h2>
+          <p className="text-sm font-semibold text-mauve">Nhìn nhanh nhịp của mình</p>
         </div>
       </div>
 
@@ -41,16 +41,16 @@ export function AnalyticsPanel({ viewModel }: { viewModel: DashboardViewModel })
             <GaugeRing percent={averagePercent} value={average} />
             <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-wide text-mauve">
-                Average completion
+                Hoàn thành trung bình
               </p>
               <DeltaPill delta={delta} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <MiniStat icon={Flower2} label="Good days" tone="matcha" value={`${analytics.goodDays}`} />
+            <MiniStat icon={Flower2} label="Ngày tốt" tone="matcha" value={`${analytics.goodDays}`} />
             <MiniStat
               icon={CheckCircle2}
-              label="Completed"
+              label="Lượt hoàn thành"
               tone="dawn"
               value={`${analytics.totalCompletedHabits}`}
             />
@@ -61,10 +61,10 @@ export function AnalyticsPanel({ viewModel }: { viewModel: DashboardViewModel })
         <div className="rounded-2xl border border-wafer bg-white/75 p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-xs font-bold uppercase tracking-wide text-mauve">
-              Completion trend
+              Xu hướng hoàn thành
             </p>
             <p className="text-xs font-bold text-mauve">
-              Last {analytics.trend.length} days
+              {analytics.trend.length} ngày gần nhất
             </p>
           </div>
           <TrendChart trend={analytics.trend} />
@@ -75,7 +75,7 @@ export function AnalyticsPanel({ viewModel }: { viewModel: DashboardViewModel })
         {/* Per-habit performance */}
         <div className="rounded-2xl border border-wafer bg-white/75 p-4">
           <p className="mb-3 text-xs font-bold uppercase tracking-wide text-mauve">
-            Habit performance
+            Từng thói quen
           </p>
           <div className="grid gap-3">
             {analytics.habitPerformance.slice(0, 5).map((habit, index) => (
@@ -98,7 +98,7 @@ export function AnalyticsPanel({ viewModel }: { viewModel: DashboardViewModel })
               </div>
             ))}
             {analytics.habitPerformance.length === 0 ? (
-              <p className="text-sm font-semibold text-mauve">Plant a habit to see its rhythm 🌱</p>
+              <p className="text-sm font-semibold text-mauve">Trồng một thói quen để thấy nhịp của nó 🌱</p>
             ) : null}
           </div>
         </div>
@@ -107,13 +107,13 @@ export function AnalyticsPanel({ viewModel }: { viewModel: DashboardViewModel })
         <div className="grid content-start gap-3 sm:grid-cols-2">
           <Insight
             icon={Award}
-            label="Most steady"
+            label="Đều tay nhất"
             tone="matcha"
             value={analytics.mostConsistentHabitName}
           />
           <Insight
             icon={Sprout}
-            label="A little more love"
+            label="Cần thêm chút yêu thương"
             tone="honey"
             value={analytics.habitNeedingAttentionName}
           />
@@ -129,7 +129,7 @@ function GaugeRing({ percent, value }: { percent: number; value: number }) {
 
   return (
     <svg
-      aria-label={`Average completion ${percent} percent`}
+      aria-label={`Hoàn thành trung bình ${percent} phần trăm`}
       className="h-28 w-28 shrink-0"
       role="img"
       viewBox="0 0 140 140"
@@ -178,7 +178,7 @@ function GaugeRing({ percent, value }: { percent: number; value: number }) {
         x="70"
         y="90"
       >
-        avg
+        TB
       </text>
     </svg>
   );
@@ -192,7 +192,7 @@ function DeltaPill({ delta }: { delta: number }) {
 
   return (
     <span
-      aria-label={`Change from previous period ${label}`}
+      aria-label={`Thay đổi so với kỳ trước ${label}`}
       className={cn(
         "mt-1.5 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-bold",
         rounded > 0 ? "bg-matcha/15 text-matcha-deep" : "bg-wafer text-mauve"
@@ -200,7 +200,7 @@ function DeltaPill({ delta }: { delta: number }) {
     >
       <Icon aria-hidden="true" className="h-3.5 w-3.5" />
       {label}
-      <span className="text-xs font-semibold text-mauve">vs previous</span>
+      <span className="text-xs font-semibold text-mauve">so với kỳ trước</span>
     </span>
   );
 }
@@ -218,7 +218,7 @@ const TREND_DOT: Record<DashboardStatus, string> = {
  *  (no distortion), and an sr-only list carries every value non-visually. */
 function TrendChart({ trend }: { trend: DashboardViewModel["analytics"]["trend"] }) {
   if (trend.length === 0) {
-    return <p className="text-sm font-semibold text-mauve">Come back tomorrow for your first trend point 🌤️</p>;
+    return <p className="text-sm font-semibold text-mauve">Mai quay lại để có điểm xu hướng đầu tiên nha 🌤️</p>;
   }
 
   const denominator = Math.max(1, trend.length - 1);
@@ -352,7 +352,7 @@ function Insight({
         />
         {label}
       </div>
-      <p className="mt-1.5 break-words text-sm font-bold text-plum">{value ?? "No habit yet"}</p>
+      <p className="mt-1.5 break-words text-sm font-bold text-plum">{value ?? "Chưa có thói quen"}</p>
     </div>
   );
 }

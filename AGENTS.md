@@ -27,6 +27,9 @@ Breaking either is a failure, not a tradeoff. If a request seems to require it, 
 - Dev server: `pnpm dev` (login bypass: set env `BETTERME_DEV_AUTH_BYPASS=true` — the string
   `"true"`, not `1`; when bypassed, sync/social are OFF by design — localStorage only)
 - Single test file: `pnpm vitest run src/path/to/file.test.ts`
+- NEVER run `pnpm build` while `pnpm dev` is running — they share `.next/`, and the
+  production build corrupts the dev server's cache (manifest errors, 500s). Stop dev first,
+  or restart it after the build.
 - Remotion (logo video): `pnpm remotion` / `pnpm remotion:render`
 - In shell calls, use PowerShell-safe commands — no `head`/`grep`/`|` unix pipes. Prefer the
   dedicated read/search tools over shell for reading and searching.

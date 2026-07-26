@@ -72,7 +72,7 @@ describe("login route", () => {
 
     render(await LoginPage());
 
-    expect(screen.getByRole("link", { name: "Continue as dev" }).getAttribute("href")).toBe(
+    expect(screen.getByRole("link", { name: "Vào bằng tài khoản dev" }).getAttribute("href")).toBe(
       "/dashboard"
     );
   });

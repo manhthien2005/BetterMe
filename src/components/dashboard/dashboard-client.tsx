@@ -16,8 +16,10 @@ import {
   adoptPet,
   applyGiftToState,
   buildDashboardViewModel,
+  categoryLabel,
   checkComebackGift,
   createInitialDashboardState,
+  EVENT_CATEGORY_LABELS,
   feedActivePet,
   getBondTier,
   getDashboardToday,
@@ -29,6 +31,7 @@ import {
   petActivePet,
   recordGrowthDay,
   removeHabitFromState,
+  STATUS_LABELS,
   switchActivePet,
   toggleHabitForDate,
   type DashboardCalendarDay,
@@ -579,7 +582,7 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
       clientTs: new Date().toISOString(),
       expectCreate: true
     });
-    toast.success("New habit planted 🌱", {
+    toast.success("Đã trồng thói quen mới 🌱", {
       description: activePet
         ? `${activePet.name} sẽ cổ vũ bạn từ hôm nay.`
         : "Bé cưng trong vườn sẽ cổ vũ bạn từ hôm nay."
@@ -679,7 +682,7 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
             ) : null}
           </div>
           <aside
-            aria-label="Weather and Spotify highlights"
+            aria-label="Thời tiết và nhạc tập trung"
             className="grid gap-5 xl:sticky xl:top-5"
           >
             <WeatherCard />
@@ -748,13 +751,13 @@ function CalendarPanel({
     <section className="soft-panel card-lift rounded-lg p-4 sm:p-5 xl:[grid-area:1/1/2/8]">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h2 className="font-display text-lg font-bold text-plum">Calendar</h2>
+          <h2 className="font-display text-lg font-bold text-plum">Lịch tháng</h2>
           <p className="mt-1 text-sm font-semibold text-mauve">
             {viewModel.date.monthLabel}
           </p>
         </div>
         <div className="rounded-2xl border border-matcha/40 bg-matcha/10 px-3 py-2 text-right">
-          <p className="text-xs font-bold uppercase tracking-wide text-matcha-deep">Month</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-matcha-deep">Tháng này</p>
           <p className="font-display text-lg font-bold text-matcha-deep">
             {formatPercent(viewModel.calendar.monthCompletionRate)}
           </p>
@@ -762,7 +765,7 @@ function CalendarPanel({
       </div>
 
       <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-mauve">
-        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => (
+        {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((label) => (
           <div className="py-1" key={label}>
             {label}
           </div>
@@ -771,7 +774,7 @@ function CalendarPanel({
       <div className="mt-1 grid grid-cols-7 gap-1">
         {days.map((day) => (
           <div
-            aria-label={`${day.label}, ${day.completedHabits} of ${day.totalHabits} habits, ${day.status}`}
+            aria-label={`${day.label}, xong ${day.completedHabits}/${day.totalHabits} thói quen, ${STATUS_LABELS[day.status]}`}
             className={cn(
               "mx-auto flex h-8 w-8 items-center justify-center rounded-full border border-wafer text-xs font-bold sm:h-9 sm:w-9",
               day.inCurrentMonth ? "text-plum" : "border-wafer/50 text-mauve/40",
@@ -783,7 +786,7 @@ function CalendarPanel({
             key={day.date}
             role="img"
             style={calendarCellStyle(day)}
-            title={`${day.label}: ${day.completedHabits}/${day.totalHabits} habits`}
+            title={`${day.label}: ${day.completedHabits}/${day.totalHabits} thói quen`}
           >
             {day.day}
           </div>
@@ -827,10 +830,10 @@ function TodaysHabits({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="font-display text-lg font-bold text-plum">
-            Today&apos;s Habits
+            Thói quen hôm nay
           </h2>
           <p className="mt-1 text-sm font-semibold text-mauve">
-            {viewModel.today.completedHabits} of {viewModel.today.totalHabits} completed
+            Xong {viewModel.today.completedHabits}/{viewModel.today.totalHabits} việc
           </p>
         </div>
         <StatusBadge status={viewModel.today.status} />
@@ -838,7 +841,7 @@ function TodaysHabits({
 
       <div className="mt-4">
         <div className="mb-2 flex items-center justify-between text-sm font-bold text-mauve">
-          <span>Today progress</span>
+          <span>Tiến độ hôm nay</span>
           <span className="text-plum">{formatPercent(viewModel.today.completionRate)}</span>
         </div>
         <div className="h-3 overflow-hidden rounded-full bg-wafer">
@@ -868,7 +871,7 @@ function TodaysHabits({
           onSubmit={handleSubmit}
         >
           <label className="sr-only" htmlFor="new-habit-name">
-            Habit name
+            Tên thói quen
           </label>
           <input
             autoFocus
@@ -876,11 +879,11 @@ function TodaysHabits({
             id="new-habit-name"
             maxLength={60}
             onChange={(event) => setName(event.target.value)}
-            placeholder="A tiny habit, e.g. Drink water"
+            placeholder="Một thói quen nhỏ, vd. Uống đủ nước"
             value={name}
           />
           <label className="sr-only" htmlFor="new-habit-category">
-            Category
+            Nhóm
           </label>
           <select
             className="h-10 rounded-full border border-wafer bg-white px-3 text-sm font-semibold text-plum focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep"
@@ -890,20 +893,20 @@ function TodaysHabits({
           >
             {HABIT_CATEGORIES.map((option) => (
               <option key={option} value={option}>
-                {option}
+                {categoryLabel(option)}
               </option>
             ))}
           </select>
-          <Button type="submit">Plant it</Button>
+          <Button type="submit">Trồng thôi 🌱</Button>
           <Button onClick={() => setShowForm(false)} type="button" variant="ghost">
-            Cancel
+            Để sau
           </Button>
         </form>
       ) : (
         <div className="mt-5 flex flex-wrap gap-2">
           <Button onClick={() => setShowForm(true)} type="button" variant="outline">
             <CirclePlus className="h-4 w-4" />
-            Add a habit
+            Thêm thói quen
           </Button>
           <Button
             aria-pressed={editing}
@@ -912,7 +915,7 @@ function TodaysHabits({
             variant="ghost"
           >
             {editing ? <Check className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
-            {editing ? "Done" : "Edit"}
+            {editing ? "Xong" : "Sửa"}
           </Button>
         </div>
       )}
@@ -963,7 +966,7 @@ function HabitRow({
           )}
         >
           <span
-            aria-label={`${habit.name} emoji icon`}
+            aria-label={`Biểu tượng thói quen ${habit.name}`}
             className="text-2xl leading-none drop-shadow-sm"
             role="img"
           >
@@ -980,10 +983,10 @@ function HabitRow({
             {habit.name}
           </span>
           <span className="mt-1 flex items-center gap-2 text-xs font-bold text-mauve">
-            <span className="truncate">{habit.category}</span>
+            <span className="truncate">{categoryLabel(habit.category)}</span>
             {isEasyWin && !habit.completed ? (
               <span className="shrink-0 rounded-full bg-butter/50 px-2 py-0.5 text-[10px] font-bold text-plum">
-                ✨ easy win
+                ✨ dễ bắt đầu
               </span>
             ) : null}
           </span>
@@ -1009,7 +1012,7 @@ function HabitRow({
       </button>
       {editing ? (
         <button
-          aria-label={`Remove ${habit.name}`}
+          aria-label={`Xóa thói quen ${habit.name}`}
           className="squishy absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-sakura-deep text-white shadow-mochi focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sakura-deep focus-visible:ring-offset-2"
           onClick={() => onRemove(habit.id)}
           type="button"
@@ -1079,10 +1082,10 @@ function SpotifyCard() {
               Spotify
             </p>
             <h2 className="mt-2 font-display text-2xl font-bold text-white">
-              Focus session
+              Nhạc tập trung
             </h2>
             <p className="mt-3 max-w-sm text-sm font-semibold leading-6 text-white/70">
-              Deep Focus by Spotify, ready for coding blocks and quiet review.
+              Deep Focus của Spotify — sẵn sàng cho giờ code và những phút ôn bài yên tĩnh.
             </p>
           </div>
 
@@ -1092,7 +1095,7 @@ function SpotifyCard() {
             rel="noreferrer"
             target="_blank"
           >
-            Open in Spotify
+            Mở trong Spotify
           </a>
         </div>
 
@@ -1102,7 +1105,7 @@ function SpotifyCard() {
             className="block h-[352px] w-full border-0"
             loading="lazy"
             src={SPOTIFY_EMBED_URL}
-            title="Spotify Deep Focus playlist"
+            title="Playlist Deep Focus trên Spotify"
           />
         </div>
       </div>
@@ -1115,7 +1118,7 @@ function UpcomingEvents({ viewModel }: { viewModel: DashboardViewModel }) {
     <section className="soft-panel card-lift rounded-lg p-4 sm:p-5 xl:[grid-area:2/1/3/8]">
       <div className="mb-4 flex items-center gap-2">
         <CalendarCheck className="h-5 w-5 text-matcha-deep" />
-        <h2 className="font-display text-lg font-bold text-plum">Upcoming Events</h2>
+        <h2 className="font-display text-lg font-bold text-plum">Sự kiện sắp tới</h2>
       </div>
 
       <div className="grid gap-3">
@@ -1129,8 +1132,8 @@ function UpcomingEvents({ viewModel }: { viewModel: DashboardViewModel }) {
                 <p className="text-sm font-bold text-plum">{event.title}</p>
                 <p className="mt-1 text-xs font-bold text-mauve">{event.time}</p>
               </div>
-              <span className="rounded-full bg-sakura/40 px-2.5 py-1 text-xs font-bold capitalize text-sakura-deep">
-                {event.category}
+              <span className="rounded-full bg-sakura/40 px-2.5 py-1 text-xs font-bold text-sakura-deep">
+                {EVENT_CATEGORY_LABELS[event.category]}
               </span>
             </div>
           </div>
@@ -1151,7 +1154,7 @@ function StatusBadge({ status }: { status: DashboardStatus }) {
         status === "No data" && "bg-wafer text-mauve"
       )}
     >
-      {status}
+      {STATUS_LABELS[status]}
     </span>
   );
 }
