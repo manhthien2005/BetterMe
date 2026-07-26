@@ -154,6 +154,15 @@ export function categoryLabel(category: string): string {
   return CATEGORY_LABELS[category] ?? category;
 }
 
+/** The categories a habit can be filed under — used by the editor form. */
+export const HABIT_CATEGORIES: readonly string[] = [
+  "Discipline",
+  "Learning",
+  "Work",
+  "Health",
+  "Reflection"
+];
+
 export const EVENT_CATEGORY_LABELS: Record<DashboardEvent["category"], string> = {
   habit: "thói quen",
   planning: "kế hoạch",
