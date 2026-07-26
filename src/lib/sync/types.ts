@@ -1,4 +1,9 @@
 import type { PetSpecies } from "@/components/dashboard/dashboard-data";
+import type {
+  HabitColor,
+  TimeOfDay,
+  TrackingType
+} from "@/components/dashboard/habit-model";
 
 /**
  * Sync layer types (spec §2.1–§2.4, docs/superpowers/specs/2026-07-08-social-garden-spec.md).
@@ -19,10 +24,50 @@ export type SetHabitLogMutation = {
   habitKey: string;
   /** YYYY-MM-DD */
   date: string;
-  /** SET the value — never a flip. */
+  /**
+   * SET the value — never a flip. Still the boolean truth of the cell: the
+   * client owns the tracking rule (`isEntryComplete`), so it decides `done`,
+   * and the server never infers it from `value`.
+   */
   done: boolean;
+  /**
+   * The raw v3 reading behind `done` — glasses, minutes, or a checklist
+   * bitmask. Absent on a mutation minted before U1c: the server then stores
+   * NULL and the merge falls back to "a remote tick keeps whatever richer
+   * value that device already had".
+   */
+  value?: number;
+  /** LOCAL "HH:mm". The day is already in `date`; clock-only dodges tz drift. */
+  completedAt?: string;
   /** ISO client stamp; also the LWW stamp for this cell (shadow map). */
   clientTs: string;
+};
+
+/**
+ * The v3 definition of a habit as it crosses the wire (overhaul spec §5.1).
+ * Before U1c a habit that travelled between devices arrived as a v2 shadow and
+ * was re-defaulted locally — the other device never learned it was a 5-step
+ * checklist on Tuesday evenings.
+ *
+ * Named once because the outbound payload and the inbound server row must
+ * carry exactly the same fields; two hand-kept copies is how one of them ends
+ * up a field behind. Mirrors `HabitV3Fields` on the local `DashboardHabit`,
+ * except optionals here are explicit `null` — this is JSON on a wire, and
+ * `undefined` does not survive the trip.
+ */
+export type SyncHabitV3Fields = {
+  icon: string;
+  trackingType: TrackingType;
+  target: number;
+  unit: string | null;
+  steps: string[];
+  repeatDays: number[];
+  timesOfDay: TimeOfDay[];
+  scheduledAt: string | null;
+  color: HabitColor;
+  motivation: string;
+  pausedAt: string | null;
+  archivedAt: string | null;
 };
 
 export type SyncHabitPayload = {
@@ -33,7 +78,7 @@ export type SyncHabitPayload = {
   active: boolean;
   description: string;
   sortOrder: number;
-};
+} & SyncHabitV3Fields;
 
 export type UpsertHabitMutation = {
   kind: "upsertHabit";
@@ -123,7 +168,7 @@ export type ServerHabit = {
   sortOrder: number;
   clientUpdatedAt: string | null;
   deletedAt: string | null;
-};
+} & SyncHabitV3Fields;
 
 export type ServerHabitLog = {
   habitKey: string;
@@ -131,6 +176,14 @@ export type ServerHabitLog = {
   date: string;
   done: boolean;
   mutatedAt: string;
+  /**
+   * null = the row was written before U1c, or the deployed schema has no such
+   * column yet. Deliberately nullable where the mutation's `value` is optional:
+   * the client means "nothing to send", the server means "known to be unknown".
+   */
+  value: number | null;
+  /** LOCAL "HH:mm", null when the cell was never completed. */
+  completedAt: string | null;
 };
 
 export type ServerCompanionPet = CompanionPetPayload & {

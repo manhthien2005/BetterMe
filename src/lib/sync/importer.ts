@@ -1,6 +1,7 @@
 import { getDashboardToday, type DashboardState } from "@/components/dashboard/dashboard-data";
 
 import type { SyncEngine } from "./engine";
+import { habitSyncPayload, logSyncMutation } from "./payloads";
 import type { SyncMutation } from "./types";
 
 /**
@@ -37,15 +38,7 @@ export function buildInitialUpload(
   state.habits.filter((habit) => !tombstonedKeys.has(habit.id)).forEach((habit, index) => {
     mutations.push({
       kind: "upsertHabit",
-      habit: {
-        key: habit.id,
-        name: habit.name,
-        category: habit.category,
-        maxScore: habit.maxScore,
-        active: true,
-        description: habit.description,
-        sortOrder: index
-      },
+      habit: habitSyncPayload(habit, index),
       clientTs: nowIso,
       expectCreate: true
     });
@@ -72,13 +65,9 @@ export function buildInitialUpload(
       if (!habitIds.has(habitKey)) return;
       if (record.completions[habitKey] !== true) return;
 
-      mutations.push({
-        kind: "setHabitLog",
-        habitKey,
-        date,
-        done: true,
-        clientTs: nowIso
-      });
+      mutations.push(
+        logSyncMutation(habitKey, date, true, record.entries[habitKey], nowIso)
+      );
     });
   });
 

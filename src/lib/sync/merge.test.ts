@@ -25,8 +25,26 @@ import type {
   ServerHabit,
   ServerSnapshot,
   ShadowMap,
+  SyncHabitV3Fields,
   SyncMutation
 } from "./types";
+
+/** Every v3 field a wire habit must carry (U1c). Spread into a fixture. */
+const V3: SyncHabitV3Fields = {
+  icon: "📘",
+  trackingType: "check",
+  target: 1,
+  unit: null,
+  steps: [],
+  repeatDays: [1, 2, 3, 4, 5, 6, 7],
+  timesOfDay: ["anytime"],
+  scheduledAt: null,
+  color: "clay",
+  motivation: "",
+  pausedAt: null,
+  archivedAt: null
+};
+
 
 /** A v3 day record built from plain booleans — every habit here is `check`. */
 function dayRecord(date: string, completions: Record<string, boolean>): DashboardDayRecord {
@@ -82,6 +100,7 @@ function makeServerHabit(key: string, name: string, overrides: Partial<ServerHab
     sortOrder: 0,
     clientUpdatedAt: null,
     deletedAt: null,
+    ...V3,
     ...overrides
   };
 }
@@ -157,7 +176,7 @@ describe("mergeServerIntoLocal — completions (per-cell LWW)", () => {
     const shadow: ShadowMap = { "2026-07-01": { english: T_EARLY } };
     const server = makeSnapshot({
       habits: [makeServerHabit("english", "Học tiếng Anh")],
-      logs: [{ habitKey: "english", date: "2026-07-01", done: false, mutatedAt: T_MID }]
+      logs: [{ habitKey: "english", date: "2026-07-01", done: false, mutatedAt: T_MID, value: null, completedAt: null }]
     });
 
     const result = mergeServerIntoLocal(local, server, shadow, null);
@@ -177,7 +196,7 @@ describe("mergeServerIntoLocal — completions (per-cell LWW)", () => {
     const shadow: ShadowMap = { "2026-07-01": { english: T_LATE } };
     const server = makeSnapshot({
       habits: [makeServerHabit("english", "Học tiếng Anh")],
-      logs: [{ habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_MID }]
+      logs: [{ habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_MID, value: null, completedAt: null }]
     });
 
     const result = mergeServerIntoLocal(local, server, shadow, null);
@@ -201,8 +220,8 @@ describe("mergeServerIntoLocal — completions (per-cell LWW)", () => {
       habits: [makeServerHabit("english", "Học tiếng Anh")],
       logs: [
         // Postgres offset format vs client Z format: same instant.
-        { habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_MID_PG },
-        { habitKey: "english", date: "2026-07-02", done: false, mutatedAt: T_MID_PG }
+        { habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_MID_PG, value: null, completedAt: null },
+        { habitKey: "english", date: "2026-07-02", done: false, mutatedAt: T_MID_PG, value: null, completedAt: null }
       ]
     });
 
@@ -218,7 +237,7 @@ describe("mergeServerIntoLocal — completions (per-cell LWW)", () => {
     });
     const server = makeSnapshot({
       habits: [makeServerHabit("english", "Học tiếng Anh")],
-      logs: [{ habitKey: "english", date: "2026-07-02", done: true, mutatedAt: T_MID }]
+      logs: [{ habitKey: "english", date: "2026-07-02", done: true, mutatedAt: T_MID, value: null, completedAt: null }]
     });
 
     const result = mergeServerIntoLocal(local, server, {}, null);
@@ -275,7 +294,8 @@ describe("mergeServerIntoLocal — habits (union, LWW, tombstones)", () => {
           maxScore: 1,
           active: true,
           description: "",
-          sortOrder: 0
+          sortOrder: 0,
+          ...V3
         },
         clientTs: T_LATE
       }
@@ -302,7 +322,7 @@ describe("mergeServerIntoLocal — habits (union, LWW, tombstones)", () => {
         makeServerHabit("english", "Học tiếng Anh", { deletedAt: T_MID }),
         makeServerHabit("clean", "Dọn bàn")
       ],
-      logs: [{ habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_EARLY }]
+      logs: [{ habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_EARLY, value: null, completedAt: null }]
     });
 
     const result = mergeServerIntoLocal(local, server, shadow, null);
@@ -324,7 +344,8 @@ describe("mergeServerIntoLocal — habits (union, LWW, tombstones)", () => {
           maxScore: 1,
           active: true,
           description: "",
-          sortOrder: 0
+          sortOrder: 0,
+          ...V3
         },
         clientTs: T_LATE,
         expectCreate: true
@@ -346,7 +367,7 @@ describe("mergeServerIntoLocal — habits (union, LWW, tombstones)", () => {
     });
     const server = makeSnapshot({
       habits: [makeServerHabit("english", "Học tiếng Anh", { clientUpdatedAt: T_MID })],
-      logs: [{ habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_MID }]
+      logs: [{ habitKey: "english", date: "2026-07-01", done: true, mutatedAt: T_MID, value: null, completedAt: null }]
     });
 
     const result = mergeServerIntoLocal(local, server, {}, null);
@@ -391,7 +412,8 @@ describe("mergeServerIntoLocal — slug collision re-key (spec §2.2)", () => {
           maxScore: 1,
           active: true,
           description: "",
-          sortOrder: 0
+          sortOrder: 0,
+          ...V3
         },
         clientTs: T_LATE,
         expectCreate: true
@@ -401,7 +423,7 @@ describe("mergeServerIntoLocal — slug collision re-key (spec §2.2)", () => {
       habits: [
         makeServerHabit("custom_doc_sach", "Đọc sách báo", { clientUpdatedAt: T_EARLY })
       ],
-      logs: [{ habitKey: "custom_doc_sach", date: "2026-07-01", done: true, mutatedAt: T_EARLY }]
+      logs: [{ habitKey: "custom_doc_sach", date: "2026-07-01", done: true, mutatedAt: T_EARLY, value: null, completedAt: null }]
     });
 
     const result = mergeServerIntoLocal(local, server, shadow, null, pending);
@@ -670,7 +692,7 @@ describe("mergeServerIntoLocal — never touches fiction fields", () => {
     const local = createInitialDashboardState("2026-07-04");
     const server = makeSnapshot({
       habits: [makeServerHabit("english", "Học tiếng Anh", { clientUpdatedAt: T_MID })],
-      logs: [{ habitKey: "english", date: "2026-07-02", done: true, mutatedAt: T_MID }],
+      logs: [{ habitKey: "english", date: "2026-07-02", done: true, mutatedAt: T_MID, value: null, completedAt: null }],
       companion: makeServerCompanion()
     });
 
@@ -759,5 +781,205 @@ describe("buildCompanionSyncPayload / applyCompanionPushResult", () => {
     const next = applyCompanionPushResult(state, sent, returned, T_EARLY);
 
     expect(next.companion.pets.dog?.bond).toBe(1);
+  });
+});
+
+describe("log cells carry the v3 reading (U1c)", () => {
+  it("a newer server cell replaces value and completedAt wholesale", () => {
+    const local = makeState({
+      records: {
+        "2026-07-01": {
+          date: "2026-07-01",
+          entries: { english: { value: 1, completedAt: "06:10" } },
+          completions: { english: true }
+        }
+      }
+    });
+    const server = makeSnapshot({
+      habits: [makeServerHabit("english", "Học tiếng Anh")],
+      logs: [
+        {
+          habitKey: "english",
+          date: "2026-07-01",
+          done: true,
+          mutatedAt: T_MID,
+          value: 1,
+          completedAt: "05:45"
+        }
+      ]
+    });
+
+    const result = mergeServerIntoLocal(local, server, { "2026-07-01": { english: T_EARLY } }, null);
+
+    expect(result.state.records["2026-07-01"].entries.english).toEqual({
+      value: 1,
+      completedAt: "05:45"
+    });
+  });
+
+  it("a newer server cell brings partial progress across", () => {
+    const server = makeSnapshot({
+      habits: [makeServerHabit("english", "Học tiếng Anh")],
+      logs: [
+        {
+          habitKey: "english",
+          date: "2026-07-01",
+          done: false,
+          mutatedAt: T_MID,
+          value: 4,
+          completedAt: null
+        }
+      ]
+    });
+
+    const result = mergeServerIntoLocal(makeState(), server, {}, null);
+
+    expect(result.state.records["2026-07-01"].entries.english).toEqual({ value: 4 });
+    expect(result.state.records["2026-07-01"].completions.english).toBe(false);
+  });
+
+  it("an old server (value null) still never downgrades a richer local cell", () => {
+    // Deployment order is not guaranteed: the app can ship before the owner
+    // applies schema.sql. A tick from such a server must not turn eight
+    // glasses into a bare 1.
+    const local = makeState({
+      records: {
+        "2026-07-01": {
+          date: "2026-07-01",
+          entries: { english: { value: 8, completedAt: "21:40" } },
+          completions: { english: true }
+        }
+      }
+    });
+    const server = makeSnapshot({
+      habits: [makeServerHabit("english", "Học tiếng Anh")],
+      logs: [
+        {
+          habitKey: "english",
+          date: "2026-07-01",
+          done: true,
+          mutatedAt: T_MID,
+          value: null,
+          completedAt: null
+        }
+      ]
+    });
+
+    const result = mergeServerIntoLocal(local, server, {}, null);
+
+    expect(result.state.records["2026-07-01"].entries.english).toEqual({
+      value: 8,
+      completedAt: "21:40"
+    });
+  });
+
+  it("a remote untick still clears the cell", () => {
+    const local = makeState({
+      records: {
+        "2026-07-01": {
+          date: "2026-07-01",
+          entries: { english: { value: 1, completedAt: "06:10" } },
+          completions: { english: true }
+        }
+      }
+    });
+    const server = makeSnapshot({
+      habits: [makeServerHabit("english", "Học tiếng Anh")],
+      logs: [
+        {
+          habitKey: "english",
+          date: "2026-07-01",
+          done: false,
+          mutatedAt: T_MID,
+          value: 0,
+          completedAt: null
+        }
+      ]
+    });
+
+    const result = mergeServerIntoLocal(local, server, {}, null);
+
+    expect(result.state.records["2026-07-01"].entries.english).toEqual({ value: 0 });
+    expect(result.state.records["2026-07-01"].completions.english).toBe(false);
+  });
+});
+
+describe("habit v3 definition crosses devices (U1c)", () => {
+  const READ_V3: Partial<ServerHabit> = {
+    icon: "📚",
+    trackingType: "duration",
+    target: 20,
+    unit: null,
+    steps: [],
+    repeatDays: [2, 4, 6],
+    timesOfDay: ["evening"],
+    scheduledAt: "21:00",
+    color: "dusk",
+    motivation: "Mỗi tối một chương"
+  };
+
+  it("a habit adopted from the server arrives fully v3, not re-defaulted", () => {
+    const server = makeSnapshot({
+      habits: [makeServerHabit("read", "Đọc sách", { ...READ_V3, clientUpdatedAt: T_MID })]
+    });
+
+    const result = mergeServerIntoLocal(makeState(), server, {}, null);
+    const adopted = result.state.habits.find((habit) => habit.id === "read");
+
+    expect(adopted).toBeTruthy();
+    expect(adopted?.trackingType).toBe("duration");
+    expect(adopted?.target).toBe(20);
+    expect(adopted?.repeatDays).toEqual([2, 4, 6]);
+    expect(adopted?.timesOfDay).toEqual(["evening"]);
+    expect(adopted?.scheduledAt).toBe("21:00");
+    expect(adopted?.color).toBe("dusk");
+    expect(adopted?.icon).toBe("📚");
+    expect(adopted?.motivation).toBe("Mỗi tối một chương");
+  });
+
+  it("a newer server edit overwrites the local v3 fields", () => {
+    const server = makeSnapshot({
+      habits: [
+        makeServerHabit("english", "Học tiếng Anh", {
+          clientUpdatedAt: T_MID,
+          trackingType: "count",
+          target: 5,
+          unit: "lần",
+          repeatDays: [1, 3, 5],
+          pausedAt: "2026-07-28"
+        })
+      ]
+    });
+
+    const result = mergeServerIntoLocal(makeState(), server, {}, null);
+    const merged = result.state.habits.find((habit) => habit.id === "english");
+
+    expect(merged?.trackingType).toBe("count");
+    expect(merged?.target).toBe(5);
+    expect(merged?.unit).toBe("lần");
+    expect(merged?.repeatDays).toEqual([1, 3, 5]);
+    expect(merged?.pausedAt).toBe("2026-07-28");
+  });
+
+  it("garbage from the wire is normalised, never trusted raw", () => {
+    const server = makeSnapshot({
+      habits: [
+        makeServerHabit("read", "Đọc sách", {
+          clientUpdatedAt: T_MID,
+          trackingType: "telepathy" as unknown as ServerHabit["trackingType"],
+          repeatDays: [],
+          timesOfDay: [],
+          color: "neon" as unknown as ServerHabit["color"]
+        })
+      ]
+    });
+
+    const result = mergeServerIntoLocal(makeState(), server, {}, null);
+    const adopted = result.state.habits.find((habit) => habit.id === "read");
+
+    expect(adopted?.trackingType).toBe("check");
+    expect(adopted?.repeatDays).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(adopted?.timesOfDay).toEqual(["anytime"]);
+    expect(adopted?.color).toBe("clay");
   });
 });

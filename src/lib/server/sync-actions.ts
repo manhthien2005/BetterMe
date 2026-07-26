@@ -33,6 +33,11 @@ import type { PetSpecies } from "@/components/dashboard/dashboard-data";
 // habits.max_score check) — retrying them can never succeed. 23505
 // unique_violation deliberately stays retryable: the documented
 // concurrent-create race resolves on the next pass.
+//
+// PGRST202 ("could not find the function") is deliberately absent too. Since
+// U1c it means the deployed schema is older than the deployed app — nobody has
+// applied supabase/schema.sql yet. Dropping the mutation would lose the write
+// for good; retrying self-heals the moment the SQL lands.
 const PERMANENT_ERROR_CODES = new Set([
   "P0002",
   "P0003",
@@ -140,7 +145,12 @@ async function applyMutation(
           p_habit_key: mutation.habitKey,
           p_date: mutation.date,
           p_done: mutation.done,
-          p_mutated_at: mutation.clientTs
+          p_mutated_at: mutation.clientTs,
+          // Explicit null rather than a dropped key: the wire shape stays the
+          // same for every mutation, so what the server receives never depends
+          // on which fields happened to be set.
+          p_value: mutation.value ?? null,
+          p_completed_at: mutation.completedAt ?? null
         });
 
         return error ? classifyRpcError(error) : { status: "applied" };
@@ -155,7 +165,19 @@ async function applyMutation(
           p_description: mutation.habit.description,
           p_sort_order: mutation.habit.sortOrder,
           p_client_ts: mutation.clientTs,
-          p_expect_create: mutation.expectCreate === true
+          p_expect_create: mutation.expectCreate === true,
+          p_icon: mutation.habit.icon,
+          p_tracking_type: mutation.habit.trackingType,
+          p_target: mutation.habit.target,
+          p_unit: mutation.habit.unit,
+          p_steps: mutation.habit.steps,
+          p_repeat_days: mutation.habit.repeatDays,
+          p_times_of_day: mutation.habit.timesOfDay,
+          p_scheduled_at: mutation.habit.scheduledAt,
+          p_color: mutation.habit.color,
+          p_motivation: mutation.habit.motivation,
+          p_paused_at: mutation.habit.pausedAt,
+          p_archived_at: mutation.habit.archivedAt
         });
 
         if (error) return classifyRpcError(error);
@@ -285,6 +307,22 @@ function booleanMap(value: Json | undefined): Record<string, boolean> {
   return out;
 }
 
+function stringArray(value: Json | undefined): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function numberArray(value: Json | undefined): number[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is number => typeof item === "number" && Number.isFinite(item))
+    : [];
+}
+
+function nullableNumber(value: Json | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 function idSetMap(value: Json | undefined): Record<string, string[]> {
   const obj = asObject(value ?? null);
   const out: Record<string, string[]> = {};
@@ -367,6 +405,14 @@ function parseHabit(value: Json): ServerHabit | null {
 
   if (key === null || name === null) return null;
 
+  // The v3 block tolerates an older deployed schema: a missing column parses
+  // to the same default migrateHabitFields would have applied anyway, so an
+  // app-ahead-of-schema deploy degrades to exactly the pre-U1c behaviour.
+  // Values are cast, not validated — merge.ts runs every server habit through
+  // migrateHabitFields, and that is the one place the rules live.
+  const repeatDays = numberArray(obj.repeatDays);
+  const timesOfDay = stringArray(obj.timesOfDay);
+
   return {
     key,
     name,
@@ -376,7 +422,19 @@ function parseHabit(value: Json): ServerHabit | null {
     description: asString(obj.description) ?? "",
     sortOrder: asNumber(obj.sortOrder, 0),
     clientUpdatedAt: asString(obj.clientUpdatedAt),
-    deletedAt: asString(obj.deletedAt)
+    deletedAt: asString(obj.deletedAt),
+    icon: asString(obj.icon) ?? "",
+    trackingType: (asString(obj.trackingType) ?? "check") as ServerHabit["trackingType"],
+    target: asNumber(obj.target, 1),
+    unit: asString(obj.unit),
+    steps: stringArray(obj.steps),
+    repeatDays: repeatDays.length > 0 ? repeatDays : [1, 2, 3, 4, 5, 6, 7],
+    timesOfDay: (timesOfDay.length > 0 ? timesOfDay : ["anytime"]) as ServerHabit["timesOfDay"],
+    scheduledAt: asString(obj.scheduledAt),
+    color: (asString(obj.color) ?? "clay") as ServerHabit["color"],
+    motivation: asString(obj.motivation) ?? "",
+    pausedAt: asString(obj.pausedAt),
+    archivedAt: asString(obj.archivedAt)
   };
 }
 
@@ -391,7 +449,14 @@ function parseLog(value: Json): ServerHabitLog | null {
 
   if (habitKey === null || date === null || mutatedAt === null) return null;
 
-  return { habitKey, date, done: asBoolean(obj.done, false), mutatedAt };
+  return {
+    habitKey,
+    date,
+    done: asBoolean(obj.done, false),
+    mutatedAt,
+    value: nullableNumber(obj.value),
+    completedAt: asString(obj.completedAt)
+  };
 }
 
 function parseSnapshot(value: Json | null): ServerSnapshot {

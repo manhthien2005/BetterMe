@@ -17,9 +17,27 @@ import type {
   CompanionSyncPayload,
   PushMutationsResult,
   ServerSnapshot,
+  SyncHabitV3Fields,
   SyncMutation,
   SyncStatus
 } from "./types";
+
+/** Every v3 field a wire habit must carry (U1c). Spread into a fixture. */
+const V3: SyncHabitV3Fields = {
+  icon: "📘",
+  trackingType: "check",
+  target: 1,
+  unit: null,
+  steps: [],
+  repeatDays: [1, 2, 3, 4, 5, 6, 7],
+  timesOfDay: ["anytime"],
+  scheduledAt: null,
+  color: "clay",
+  motivation: "",
+  pausedAt: null,
+  archivedAt: null
+};
+
 
 /** A v3 day record built from plain booleans — every habit here is `check`. */
 function dayRecord(date: string, completions: Record<string, boolean>): DashboardDayRecord {
@@ -286,7 +304,8 @@ describe("sync engine — slug collision re-key", () => {
         maxScore: 1,
         active: true,
         description: "",
-        sortOrder: 0
+        sortOrder: 0,
+        ...V3
       },
       clientTs: T1,
       expectCreate: true
@@ -371,10 +390,11 @@ describe("sync engine — hydrate", () => {
           description: "",
           sortOrder: 0,
           clientUpdatedAt: null,
-          deletedAt: null
+          deletedAt: null,
+          ...V3
         }
       ],
-      logs: [{ habitKey: "english", date: "2026-07-02", done: true, mutatedAt: T1 }],
+      logs: [{ habitKey: "english", date: "2026-07-02", done: true, mutatedAt: T1, value: null, completedAt: null }],
       companion: null, // server has never seen a companion — local is ahead
       serverTime: SERVER_NOW
     });
@@ -514,7 +534,8 @@ describe("sync onboarding — hydrate BEFORE the initial upload (spec §2.5)", (
           description: "",
           sortOrder: 0,
           clientUpdatedAt: T1,
-          deletedAt: T1 // the user deleted this habit on another device
+          deletedAt: T1, // the user deleted this habit on another device
+          ...V3
         },
         {
           key: "wake_up",
@@ -525,7 +546,8 @@ describe("sync onboarding — hydrate BEFORE the initial upload (spec §2.5)", (
           description: "",
           sortOrder: 1,
           clientUpdatedAt: T1,
-          deletedAt: null
+          deletedAt: null,
+          ...V3
         }
       ],
       logs: [],

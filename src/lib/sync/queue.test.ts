@@ -17,7 +17,24 @@ import {
   stampCell,
   withCellStamp
 } from "./shadow";
-import type { SyncMutation, UpsertHabitMutation } from "./types";
+import type { SyncHabitV3Fields, SyncMutation, UpsertHabitMutation } from "./types";
+
+/** Every v3 field a wire habit must carry (U1c). Spread into a fixture. */
+const V3: SyncHabitV3Fields = {
+  icon: "📘",
+  trackingType: "check",
+  target: 1,
+  unit: null,
+  steps: [],
+  repeatDays: [1, 2, 3, 4, 5, 6, 7],
+  timesOfDay: ["anytime"],
+  scheduledAt: null,
+  color: "clay",
+  motivation: "",
+  pausedAt: null,
+  archivedAt: null
+};
+
 
 const T1 = "2026-07-01T09:00:00.000Z";
 const T2 = "2026-07-01T10:00:00.000Z";
@@ -29,7 +46,16 @@ function setLog(habitKey: string, date: string, done: boolean, clientTs = T1): S
 function upsert(key: string, name: string, clientTs = T1, expectCreate?: boolean): UpsertHabitMutation {
   return {
     kind: "upsertHabit",
-    habit: { key, name, category: "", maxScore: 1, active: true, description: "", sortOrder: 0 },
+    habit: {
+      key,
+      name,
+      category: "",
+      maxScore: 1,
+      active: true,
+      description: "",
+      sortOrder: 0,
+      ...V3
+    },
     clientTs,
     ...(expectCreate !== undefined ? { expectCreate } : {})
   };
@@ -195,5 +221,51 @@ describe("shadow map", () => {
 
     expect(rekeyed["2026-07-01"]).toEqual({ custom_x_2: T1, english: T2 });
     expect(rekeyed["2026-07-02"]).toEqual({ english: T1 });
+  });
+});
+
+describe("coalescing keeps the v3 detail", () => {
+  it("a newer write for the same cell replaces the older one, value and all", () => {
+    const older: SyncMutation = {
+      kind: "setHabitLog",
+      habitKey: "water",
+      date: "2026-07-27",
+      done: false,
+      value: 3,
+      clientTs: T1
+    };
+    const newer: SyncMutation = {
+      kind: "setHabitLog",
+      habitKey: "water",
+      date: "2026-07-27",
+      done: true,
+      value: 8,
+      completedAt: "21:40",
+      clientTs: T2
+    };
+
+    expect(coalesceEnqueue(coalesceEnqueue([], older), newer)).toEqual([newer]);
+  });
+
+  it("an out-of-order older write never downgrades the queued value", () => {
+    const newer: SyncMutation = {
+      kind: "setHabitLog",
+      habitKey: "water",
+      date: "2026-07-27",
+      done: true,
+      value: 8,
+      completedAt: "21:40",
+      clientTs: T2
+    };
+    const older: SyncMutation = {
+      kind: "setHabitLog",
+      habitKey: "water",
+      date: "2026-07-27",
+      done: false,
+      value: 3,
+      clientTs: T1
+    };
+
+    expect(coalesceEnqueue(coalesceEnqueue([], newer), older)).toEqual([newer]);
   });
 });

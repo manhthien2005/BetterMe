@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createHabitInState,
   createInitialDashboardState,
+  setHabitEntry,
   type DashboardState,
   type DashboardDayRecord,
 } from "@/components/dashboard/dashboard-data";
@@ -161,5 +163,58 @@ describe("buildInitialUpload — payload shape", () => {
       expect(serialized).not.toContain("event-weekly-review"); // seed event ids
       expect(serialized).not.toContain('"events"');
     });
+  });
+});
+
+describe("the initial upload carries the v3 shape (U1c)", () => {
+  it("a habit uploads its full definition, not a v2 shadow", () => {
+    const state = createHabitInState(createInitialDashboardState(TODAY), {
+      name: "Đọc sách",
+      category: "Growth",
+      icon: "📚",
+      trackingType: "duration",
+      target: 20,
+      unit: null,
+      steps: [],
+      repeatDays: [2, 4, 6],
+      timesOfDay: ["evening"],
+      scheduledAt: "21:00",
+      color: "dusk",
+      motivation: "Mỗi tối một chương"
+    });
+
+    const upsert = buildInitialUpload(state, "fresh", TODAY, NOW).find(
+      (mutation) => mutation.kind === "upsertHabit" && mutation.habit.name === "Đọc sách"
+    );
+
+    if (upsert?.kind !== "upsertHabit") throw new Error("expected an upsertHabit");
+
+    expect(upsert.habit).toMatchObject({
+      icon: "📚",
+      trackingType: "duration",
+      target: 20,
+      repeatDays: [2, 4, 6],
+      timesOfDay: ["evening"],
+      scheduledAt: "21:00",
+      color: "dusk",
+      motivation: "Mỗi tối một chương"
+    });
+  });
+
+  it("a completed cell uploads its reading and its clock", () => {
+    // Built off the seeded state: on a fresh one seedCutoverDate IS today, so
+    // today's record is seed fiction and provably never leaves the device.
+    const base = makeSeededState();
+    const habitId = base.habits[0].id;
+    const state = setHabitEntry(base, TODAY, habitId, 1, "06:10");
+
+    const log = buildInitialUpload(state, "fresh", TODAY, NOW).find(
+      (mutation) => mutation.kind === "setHabitLog" && mutation.habitKey === habitId
+    );
+
+    if (log?.kind !== "setHabitLog") throw new Error("expected a setHabitLog");
+
+    expect(log.value).toBe(1);
+    expect(log.completedAt).toBe("06:10");
   });
 });

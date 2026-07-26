@@ -34,11 +34,12 @@ Breaking either is a failure, not a tradeoff. If a request seems to require it, 
 - In shell calls, use PowerShell-safe commands — no `head`/`grep`/`|` unix pipes. Prefer the
   dedicated read/search tools over shell for reading and searching.
 
-Current state: 432 tests green. Social Garden Phases 0–3 are all committed; auth is live
+Current state: 467 tests green. Social Garden Phases 0–3 are all committed; auth is live
 email+password with a signup OTP (see `docs/auth-email-config.md`). UI overhaul: **U0** (design
-tokens, fonts, `ui/` primitives, four-space shell) is merged into `main`; **U1a** (habit model v3 +
-v2→v3 migration) is merged; **U1b** (habit editor, day view grouped by part of the day, archive
-screen) is on branch `u1b-editor-and-day-view`. See
+tokens, fonts, `ui/` primitives, four-space shell), **U1a** (habit model v3 + v2→v3 migration) and
+**U1b** (habit editor, day view grouped by part of the day, archive screen) are all merged into
+`main`; **U1c** (the sync contract speaks v3) is on branch `u1c-sync-v3` and needs
+`supabase/schema.sql` applied to Supabase BEFORE the app deploys. See
 `docs/superpowers/specs/2026-07-26-uiux-overhaul-design.md` §10 for what is left and `HANDOFF.md`
 for progress and next steps.
 
@@ -60,7 +61,10 @@ lucide-react · Remotion 4 · Vitest + Testing Library (jsdom). Node ≥ 20.9, p
 - `src/components/dashboard/**` — the panels each space renders: `dashboard-data.ts` (pure state +
   pet economy), `todays-habits.tsx`, `calendar-panel.tsx`, `pet.tsx` / `pet-voice.ts` (companion +
   VN voice), `friends-card.tsx`, `garden-visit-overlay.tsx`, `sync-onboarding.tsx`.
-- `src/lib/sync/**` — local-first sync engine (queue, shadow LWW, merge laws, importer, engine).
+- `src/lib/sync/**` — local-first sync engine (queue, shadow LWW, merge laws, importer, engine,
+  and `payloads.ts` — the only place local state becomes a wire payload).
+- `tests/schema-contract.test.ts` — reads `supabase/schema.sql` as text; the only gate on SQL,
+  since CI has no database.
 - `src/lib/server/**` — server actions (`sync-actions.ts`, `social-actions.ts`) + mappers.
 - `src/lib/supabase/**` — SSR/browser clients + env helpers.
 - `supabase/schema.sql` — full schema, RLS, and every RPC (idempotent; 4 banner sections: base / Phase 0 / Phase 1 / Phase 2).
@@ -81,6 +85,26 @@ lucide-react · Remotion 4 · Vitest + Testing Library (jsdom). Node ≥ 20.9, p
   per-cell LWW for habit completions (untick propagates), append-only ledgers for the economy,
   per-field LWW for pet name/species, tombstones for habit deletion. Seed/demo history
   (`date <= seedCutoverDate`) NEVER uploads.
+- **The sync contract is v3 from U1c** (Amendment 2026-07-27 in the social spec). A log cell
+  carries `value` + `completedAt` beside `done`; `done` stays the boolean truth, computed by the
+  CLIENT with `isEntryComplete` because only the client knows the tracking rule — and it is what
+  `refresh_my_summary` and `shared_rhythms` read. A habit carries all twelve v3 fields.
+  LWW granularity is unchanged: one stamp per cell, one per habit, never per column.
+- **A `DashboardHabit` becomes a wire payload ONLY through `habitSyncPayload()`**
+  (`src/lib/sync/payloads.ts`), and a log cell only through `logSyncMutation()`. There are six
+  call sites; a mapping hand-written at each is how a field ends up syncing on create but staying
+  silent on edit. Wire optionals are explicit `null`, never `undefined` — an absent key lets the
+  RPC fall back to its SQL default instead of clearing the column.
+- **Enqueue a log by "did THIS CELL change?", never "did the day's completed count change?"** The
+  latter silently drops every bit of partial progress. Anything that edits a habit's definition —
+  including pause, archive and reorder — must push an upsert, and a reorder pushes BOTH habits
+  that swapped.
+- **Changing an RPC's signature means `drop function if exists <old signature>` first**, then
+  re-`grant` the new one. `create or replace` with a different argument list OVERLOADS rather than
+  replaces, and PostgREST's named-argument call then fails with 42725; the drop also removes the
+  old grant, and a Postgres function defaults to `EXECUTE` for `PUBLIC`.
+  `tests/schema-contract.test.ts` guards both — it reads `schema.sql` as text because CI has no DB.
+  `PGRST202` is retryable on purpose: it means the deployed schema is behind the deployed app.
 - **Domain purity**: scoring/date/economy are pure TypeScript — no React/Next/browser/persistence imports.
 - **Habit model v3** (`habit-model.ts` + `habit-migration.ts`): a log cell is
   `{ value, completedAt? }` where `value` means check 0|1 · count units · duration minutes ·
