@@ -4,9 +4,13 @@ const config: Config = {
   content: ["./src/**/*.{ts,tsx}", "./src/app/globals.css"],
   theme: {
     extend: {
+      // NOTE: every fallback here must be a valid unquoted CSS identifier
+      // sequence. "Baloo 2" was not ("2" cannot start an ident), which made the
+      // whole `.font-display` declaration invalid at computed-value time — the
+      // utility silently did nothing and headings inherited the body face.
       fontFamily: {
-        sans: ["var(--font-body)", "Nunito", "sans-serif"],
-        display: ["var(--font-display)", "Baloo 2", "sans-serif"]
+        sans: ["var(--font-body)", "Be Vietnam Pro", "sans-serif"],
+        display: ["var(--font-display)", "Bricolage Grotesque", "sans-serif"]
       },
       colors: {
         // ——— U0 tokens (src/app/globals.css). Colour is a role. ———

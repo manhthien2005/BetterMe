@@ -23,6 +23,22 @@ describe("app typography", () => {
     expect(layout.match(/subsets: \["latin", "vietnamese"\]/g)?.length).toBe(2);
   });
 
+  it("points the tailwind font utilities at the same two faces", () => {
+    const tailwind = readFileSync("tailwind.config.ts", "utf8");
+    const start = tailwind.indexOf("fontFamily: {");
+    const fontFamily = tailwind.slice(start, tailwind.indexOf("}", start));
+
+    expect(fontFamily).toContain('sans: ["var(--font-body)", "Be Vietnam Pro", "sans-serif"]');
+    expect(fontFamily).toContain(
+      'display: ["var(--font-display)", "Bricolage Grotesque", "sans-serif"]'
+    );
+    // A fallback that is not a valid unquoted identifier sequence invalidates
+    // the whole declaration at computed-value time, so the utility silently
+    // stops working. Keep the retired faces out of the stacks.
+    expect(fontFamily).not.toContain("Baloo");
+    expect(fontFamily).not.toContain("Nunito");
+  });
+
   it("drops the retired rice-paper meadow background", () => {
     const css = readFileSync("src/app/globals.css", "utf8");
     const layout = readFileSync("src/app/layout.tsx", "utf8");
