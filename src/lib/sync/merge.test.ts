@@ -1,3 +1,4 @@
+import { migrateHabitFields } from "@/components/dashboard/habit-migration";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -8,7 +9,8 @@ import {
   type CompanionPetState,
   type CompanionState,
   type DashboardHabit,
-  type DashboardState
+  type DashboardState,
+  type DashboardDayRecord,
 } from "@/components/dashboard/dashboard-data";
 
 import {
@@ -26,13 +28,25 @@ import type {
   SyncMutation
 } from "./types";
 
+/** A v3 day record built from plain booleans — every habit here is `check`. */
+function dayRecord(date: string, completions: Record<string, boolean>): DashboardDayRecord {
+  return {
+    date,
+    entries: Object.fromEntries(
+      Object.entries(completions).map(([key, done]) => [key, { value: done ? 1 : 0 }])
+    ),
+    completions
+  };
+}
+
+
 const T_EARLY = "2026-07-01T09:00:00.000Z";
 const T_MID = "2026-07-01T10:00:00.000Z";
 const T_MID_PG = "2026-07-01T10:00:00+00:00"; // same instant, Postgres format
 const T_LATE = "2026-07-01T11:00:00.000Z";
 
 function makeHabit(id: string, name: string, overrides: Partial<DashboardHabit> = {}): DashboardHabit {
-  return {
+  return migrateHabitFields({
     id,
     key: id,
     name,
@@ -41,7 +55,7 @@ function makeHabit(id: string, name: string, overrides: Partial<DashboardHabit> 
     description: "",
     iconName: "BookOpen",
     ...overrides
-  };
+  });
 }
 
 function makeState(overrides: Partial<DashboardState> = {}): DashboardState {
@@ -138,7 +152,7 @@ function makeLocalCompanion(overrides: Partial<CompanionState> = {}): CompanionS
 describe("mergeServerIntoLocal — completions (per-cell LWW)", () => {
   it("propagates an untick from device A to device B that had an older tick", () => {
     const local = makeState({
-      records: { "2026-07-01": { date: "2026-07-01", completions: { english: true } } }
+      records: { "2026-07-01": dayRecord("2026-07-01", { english: true }) }
     });
     const shadow: ShadowMap = { "2026-07-01": { english: T_EARLY } };
     const server = makeSnapshot({
@@ -158,7 +172,7 @@ describe("mergeServerIntoLocal — completions (per-cell LWW)", () => {
 
   it("keeps a newer local cell over a stale server write (B does not re-infect)", () => {
     const local = makeState({
-      records: { "2026-07-01": { date: "2026-07-01", completions: { english: false } } }
+      records: { "2026-07-01": dayRecord("2026-07-01", { english: false }) }
     });
     const shadow: ShadowMap = { "2026-07-01": { english: T_LATE } };
     const server = makeSnapshot({
@@ -175,8 +189,8 @@ describe("mergeServerIntoLocal — completions (per-cell LWW)", () => {
   it("equal timestamps → tick wins (both directions, across ISO formats)", () => {
     const local = makeState({
       records: {
-        "2026-07-01": { date: "2026-07-01", completions: { english: false } },
-        "2026-07-02": { date: "2026-07-02", completions: { english: true } }
+        "2026-07-01": dayRecord("2026-07-01", { english: false }),
+        "2026-07-02": dayRecord("2026-07-02", { english: true })
       }
     });
     const shadow: ShadowMap = {
@@ -200,7 +214,7 @@ describe("mergeServerIntoLocal — completions (per-cell LWW)", () => {
 
   it("adopts server cells with no local stamp and keeps local cells unknown to the server", () => {
     const local = makeState({
-      records: { "2026-06-15": { date: "2026-06-15", completions: { english: true } } }
+      records: { "2026-06-15": dayRecord("2026-06-15", { english: true }) }
     });
     const server = makeSnapshot({
       habits: [makeServerHabit("english", "Học tiếng Anh")],
@@ -279,7 +293,7 @@ describe("mergeServerIntoLocal — habits (union, LWW, tombstones)", () => {
     const local = makeState({
       habits: [makeHabit("english", "Học tiếng Anh"), makeHabit("clean", "Dọn bàn")],
       records: {
-        "2026-07-01": { date: "2026-07-01", completions: { english: true, clean: true } }
+        "2026-07-01": dayRecord("2026-07-01", { english: true, clean: true })
       }
     });
     const shadow: ShadowMap = { "2026-07-01": { english: T_EARLY } };
@@ -363,7 +377,7 @@ describe("mergeServerIntoLocal — slug collision re-key (spec §2.2)", () => {
     const local = makeState({
       habits: [makeHabit("custom_doc_sach", "Đọc sách")],
       records: {
-        "2026-07-01": { date: "2026-07-01", completions: { custom_doc_sach: true } }
+        "2026-07-01": dayRecord("2026-07-01", { custom_doc_sach: true })
       }
     });
     const shadow: ShadowMap = { "2026-07-01": { custom_doc_sach: T_LATE } };

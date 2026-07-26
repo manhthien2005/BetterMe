@@ -1,7 +1,7 @@
 # HANDOFF — Nếp's Garden / Vườn Có Bạn
 
-> **Ngày cập nhật:** 2026-07-27 · **Trạng thái tree:** sạch, 4 gates xanh (**304/304 test, 36 file**)
-> **Nhánh:** `u0-shell-and-tokens` (chưa merge vào `main`) · File này là điểm vào duy nhất cho người nhận bàn giao.
+> **Ngày cập nhật:** 2026-07-27 · **Trạng thái tree:** sạch, 4 gates xanh (**360/360 test, 38 file**)
+> **Nhánh:** `u1a-habit-model-v3` (U0 đã merge vào `main`) · File này là điểm vào duy nhất cho người nhận bàn giao.
 > Quy ước cho agent: đọc `AGENTS.md`. Spec hành vi: `docs/superpowers/specs/`.
 
 ---
@@ -25,7 +25,8 @@ App: **Nếp's Garden** — habit tracker tiếng Việt, cozy, có pet nuôi đ
 
 | Commit | Nội dung |
 |---|---|
-| `u0-shell-and-tokens` (8 commit, chưa merge) | **U0 đại tu UI**: design token + gate tương phản AA, font Bricolage/Be Vietnam Pro, bộ `ui/` (Button 3 cấp, Card, Chip, Icon, NavRail, BottomTabBar), `StateProvider`, 4 route trong group `(app)`, badge tin mới. Kèm `fix`: `.font-display` trước nay vô hiệu vì fallback `Baloo 2` không phải ident CSS hợp lệ — mọi tiêu đề đang rơi về font body |
+| `u1a-habit-model-v3` (4 commit, chưa merge) | **U1a habit model v3**: 4 kiểu theo dõi (check/count/duration/checklist), lịch lặp theo thứ, buổi, tạm dừng/lưu trữ; ô log thành `{ value, completedAt? }` với `completions` còn lại làm cache dẫn xuất; migration v2→v3 idempotent; khoá `betterme.dashboard.v3` (v2 chỉ-đọc, là ảnh chụp rollback); chuỗi riêng tôn trọng lịch lặp. Giao diện **không đổi một chút nào** |
+| `07cea7b` (PR #1) | **U0 đại tu UI**: design token + gate tương phản AA, font Bricolage/Be Vietnam Pro, bộ `ui/` (Button 3 cấp, Card, Chip, Icon, NavRail, BottomTabBar), `StateProvider`, 4 route trong group `(app)`, badge tin mới. Kèm `fix`: `.font-display` trước nay vô hiệu vì fallback `Baloo 2` không phải ident CSS hợp lệ — mọi tiêu đề đang rơi về font body |
 | `b3a372e` | **Spec đại tu UI/UX**: 4 không gian, habit model v3, luật streak + 🍃 lá chắn, Nếp & 4 tính năng mới, lộ trình U0→U4 + 5 mockup đã duyệt |
 | `bc2ea68` | **Agent instruction layer**: `AGENTS.md` + `.kiro/` (steering, skills: verification / schema conventions / sync-engine / pet-voice / ui-styling / ui-ux-pro-max). `.gitignore` chặn `__pycache__`, giữ `.kiro/settings/mcp.json` (token) ngoài git |
 | `3987a31` | **Refactor dashboard**: tách `dashboard-client.tsx` (~600 dòng gọn lại) thành `HeroBanner`/`CompanionPanel`/`CelebrationOverlay`/`WeatherCard`/`AnalyticsPanel`/`ProfileMenu`/`SiteFooter`, mỗi cái có test riêng (167 → 221 test); email tài khoản chuyển vào ProfileMenu dropdown (trang hồ sơ/cài đặt còn là toast placeholder) |
@@ -84,7 +85,16 @@ pnpm dev         # next dev
 
 **Hệ quả có chủ đích:** bong bóng thoại của Nếp hiện chỉ xuất hiện ở `/nep` (nó sống trong `CompanionPanel`). U2 dựng hero bầu trời có câu nói của Nếp, U4.4 thêm thẻ Nếp thu gọn ở cột phải desktop.
 
-**Bước kế tiếp — U1** (habit model v3 + migration v2→v3 + editor + day view mới). ⚠️ **Owner export JSON localStorage để backup TRƯỚC khi thử data thật ở U1** — migration đụng vào cấu trúc ô log.
+**U1 được tách làm 3 plan** (Scope Check: 3 hệ con độc lập, mỗi cái tự chạy và test được):
+
+- **U1a — XONG** (nhánh `u1a-habit-model-v3`, 4 commit, 360 test xanh). Plan: `docs/superpowers/plans/2026-07-27-u1a-habit-model-v3.md`. Model v3 + migration, **giao diện không đổi**. Ba quyết định:
+  1. `entries` là nguồn chân lý, `completions` ở lại làm **cache dẫn xuất** (spec §9.3 đọc thẳng là thay thế hẳn). Lý do: server contract còn nói `done: boolean` tới tận U1c; và giữ lại thì 304 test cũ thành lưới an toàn thật cho migration. Luật: chỉ `setHabitEntry` được ghi cả hai, có test invariant chặn drift.
+  2. `completedAt` lưu `"HH:mm"` giờ địa phương, không phải ISO đầy đủ — Giờ vàng chỉ cần giờ trong ngày, và tránh bẫy múi giờ khi U1c đẩy lên server.
+  3. `repeatDays` dùng số ISO 1–7 (1 = Thứ Hai), khớp cột T2→CN.
+- **U1b — kế tiếp**: emoji picker, form tạo nhanh + tinh chỉnh sâu, day view nhóm theo buổi, điều khiển theo từng kiểu, kéo-thả, màn Lưu trữ.
+- **U1c**: đẩy `value`/`completedAt` + field định nghĩa v3 qua sync — cần cột mới trong `supabase/schema.sql`, soát `merge.ts`/`importer.ts` từng field, ghi "Amendment 2026-07-26" vào cuối spec social. **PR riêng** vì đụng schema DB thật.
+
+⚠️ **Rollback U1a rất rẻ:** v2 vẫn nằm nguyên trong localStorage, không bị ghi đè. Muốn quay lại chỉ cần xoá khoá `betterme.dashboard.v3` trong DevTools → Application → Local Storage. Vẫn nên export JSON để backup trước khi dùng dữ liệu thật lâu dài.
 
 ### B. Test DB-level theo spec §12 (chưa làm — môi trường dev không có Postgres/supabase CLI)
 RLS matrix 3 user (§8), race tests (2 visitor cùng tặng, double-click), rate-limit đếm cả mã sai, invite-code re-roll, trigger no-decay + `reset_companion`, merge 2 thiết bị. Khuyến nghị: `supabase start` (docker) + pgTAP hoặc script SQL tay.
@@ -110,6 +120,7 @@ Owner dùng sync đa thiết bị 1 tuần, xem log lỗi, RỒI mới mở soci
 | Auth config (ngoài Postgres) | `docs/auth-email-config.md` + `src/lib/server/auth-actions.ts` + `src/components/auth/login-form.tsx` |
 | Schema + toàn bộ RPC | `supabase/schema.sql` (idempotent; banner: gốc / Phase 0 / 1 / 2 / 3 / hardening) |
 | State thuần (pure functions, kinh tế pet) | `src/components/dashboard/dashboard-data.ts` (+ test) |
+| Habit model v3 (thuần) | `src/components/dashboard/habit-model.ts` (vị từ hoàn thành/lịch) · `habit-migration.ts` (v2→v3, idempotent) (+ test) |
 | Sync engine | `src/lib/sync/{types,time,storage,queue,shadow,merge,importer,engine}.ts` (+ tests) |
 | Server actions | `src/lib/server/{sync-actions,social-actions,auth-actions,actions}.ts` |
 | Shell + state toàn app | `src/components/app/{state-provider,app-shell,nav-items,sync-status-dot,today-page,calendar-page,nep-page,friends-page}.tsx` |

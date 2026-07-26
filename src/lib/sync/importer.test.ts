@@ -2,11 +2,24 @@ import { describe, expect, it } from "vitest";
 
 import {
   createInitialDashboardState,
-  type DashboardState
+  type DashboardState,
+  type DashboardDayRecord,
 } from "@/components/dashboard/dashboard-data";
 
 import { buildInitialUpload } from "./importer";
 import type { SetHabitLogMutation } from "./types";
+
+/** A v3 day record built from plain booleans — every habit here is `check`. */
+function dayRecord(date: string, completions: Record<string, boolean>): DashboardDayRecord {
+  return {
+    date,
+    entries: Object.fromEntries(
+      Object.entries(completions).map(([key, done]) => [key, { value: done ? 1 : 0 }])
+    ),
+    completions
+  };
+}
+
 
 const TODAY = "2026-07-04";
 const NOW = "2026-07-04T10:00:00.000Z";
@@ -19,12 +32,9 @@ function makeSeededState(): DashboardState {
   const state = createInitialDashboardState("2026-06-20"); // 45 days of seed fiction, cutover = 2026-06-20
 
   // Real history after the cutover.
-  state.records["2026-06-25"] = {
-    date: "2026-06-25",
-    completions: { english: true, clean: false }
-  };
-  state.records["2026-07-01"] = { date: "2026-07-01", completions: { english: true } };
-  state.records[TODAY] = { date: TODAY, completions: { english: true, coding: true } };
+  state.records["2026-06-25"] = dayRecord("2026-06-25", { english: true, clean: false });
+  state.records["2026-07-01"] = dayRecord("2026-07-01", { english: true });
+  state.records[TODAY] = dayRecord(TODAY, { english: true, coding: true });
 
   return state;
 }
