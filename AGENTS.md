@@ -34,11 +34,12 @@ Breaking either is a failure, not a tradeoff. If a request seems to require it, 
 - In shell calls, use PowerShell-safe commands — no `head`/`grep`/`|` unix pipes. Prefer the
   dedicated read/search tools over shell for reading and searching.
 
-Current state: 304 tests green. Social Garden Phases 0–3 are all committed; auth is live
-email+password with a signup OTP (see `docs/auth-email-config.md`). UI overhaul step **U0**
-(design tokens, fonts, `ui/` primitives, four-space shell) is done on branch
-`u0-shell-and-tokens` — see `docs/superpowers/specs/2026-07-26-uiux-overhaul-design.md` §10 for
-U1–U4 and `HANDOFF.md` for progress and next steps.
+Current state: 360 tests green. Social Garden Phases 0–3 are all committed; auth is live
+email+password with a signup OTP (see `docs/auth-email-config.md`). UI overhaul: **U0** (design
+tokens, fonts, `ui/` primitives, four-space shell) is merged into `main`; **U1a** (habit model v3
++ v2→v3 migration) is on branch `u1a-habit-model-v3`. See
+`docs/superpowers/specs/2026-07-26-uiux-overhaul-design.md` §10 for what is left and `HANDOFF.md`
+for progress and next steps.
 
 ## Stack
 Next.js 15.5 (App Router) · React 19 · TypeScript 5.9 **strict** · Supabase (`@supabase/ssr`) ·
@@ -80,6 +81,14 @@ lucide-react · Remotion 4 · Vitest + Testing Library (jsdom). Node ≥ 20.9, p
   per-field LWW for pet name/species, tombstones for habit deletion. Seed/demo history
   (`date <= seedCutoverDate`) NEVER uploads.
 - **Domain purity**: scoring/date/economy are pure TypeScript — no React/Next/browser/persistence imports.
+- **Habit model v3** (`habit-model.ts` + `habit-migration.ts`): a log cell is
+  `{ value, completedAt? }` where `value` means check 0|1 · count units · duration minutes ·
+  checklist bitmask. `DashboardDayRecord.entries` is the SOURCE OF TRUTH; `completions` is a
+  DERIVED boolean cache (same pattern as `CompanionState.food` over the ledger) — only
+  `setHabitEntry` and the migration may write it, and it is never merged as truth. Migration
+  functions run on every load, so they must stay idempotent. `repeatDays` uses ISO weekday
+  numbers (1 = Monday). `completedAt` is a local `"HH:mm"`, never a full timestamp. Storage key
+  is `betterme.dashboard.v3`; v2/v1 are read-only fallbacks kept as rollback snapshots.
 - **Design tokens** live in `src/app/globals.css` `:root` and are mapped in `tailwind.config.ts`
   as `var(--token)`. Colour is a role: `--action` is the ONLY primary/streak/link colour (max one
   primary button per region), `--success` is completion, `--alert` is the new-mail badge and
