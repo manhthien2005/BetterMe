@@ -69,8 +69,12 @@ describe("dashboard route", () => {
 
     expect(redirect).not.toHaveBeenCalled();
     expect(authMocks.ensureUserBootstrap).not.toHaveBeenCalled();
+    // The account email now lives in the header profile-menu trigger.
     expect(screen.getByText("dev@betterme.local")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Bangkok weather" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /dev@betterme\.local/i }).getAttribute("aria-haspopup")
+    ).toBe("menu");
+    expect(screen.getByRole("heading", { name: "Bangkok" })).toBeTruthy();
   });
 
   it("renders the habit dashboard for authenticated users", async () => {
@@ -95,7 +99,7 @@ describe("dashboard route", () => {
     expect(screen.queryByRole("heading", { name: "Personal Widgets" })).toBeNull();
     expect(screen.queryByLabelText("Add widget")).toBeNull();
     expect(screen.queryByText("Deep work")).toBeNull();
-    expect(screen.getByRole("heading", { name: "Bangkok weather" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Bangkok" })).toBeTruthy();
     expect(screen.getByText("31°C")).toBeTruthy();
     expect(screen.getByText("Feels like 34°C")).toBeTruthy();
     expect(screen.getByText("Humidity")).toBeTruthy();
@@ -103,7 +107,7 @@ describe("dashboard route", () => {
     expect(screen.getByText("Rain")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Focus session" })).toBeTruthy();
     const rightRail = screen.getByLabelText("Weather and Spotify highlights");
-    expect(within(rightRail).getByRole("heading", { name: "Bangkok weather" })).toBeTruthy();
+    expect(within(rightRail).getByRole("heading", { name: "Bangkok" })).toBeTruthy();
     expect(within(rightRail).getByRole("heading", { name: "Focus session" })).toBeTruthy();
     const spotifyFrame = screen.getByTitle("Spotify Deep Focus playlist");
     expect(spotifyFrame.getAttribute("src")).toContain(
@@ -116,6 +120,9 @@ describe("dashboard route", () => {
     );
     expect(screen.getByRole("heading", { name: "Upcoming Events" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Analytics" })).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: /manhthien2005/i }).getAttribute("href")
+    ).toBe("https://github.com/manhthien2005");
     expect(screen.getByLabelText("Exercise / sports emoji icon").textContent).toBe("💪");
     expect(container.innerHTML).not.toContain("font-black");
 

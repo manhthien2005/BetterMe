@@ -3,17 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  BarChart3,
   CalendarCheck,
   Check,
-  CheckCircle2,
   CirclePlus,
-  Flower2,
   Pencil,
-  Sprout,
   X,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -36,7 +31,6 @@ import {
   removeHabitFromState,
   switchActivePet,
   toggleHabitForDate,
-  type CompanionPetView,
   type DashboardCalendarDay,
   type DashboardHabitView,
   type DashboardState,
@@ -44,11 +38,15 @@ import {
   type DashboardViewModel,
   type PetSpecies
 } from "@/components/dashboard/dashboard-data";
+import { AnalyticsPanel } from "@/components/dashboard/analytics-panel";
 import { FriendsCard } from "@/components/dashboard/friends-card";
 import { GardenFairCard } from "@/components/dashboard/garden-fair";
 import { GardenVisitOverlay } from "@/components/dashboard/garden-visit-overlay";
-import { GiftBox, Pet, PetAdoption } from "@/components/dashboard/pet";
+import { HeroBanner } from "@/components/dashboard/hero-banner";
 import { getPetLine, type PetEvent } from "@/components/dashboard/pet-voice";
+import { ProfileMenu } from "@/components/dashboard/profile-menu";
+import { SiteFooter } from "@/components/dashboard/site-footer";
+import { WeatherCard } from "@/components/dashboard/weather-card";
 import {
   ackGardenVisits,
   bumpSharedRhythms,
@@ -150,20 +148,6 @@ function saveMailboxSeen(seen: MailboxSeen) {
     // Best-effort: a full/blocked store just means we might re-celebrate later.
   }
 }
-
-const DASHBOARD_WEATHER = {
-  location: "Bangkok",
-  temperature: "31°C",
-  condition: "Clear evening",
-  feelsLike: "34°C",
-  humidity: "68%",
-  wind: "9 km/h",
-  rainChance: "12%",
-  uvIndex: "Low after 5 PM",
-  planningNote: "Good window for a light walk after focus work.",
-  emoji: "☀️",
-  emojiLabel: "Clear weather"
-} as const;
 
 export function DashboardClient({ userEmail }: { userEmail: string }) {
   const today = useMemo(() => getDashboardToday(), []);
@@ -619,6 +603,18 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
     window.location.assign("/login");
   }
 
+  function handleOpenProfile() {
+    toast("Trang hồ sơ đang được ươm mầm 🌱", {
+      description: "Sắp có nơi để bạn khoe khu vườn của mình."
+    });
+  }
+
+  function handleOpenSettings() {
+    toast("Trang cài đặt đang được ươm mầm 🌱", {
+      description: "Vài tuỳ chỉnh nhỏ xinh sẽ sớm có mặt."
+    });
+  }
+
   return (
     <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -631,22 +627,16 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
           </span>
           BetterMe
         </Link>
-        <div className="flex items-center gap-2 rounded-full border border-wafer bg-mochi p-1.5 shadow-mochi">
-          <span className="max-w-[200px] truncate px-2 text-xs font-bold text-mauve">
-            {userEmail}
-          </span>
-          <button
-            className="squishy rounded-full px-3.5 py-2 text-sm font-bold text-plum transition hover:bg-rice"
-            onClick={handleSignOut}
-            type="button"
-          >
-            Sign out
-          </button>
-        </div>
+        <ProfileMenu
+          email={userEmail}
+          onOpenProfile={handleOpenProfile}
+          onOpenSettings={handleOpenSettings}
+          onSignOut={handleSignOut}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-5">
-        <GreetingHero
+        <HeroBanner
           bubble={bubble}
           celebrate={celebrate}
           eating={eating}
@@ -698,6 +688,8 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
         </div>
       </div>
 
+      <SiteFooter />
+
       <SyncStatusDot status={syncStatus} />
 
       {showSyncOnboarding ? (
@@ -742,349 +734,6 @@ function SyncStatusDot({ status }: { status: SyncStatus }) {
     >
       {dot.emoji}
     </span>
-  );
-}
-
-type CompanionHandlers = {
-  bubble: string | null;
-  eating: boolean;
-  onAdopt: (species: PetSpecies, name: string) => void;
-  onFeed: () => void;
-  onOpenGift: () => void;
-  onPet: () => void;
-  onSwitch: (species: PetSpecies) => void;
-};
-
-function GreetingHero({
-  bubble,
-  celebrate,
-  eating,
-  onAdopt,
-  onFeed,
-  onOpenGift,
-  onPet,
-  onSwitch,
-  viewModel
-}: CompanionHandlers & {
-  celebrate: boolean;
-  viewModel: DashboardViewModel;
-}) {
-  const goodDaysThisMonth = viewModel.calendar.days.filter(
-    (day) => day.inCurrentMonth && day.status === "Good"
-  ).length;
-
-  return (
-    <section className="soft-panel card-lift overflow-hidden rounded-lg p-5 sm:p-6">
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="max-w-xl">
-          <p className="text-sm font-bold uppercase tracking-wide text-matcha-deep">
-            {viewModel.date.longLabel}
-          </p>
-          <h1 className="mt-3 font-display text-3xl font-bold text-plum sm:text-4xl">
-            {viewModel.greeting}, Thiên
-          </h1>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <MetricPill
-              icon={CheckCircle2}
-              label="Today"
-              tone="matcha"
-              value={`${viewModel.today.completedHabits}/${viewModel.today.totalHabits}`}
-            />
-            <MetricPill
-              icon={Sprout}
-              label="7-day rhythm"
-              tone="sakura"
-              value={formatPercent(viewModel.streak.rhythm)}
-            />
-            <MetricPill
-              icon={Flower2}
-              label="Good days"
-              tone="butter"
-              value={`${goodDaysThisMonth} this month`}
-            />
-          </div>
-
-          <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-wafer bg-white/75 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div aria-label="Last seven days rhythm" className="flex items-center gap-2">
-              {viewModel.streak.chain.map((day) => (
-                <span
-                  aria-label={`${day.label}: ${day.status}`}
-                  className={cn(
-                    "h-3.5 w-3.5 rounded-full border transition",
-                    day.completed
-                      ? "border-matcha-deep/50 bg-matcha shadow-[0_0_0_4px_rgba(127,176,105,0.16)]"
-                      : "border-wafer bg-white"
-                  )}
-                  key={day.date}
-                  title={`${day.label}: ${day.status}`}
-                />
-              ))}
-            </div>
-            <p className="text-sm font-bold text-mauve">
-              {viewModel.streak.protectionMessage}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex justify-center lg:pr-2">
-          <CompanionCorner
-            bubble={bubble}
-            celebrate={celebrate}
-            eating={eating}
-            onAdopt={onAdopt}
-            onFeed={onFeed}
-            onOpenGift={onOpenGift}
-            onPet={onPet}
-            onSwitch={onSwitch}
-            viewModel={viewModel}
-          />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/**
- * The pet's home inside the hero: adoption eggs on first run, then the
- * companion with speech bubble, bond meter, food tray, and pet switcher.
- */
-function CompanionCorner({
-  bubble,
-  celebrate,
-  eating,
-  onAdopt,
-  onFeed,
-  onOpenGift,
-  onPet,
-  onSwitch,
-  viewModel
-}: CompanionHandlers & {
-  celebrate: boolean;
-  viewModel: DashboardViewModel;
-}) {
-  const companion = viewModel.companion;
-  const pet = companion.activePet;
-  const [adoptionTarget, setAdoptionTarget] = useState<PetSpecies | null>(null);
-
-  if (!pet) {
-    return <PetAdoption onAdopt={onAdopt} />;
-  }
-
-  if (adoptionTarget) {
-    return (
-      <PetAdoption
-        initialSpecies={adoptionTarget}
-        onAdopt={(species, name) => {
-          onAdopt(species, name);
-          setAdoptionTarget(null);
-        }}
-        onCancel={() => setAdoptionTarget(null)}
-      />
-    );
-  }
-
-  return (
-    <div className="flex flex-col items-center gap-1.5">
-      {bubble ? <SpeechBubble key={bubble} text={bubble} /> : null}
-
-      <div className="relative">
-        <Pet
-          bondTier={pet.bondTier}
-          celebrate={celebrate}
-          completedCount={viewModel.today.completedHabits}
-          eating={eating}
-          name={pet.name}
-          onPet={onPet}
-          species={pet.species}
-          stage={pet.stage}
-          totalCount={viewModel.today.totalHabits}
-        />
-        {companion.pendingGift ? (
-          <GiftBox label={`Mở món quà ${pet.name} để dành`} onOpen={onOpenGift} />
-        ) : null}
-      </div>
-
-      <div className="flex w-full min-w-[260px] max-w-[300px] flex-col gap-2">
-        <BondMeter pet={pet} />
-        <div className="flex items-center justify-between gap-2">
-          <FoodTray
-            disabled={companion.food <= 0 || eating}
-            food={companion.food}
-            onFeed={onFeed}
-            species={pet.species}
-          />
-          <PetSwitcher
-            active={pet.species}
-            adopted={companion.adoptedSpecies}
-            onAdoptRequest={setAdoptionTarget}
-            onSwitch={onSwitch}
-          />
-        </div>
-        <p className="text-center text-xs font-bold text-mauve">
-          Ngày chăm: {pet.growthDays}
-          {pet.daysToNextStage !== null
-            ? ` · còn ${pet.daysToNextStage} ngày nữa lớn 🌱`
-            : " · đã trưởng thành 🌸"}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function SpeechBubble({ text }: { text: string }) {
-  return (
-    <div className="bubble-in relative max-w-[260px] rounded-2xl border border-wafer bg-mochi px-4 py-2.5 text-center text-sm font-semibold leading-5 text-plum shadow-mochi">
-      {text}
-      <span
-        aria-hidden="true"
-        className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b border-r border-wafer bg-mochi"
-      />
-    </div>
-  );
-}
-
-function BondMeter({ pet }: { pet: CompanionPetView }) {
-  return (
-    <div className="rounded-2xl border border-wafer bg-white/75 px-3 py-2">
-      <div className="flex items-center justify-between text-xs font-bold text-mauve">
-        <span aria-label={`Bond tier ${pet.bondTier} of 5`} className="flex items-center gap-0.5">
-          {[1, 2, 3, 4, 5].map((tier) => (
-            <span
-              aria-hidden="true"
-              className={cn("text-sm", tier > pet.bondTier && "opacity-25 grayscale")}
-              key={tier}
-            >
-              💗
-            </span>
-          ))}
-        </span>
-        <span className="text-plum">{pet.bondTierLabel}</span>
-      </div>
-      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-wafer">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-sakura to-sakura-deep transition-all duration-500"
-          style={{ width: `${Math.max(pet.bondProgress * 100, 4)}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function FoodTray({
-  disabled,
-  food,
-  onFeed,
-  species
-}: {
-  disabled: boolean;
-  food: number;
-  onFeed: () => void;
-  species: PetSpecies;
-}) {
-  return (
-    <div className="flex items-center gap-2 rounded-2xl border border-wafer bg-white/75 py-1.5 pl-3 pr-1.5">
-      <span aria-label={`${food} treats in the pantry`} className="text-sm font-bold text-plum">
-        {species === "dog" ? "🦴" : "🐟"} ×{food}
-      </span>
-      <Button disabled={disabled} onClick={onFeed} size="sm" type="button">
-        Cho ăn
-      </Button>
-    </div>
-  );
-}
-
-const SWITCHER_PETS: Array<{ species: PetSpecies; emoji: string; label: string }> = [
-  { species: "dog", emoji: "🐶", label: "cún" },
-  { species: "cat", emoji: "🐱", label: "mèo" }
-];
-
-function PetSwitcher({
-  active,
-  adopted,
-  onAdoptRequest,
-  onSwitch
-}: {
-  active: PetSpecies;
-  adopted: PetSpecies[];
-  onAdoptRequest: (species: PetSpecies) => void;
-  onSwitch: (species: PetSpecies) => void;
-}) {
-  return (
-    <div className="flex items-center gap-1.5 rounded-2xl border border-wafer bg-white/75 p-1.5">
-      {SWITCHER_PETS.map((entry) => {
-        const isAdopted = adopted.includes(entry.species);
-        const isActive = entry.species === active;
-
-        return (
-          <button
-            aria-label={
-              isAdopted
-                ? isActive
-                  ? `Bé ${entry.label} đang chơi cùng bạn`
-                  : `Gọi bé ${entry.label} ra chơi`
-                : `Nhận nuôi bé ${entry.label}`
-            }
-            aria-pressed={isActive}
-            className={cn(
-              "squishy flex h-9 w-9 items-center justify-center rounded-full text-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep",
-              isActive ? "bg-matcha/20 ring-1 ring-matcha/50" : "hover:bg-rice",
-              !isAdopted && "opacity-70"
-            )}
-            key={entry.species}
-            onClick={() =>
-              isAdopted ? onSwitch(entry.species) : onAdoptRequest(entry.species)
-            }
-            title={
-              isAdopted
-                ? isActive
-                  ? "Đang ở đây với bạn"
-                  : "Đang ở nhà nghỉ ngơi — bấm để gọi ra"
-                : "Còn một quả trứng đang đợi bạn"
-            }
-            type="button"
-          >
-            {isAdopted ? entry.emoji : "🥚"}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function MetricPill({
-  icon: Icon,
-  label,
-  value,
-  tone
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  tone: "matcha" | "sakura" | "butter";
-}) {
-  return (
-    <div
-      className={cn(
-        "rounded-2xl border bg-white/75 p-4",
-        tone === "matcha" && "border-matcha/40",
-        tone === "sakura" && "border-sakura",
-        tone === "butter" && "border-butter"
-      )}
-    >
-      <div className="flex items-center gap-2 text-sm font-bold text-mauve">
-        <Icon
-          className={cn(
-            "h-4 w-4",
-            tone === "matcha" && "text-matcha-deep",
-            tone === "sakura" && "text-sakura-deep",
-            tone === "butter" && "text-honey"
-          )}
-        />
-        {label}
-      </div>
-      <p className="mt-2 font-display text-xl font-bold text-plum sm:text-2xl">{value}</p>
-    </div>
   );
 }
 
@@ -1339,15 +988,23 @@ function HabitRow({
             ) : null}
           </span>
         </span>
-        <span
-          className={cn(
-            "flex h-9 w-9 items-center justify-center rounded-full border-2 transition",
-            habit.completed
-              ? "check-pop border-matcha bg-matcha text-white"
-              : "border-wafer bg-white text-transparent"
-          )}
-        >
-          <Check className="h-4 w-4" strokeWidth={3.5} />
+        <span className="relative flex h-9 w-9 items-center justify-center">
+          {habit.completed ? (
+            <span
+              aria-hidden="true"
+              className="habit-done-ring absolute inset-0 rounded-full bg-matcha/30"
+            />
+          ) : null}
+          <span
+            className={cn(
+              "relative flex h-9 w-9 items-center justify-center rounded-full border-2 transition",
+              habit.completed
+                ? "check-pop border-matcha bg-matcha text-white"
+                : "border-wafer bg-white text-transparent"
+            )}
+          >
+            <Check className="h-4 w-4" strokeWidth={3.5} />
+          </span>
         </span>
       </button>
       {editing ? (
@@ -1409,65 +1066,6 @@ function habitIconBubbleClass(key: string, category?: string) {
     bubbleByKey[key] ||
     bubbleByCategory[category || ""] ||
     "border-wafer bg-gradient-to-br from-white via-rice to-white"
-  );
-}
-
-function WeatherCard() {
-  const metricItems = [
-    ["Humidity", DASHBOARD_WEATHER.humidity],
-    ["Wind", DASHBOARD_WEATHER.wind],
-    ["Rain", DASHBOARD_WEATHER.rainChance],
-    ["UV", DASHBOARD_WEATHER.uvIndex]
-  ];
-
-  return (
-    <section className="soft-panel card-lift dawn-band relative overflow-hidden rounded-lg p-4 sm:p-5">
-      <div className="relative z-10 flex min-h-[280px] flex-col justify-between gap-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-wide text-dawn-deep">
-              Weather
-            </p>
-            <h2 className="mt-2 font-display text-2xl font-bold text-plum">
-              {DASHBOARD_WEATHER.location} weather
-            </h2>
-            <p className="mt-1 text-sm font-bold text-mauve">
-              {DASHBOARD_WEATHER.condition}
-            </p>
-          </div>
-          <span
-            aria-label={DASHBOARD_WEATHER.emojiLabel}
-            className="weather-emoji"
-            role="img"
-          >
-            {DASHBOARD_WEATHER.emoji}
-          </span>
-        </div>
-
-        <div>
-          <p className="font-display text-5xl font-bold text-plum sm:text-6xl">
-            {DASHBOARD_WEATHER.temperature}
-          </p>
-          <p className="mt-2 text-sm font-bold text-mauve">
-            Feels like {DASHBOARD_WEATHER.feelsLike}
-          </p>
-          <p className="mt-3 max-w-md text-sm font-semibold leading-6 text-mauve">
-            {DASHBOARD_WEATHER.planningNote}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          {metricItems.map(([label, value]) => (
-            <div className="rounded-2xl border border-wafer bg-white/75 p-3" key={label}>
-              <p className="text-xs font-bold uppercase tracking-wide text-mauve">
-                {label}
-              </p>
-              <p className="mt-1 text-sm font-bold text-plum">{value}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -1542,121 +1140,6 @@ function UpcomingEvents({ viewModel }: { viewModel: DashboardViewModel }) {
   );
 }
 
-function AnalyticsPanel({ viewModel }: { viewModel: DashboardViewModel }) {
-  return (
-    <section className="soft-panel card-lift rounded-lg p-4 sm:p-5 xl:[grid-area:3/1/4/19]">
-      <div className="flex flex-col gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-dawn-deep" />
-            <h2 className="font-display text-lg font-bold text-plum">Analytics</h2>
-          </div>
-          <p className="mt-1 text-sm font-semibold text-mauve">
-            Habit performance and recent trend
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <SmallMetric
-            label="Average"
-            value={formatPercent(viewModel.analytics.averageCompletionRate)}
-          />
-          <SmallMetric
-            label="Trend"
-            value={formatSignedPercent(viewModel.analytics.changeFromPreviousPeriod)}
-          />
-          <SmallMetric label="Good days" value={`${viewModel.analytics.goodDays}`} />
-          <SmallMetric
-            label="Completed"
-            value={`${viewModel.analytics.totalCompletedHabits}`}
-          />
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
-        <div className="rounded-2xl border border-wafer bg-white/75 p-4">
-          <div className="flex h-48 items-end gap-2">
-            {viewModel.analytics.trend.map((point, index) => (
-              <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={point.date}>
-                <div className="flex h-36 w-full items-end rounded-xl bg-rice">
-                  <div
-                    aria-label={`${point.label}: ${formatPercent(point.completionRate)}`}
-                    className={cn(
-                      "bar-grow w-full rounded-xl",
-                      point.status === "Good" && "bg-matcha",
-                      point.status === "Okay" && "bg-honey",
-                      point.status === "Bad" && "bg-sakura",
-                      point.status === "No data" && "bg-wafer"
-                    )}
-                    style={
-                      {
-                        height: `${Math.max(point.completionRate * 100, 6)}%`,
-                        "--bar-delay": `${index * 30}ms`
-                      } as React.CSSProperties
-                    }
-                    title={`${point.label}: ${formatPercent(point.completionRate)}`}
-                  />
-                </div>
-                <span
-                  className={cn(
-                    "whitespace-nowrap text-[10px] font-bold text-mauve",
-                    index % 2 === 1 && "hidden sm:block"
-                  )}
-                >
-                  {point.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-wafer bg-white/75 p-4">
-          <div className="mb-4 grid grid-cols-2 gap-3">
-            <Insight label="Most steady" value={viewModel.analytics.mostConsistentHabitName} />
-            <Insight
-              label="Needs care"
-              value={viewModel.analytics.habitNeedingAttentionName}
-            />
-          </div>
-          <div className="grid gap-3">
-            {viewModel.analytics.habitPerformance.slice(0, 5).map((habit) => (
-              <div key={habit.habitId}>
-                <div className="mb-1 flex items-center justify-between gap-3 text-xs font-bold text-mauve">
-                  <span className="truncate">{habit.habitName}</span>
-                  <span className="text-plum">{formatPercent(habit.completionRate)}</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-wafer">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-matcha to-matcha-deep"
-                    style={{ width: `${habit.completionRate * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function SmallMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-wafer bg-white/75 p-3">
-      <p className="text-xs font-bold uppercase tracking-wide text-mauve">{label}</p>
-      <p className="mt-1 font-display text-lg font-bold text-plum">{value}</p>
-    </div>
-  );
-}
-
-function Insight({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div className="rounded-2xl border border-wafer bg-white/75 p-3">
-      <p className="text-xs font-bold uppercase tracking-wide text-mauve">{label}</p>
-      <p className="mt-1 break-words text-sm font-bold text-plum">{value ?? "No habit yet"}</p>
-    </div>
-  );
-}
-
 function StatusBadge({ status }: { status: DashboardStatus }) {
   return (
     <span
@@ -1696,10 +1179,4 @@ function getCalendarFill(status: DashboardStatus) {
   if (status === "Okay") return "rgb(242, 176, 76)";
   if (status === "Bad") return "rgb(246, 198, 206)";
   return "rgba(111, 96, 105, 0.22)";
-}
-
-function formatSignedPercent(value: number) {
-  const rounded = Math.round(value * 100);
-  if (rounded > 0) return `+${rounded}%`;
-  return `${rounded}%`;
 }
