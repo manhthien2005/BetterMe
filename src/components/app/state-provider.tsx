@@ -71,6 +71,7 @@ import { fetchSyncSnapshot, pushMutations } from "@/lib/server/sync-actions";
 import { loadMailboxSeen, saveMailboxSeen, type MailboxSeen } from "@/lib/social/mailbox-seen";
 import { createClient } from "@/lib/supabase/client";
 import { createSyncEngine, type SyncEngine } from "@/lib/sync/engine";
+import { habitSyncPayload, logSyncMutation } from "@/lib/sync/payloads";
 import { runSyncOnboarding, type InitialUploadMode } from "@/lib/sync/importer";
 import type { SyncStatus } from "@/lib/sync/types";
 
@@ -538,13 +539,15 @@ export function StateProvider({
 
     if (habit) {
       // SET-based, idempotent (spec §2.1): the engine stamps the shadow cell.
-      markSyncDirty({
-        kind: "setHabitLog",
-        habitKey: habitId,
-        date: today,
-        done: turningOn,
-        clientTs: new Date().toISOString()
-      });
+      markSyncDirty(
+        logSyncMutation(
+          habitId,
+          today,
+          turningOn,
+          next.records[today]?.entries[habitId],
+          new Date().toISOString()
+        )
+      );
     }
 
     // Ticking on feeds the companion economy (food/growth/all-done bonus) and
@@ -569,8 +572,13 @@ export function StateProvider({
     const before = countCompletedOn(base, today);
     let next = setHabitEntryInState(base, today, habitId, value, clockHHmm());
     const after = countCompletedOn(next, today);
+    const previousEntry = base.records[today]?.entries[habitId];
+    const nextEntry = next.records[today]?.entries[habitId];
+    const cellChanged =
+      previousEntry?.value !== nextEntry?.value ||
+      previousEntry?.completedAt !== nextEntry?.completedAt;
 
-    if (after === before && next === base) return;
+    if (!cellChanged) return;
 
     const total = viewModel.today.totalHabits;
     const justCompleted = after > before;
@@ -592,15 +600,18 @@ export function StateProvider({
 
     commitState(next);
 
-    if (after !== before) {
-      markSyncDirty({
-        kind: "setHabitLog",
-        habitKey: habitId,
-        date: today,
-        done: justCompleted,
-        clientTs: new Date().toISOString()
-      });
-    }
+    // Enqueued whenever THIS CELL changed, not when the day's completed count
+    // changed. Under the old guard, 3 -> 4 glasses of an eight-glass goal left
+    // the count alone and that reading never left the device.
+    markSyncDirty(
+      logSyncMutation(
+        habitId,
+        today,
+        next.records[today]?.completions[habitId] === true,
+        nextEntry,
+        new Date().toISOString()
+      )
+    );
 
     if (justCompleted && state.companion.activeSpecies) {
       markCompanionDirty();
@@ -610,8 +621,7 @@ export function StateProvider({
 
   /**
    * Creating and editing share one submit path — the sheet does not know
-   * which it is doing, only what the draft says. The server contract is still
-   * v2-shaped (U1c widens it), so the upsert carries the fields it can.
+   * which it is doing, only what the draft says.
    */
   function submitHabitDraft(draft: HabitDraft) {
     const editing = editingHabitId !== null && editingHabitId !== "";
@@ -631,21 +641,39 @@ export function StateProvider({
     if (habit) {
       markSyncDirty({
         kind: "upsertHabit",
-        habit: {
-          key: habit.id,
-          name: habit.name,
-          category: habit.category,
-          maxScore: habit.maxScore,
-          active: habit.archivedAt === null,
-          description: habit.description,
-          sortOrder: next.habits.findIndex((item) => item.id === habit.id)
-        },
+        habit: habitSyncPayload(
+          habit,
+          next.habits.findIndex((item) => item.id === habit.id)
+        ),
         clientTs: new Date().toISOString(),
         ...(editing ? {} : { expectCreate: true })
       });
     }
 
     toast.success(editing ? "Đã cập nhật thói quen 🌿" : "Đã trồng thói quen mới 🌱");
+  }
+
+  /**
+   * Pause, archive and reorder all change a habit's DEFINITION, so each has to
+   * push an upsert. Until U1c gave the wire a pausedAt/archivedAt/sortOrder to
+   * carry, these three had nothing to send and enqueued nothing — pausing on
+   * the phone stayed on the phone.
+   */
+  function syncHabitDefinition(next: DashboardState, habitId: string) {
+    const habit = next.habits.find((item) => item.id === habitId);
+
+    if (!habit) return;
+
+    // No expectCreate: the key already exists on the server, and arming
+    // collision detection on an edit would read a rename as a rival habit.
+    markSyncDirty({
+      kind: "upsertHabit",
+      habit: habitSyncPayload(
+        habit,
+        next.habits.findIndex((item) => item.id === habitId)
+      ),
+      clientTs: new Date().toISOString()
+    });
   }
 
   function pauseHabit(habitId: string, paused: boolean) {
@@ -655,6 +683,7 @@ export function StateProvider({
 
     commitState(next);
     setEditingHabitId(null);
+    syncHabitDefinition(next, habitId);
     toast(paused ? "Đã tạm dừng — chuỗi vẫn giữ nguyên 🍃" : "Chào mừng quay lại 🌱");
   }
 
@@ -665,13 +694,27 @@ export function StateProvider({
 
     commitState(next);
     setEditingHabitId(null);
+    syncHabitDefinition(next, habitId);
     toast(archived ? "Đã cất vào Lưu trữ — lịch sử vẫn còn nguyên 🗃" : "Đã đưa trở lại 🌱");
   }
 
   function moveHabit(habitId: string, direction: -1 | 1) {
+    const from = state.habits.findIndex((habit) => habit.id === habitId);
     const next = moveHabitInState(state, habitId, direction);
 
-    if (next !== state) commitState(next);
+    if (next === state) return;
+
+    commitState(next);
+    // A swap moves TWO habits, so both are pushed. Sending only the one the
+    // user grabbed would leave its neighbour holding the same sort_order on
+    // the server, and the order there would be decided by a tiebreak nobody
+    // chose. The queue coalesces per key, so an arrow held down still sends
+    // one upsert per habit.
+    syncHabitDefinition(next, habitId);
+
+    const swapped = next.habits[from];
+
+    if (swapped && swapped.id !== habitId) syncHabitDefinition(next, swapped.id);
   }
 
   /** Destructive, and only reachable from the archive screen behind a confirm. */
@@ -789,15 +832,7 @@ export function StateProvider({
     // expectCreate arms server-side slug-collision detection (spec §2.2).
     markSyncDirty({
       kind: "upsertHabit",
-      habit: {
-        key: created.id,
-        name: created.name,
-        category: created.category,
-        maxScore: created.maxScore,
-        active: true,
-        description: created.description,
-        sortOrder: next.habits.length - 1
-      },
+      habit: habitSyncPayload(created, next.habits.length - 1),
       clientTs: new Date().toISOString(),
       expectCreate: true
     });
@@ -832,15 +867,10 @@ export function StateProvider({
       // Same-key upsert = rename, never a create — no expectCreate (spec §2.2).
       markSyncDirty({
         kind: "upsertHabit",
-        habit: {
-          key: updated.id,
-          name: updated.name,
-          category: updated.category,
-          maxScore: updated.maxScore,
-          active: true,
-          description: updated.description,
-          sortOrder: next.habits.findIndex((habit) => habit.id === habitId)
-        },
+        habit: habitSyncPayload(
+          updated,
+          next.habits.findIndex((habit) => habit.id === habitId)
+        ),
         clientTs: new Date().toISOString()
       });
     }
