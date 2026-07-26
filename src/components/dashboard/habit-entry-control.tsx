@@ -11,6 +11,7 @@ import {
   toggleStep,
   type LogEntry
 } from "@/components/dashboard/habit-model";
+import { ProgressRing } from "@/components/ui/progress-ring";
 import { cn } from "@/lib/utils";
 
 /** Minutes added per press for a duration habit — a quick tap, not a timer. */
@@ -79,7 +80,7 @@ export function HabitEntryControl({
 
   return (
     <div className="flex items-center gap-2">
-      <ProgressBadge done={done} label={`${progress.done}/${progress.target}`} ratio={progress.ratio} />
+      <ProgressBadge done={done} label={`${progress.done}/${progress.target}`} progress={progress} />
       {done ? (
         <button
           aria-label={`Bỏ đánh dấu ${habit.name}`}
@@ -130,7 +131,7 @@ function ChecklistControl({
         onClick={() => setOpen((current) => !current)}
         type="button"
       >
-        <ProgressBadge done={done} label={`${progress.done}/${progress.target}`} ratio={progress.ratio} />
+        <ProgressBadge done={done} label={`${progress.done}/${progress.target}`} progress={progress} />
         <ChevronDown
           aria-hidden="true"
           className={cn("h-4 w-4 text-ink-soft transition-transform", open && "rotate-180")}
@@ -179,11 +180,11 @@ function ChecklistControl({
 function ProgressBadge({
   done,
   label,
-  ratio
+  progress
 }: {
   done: boolean;
   label: string;
-  ratio: number;
+  progress: { done: number; target: number };
 }) {
   if (done) {
     return (
@@ -195,15 +196,13 @@ function ProgressBadge({
   }
 
   return (
-    <span
-      className="flex h-9 w-9 items-center justify-center rounded-full text-[10px] font-bold text-ink-soft"
-      style={{
-        background: `radial-gradient(circle at center, var(--surface-card) 68%, transparent 69%), conic-gradient(var(--action) ${Math.round(
-          ratio * 100
-        )}%, var(--line-strong) 0)`
-      }}
+    <ProgressRing
+      className="text-ink-soft"
+      label={label}
+      target={progress.target}
+      value={progress.done}
     >
       {label}
-    </span>
+    </ProgressRing>
   );
 }
