@@ -80,6 +80,26 @@
     --habit-sand-soft: #EFEAE1;
     --habit-sand-strong: #57534E;
 
+    /* ——— Bầu trời (spec §4.1). Three phases, each a gradient pair plus its
+       OWN ink. The evening sky is dark, so its ink flips light — that is why
+       ink belongs to the phase rather than reusing --ink. The contrast gate
+       checks each ink against BOTH gradient stops, because the text sits
+       across the whole band (src/app/design-tokens.test.ts). ——— */
+    --sky-morning-from: #FFF4D6;
+    --sky-morning-to: #FBD9A0;
+    --sky-morning-ink: #3B2A12;
+    --sky-morning-ink-soft: #6B4E1F;
+
+    --sky-afternoon-from: #FFE3C7;
+    --sky-afternoon-to: #F8BE9A;
+    --sky-afternoon-ink: #40200E;
+    --sky-afternoon-ink-soft: #6E3A1C;
+
+    --sky-evening-from: #2E2A4A;
+    --sky-evening-to: #4A3F6B;
+    --sky-evening-ink: #F6F2FF;
+    --sky-evening-ink-soft: #D8D0F0;
+
     /* Shape + depth */
     --radius-card: 16px;
     --radius-control: 12px;

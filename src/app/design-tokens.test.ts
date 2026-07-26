@@ -157,3 +157,44 @@ describe("design tokens", () => {
     }
   });
 });
+
+/**
+ * The sky gradient (spec §4.1). Text sits across the WHOLE band, so each
+ * phase's ink is checked against BOTH gradient stops — passing on one end
+ * only is self-deception. The evening sky is dark, so its ink flips light;
+ * nothing but this gate would have caught dark-on-dark.
+ */
+const SKY_PHASES = ["morning", "afternoon", "evening"] as const;
+
+describe("sky gradient legibility (spec §4.1)", () => {
+  const tokens = readTokens(css);
+
+  SKY_PHASES.forEach((phase) => {
+    (["ink", "ink-soft"] as const).forEach((role) => {
+      (["from", "to"] as const).forEach((stop) => {
+        it(`--sky-${phase}-${role} is readable on --sky-${phase}-${stop}`, () => {
+          const foreground = tokens[`sky-${phase}-${role}`];
+          const background = tokens[`sky-${phase}-${stop}`];
+
+          expect(foreground, `globals.css must declare --sky-${phase}-${role}`).toBeTruthy();
+          expect(background, `globals.css must declare --sky-${phase}-${stop}`).toBeTruthy();
+
+          const ratio = contrastRatio(foreground, background);
+
+          expect(
+            ratio,
+            `--sky-${phase}-${role} on --sky-${phase}-${stop} is ${ratio.toFixed(2)}:1`
+          ).toBeGreaterThanOrEqual(4.5);
+        });
+      });
+    });
+  });
+
+  it("exposes every sky token through tailwind", () => {
+    Object.keys(tokens)
+      .filter((name) => name.startsWith("sky-"))
+      .forEach((name) => {
+        expect(tailwind, `tailwind.config.ts must expose --${name}`).toContain(`var(--${name})`);
+      });
+  });
+});

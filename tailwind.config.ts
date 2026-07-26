@@ -59,6 +59,23 @@ const config: Config = {
           "sand-soft": "var(--habit-sand-soft)",
           "sand-strong": "var(--habit-sand-strong)"
         },
+        // The hero's sky (spec §4.1). NOTE: this key shadows Tailwind's own
+        // `sky` palette. Verified nothing uses sky-50..950 before taking the
+        // name — `rg "sky-[0-9]" src` returns nothing.
+        sky: {
+          "morning-from": "var(--sky-morning-from)",
+          "morning-to": "var(--sky-morning-to)",
+          "morning-ink": "var(--sky-morning-ink)",
+          "morning-ink-soft": "var(--sky-morning-ink-soft)",
+          "afternoon-from": "var(--sky-afternoon-from)",
+          "afternoon-to": "var(--sky-afternoon-to)",
+          "afternoon-ink": "var(--sky-afternoon-ink)",
+          "afternoon-ink-soft": "var(--sky-afternoon-ink-soft)",
+          "evening-from": "var(--sky-evening-from)",
+          "evening-to": "var(--sky-evening-to)",
+          "evening-ink": "var(--sky-evening-ink)",
+          "evening-ink-soft": "var(--sky-evening-ink-soft)"
+        },
         // ——— v2 palette below — retired surface by surface across U1–U4. ———
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
