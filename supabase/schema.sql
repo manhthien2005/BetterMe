@@ -904,7 +904,7 @@ language plpgsql
 as $$
 begin
   loop
-    new.invite_code := upper(encode(gen_random_bytes(8), 'hex')); -- 16 hex, 64 bit
+    new.invite_code := upper(encode(extensions.gen_random_bytes(8), 'hex')); -- 16 hex, 64 bit
     exit when not exists (
       select 1 from public.profiles where invite_code = new.invite_code
     );
@@ -931,7 +931,7 @@ declare
 begin
   for v_row in select user_id from public.profiles where invite_code is null loop
     loop
-      v_code := upper(encode(gen_random_bytes(8), 'hex'));
+      v_code := upper(encode(extensions.gen_random_bytes(8), 'hex'));
       exit when not exists (
         select 1 from public.profiles where invite_code = v_code
       );
@@ -2624,3 +2624,33 @@ grant execute on function public.get_shared_rhythms() to authenticated;
 
 revoke execute on function public.get_garden_fair() from public, anon;
 grant execute on function public.get_garden_fair() to authenticated;
+
+
+-- =====================================================================
+-- ===== Security hardening (Supabase advisor 0011 / 0028 / 0029) =====
+-- Idempotent. Pin search_path on helper + trigger functions, and revoke REST
+-- execute on trigger-only functions (they still fire as triggers regardless of
+-- grant). The app's RPCs stay authenticated-executable by design (each checks
+-- auth.uid() internally). is_sharing keeps its authenticated grant — the
+-- published_summaries friend-SELECT policy calls it under the querying role.
+-- =====================================================================
+
+alter function public.set_updated_at() set search_path = public;
+alter function public.enforce_companion_no_decay() set search_path = public;
+alter function public.safe_int(text, integer) set search_path = public;
+alter function public.safe_date(text) set search_path = public;
+alter function public.safe_ts(text) set search_path = public;
+alter function public.jsonb_union_max(jsonb, jsonb, numeric, numeric) set search_path = public;
+alter function public.jsonb_union_true(jsonb, jsonb) set search_path = public;
+alter function public.jsonb_union_idset(jsonb, jsonb) set search_path = public;
+alter function public.set_invite_code() set search_path = public;
+alter function public.append_milestone(jsonb, text, text, date) set search_path = public;
+alter function public.local_date_in(text) set search_path = public;
+alter function public.validate_milestones() set search_path = public;
+alter function public.pet_stage_rank(text) set search_path = public;
+
+revoke execute on function public.profiles_propagate_summary() from public, anon, authenticated;
+revoke execute on function public.validate_milestones() from public, anon, authenticated;
+revoke execute on function public.set_updated_at() from public, anon, authenticated;
+revoke execute on function public.enforce_companion_no_decay() from public, anon, authenticated;
+revoke execute on function public.set_invite_code() from public, anon, authenticated;
