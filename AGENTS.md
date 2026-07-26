@@ -34,9 +34,11 @@ Breaking either is a failure, not a tradeoff. If a request seems to require it, 
 - In shell calls, use PowerShell-safe commands — no `head`/`grep`/`|` unix pipes. Prefer the
   dedicated read/search tools over shell for reading and searching.
 
-Current state: branch `main`, 221 tests green. Social Garden Phases 0–3 are all committed;
-auth is live email+password with a signup OTP (see `docs/auth-email-config.md`). See `HANDOFF.md`
-for progress and next steps.
+Current state: 304 tests green. Social Garden Phases 0–3 are all committed; auth is live
+email+password with a signup OTP (see `docs/auth-email-config.md`). UI overhaul step **U0**
+(design tokens, fonts, `ui/` primitives, four-space shell) is done on branch
+`u0-shell-and-tokens` — see `docs/superpowers/specs/2026-07-26-uiux-overhaul-design.md` §10 for
+U1–U4 and `HANDOFF.md` for progress and next steps.
 
 ## Stack
 Next.js 15.5 (App Router) · React 19 · TypeScript 5.9 **strict** · Supabase (`@supabase/ssr`) ·
@@ -44,10 +46,18 @@ TanStack Query · Tailwind 3.4 + Radix + `class-variance-authority` · sonner (t
 lucide-react · Remotion 4 · Vitest + Testing Library (jsdom). Node ≥ 20.9, pnpm 11.7.
 
 ## Project map
-- `src/app/**` — App Router routes (`/dashboard`, `/login`, `/auth/callback`); Server Components by default.
-- `src/components/dashboard/**` — the app UI: `dashboard-client.tsx` (client shell),
-  `dashboard-data.ts` (pure state + pet economy), `pet.tsx` / `pet-voice.ts` (companion + VN voice),
-  `friends-card.tsx`, `garden-visit-overlay.tsx`, `sync-onboarding.tsx`.
+- `src/app/**` — App Router routes. The four spaces live in the `(app)` route group
+  (`/dashboard`, `/calendar`, `/nep`, `/friends`) behind one auth gate in `(app)/layout.tsx`;
+  plus `/login` and `/auth/callback`. Server Components by default.
+- `src/components/app/**` — the shell: `state-provider.tsx` (ALL app state + the sync engine,
+  consumed via `useAppState()`), `app-shell.tsx` (nav rail / tab bar / global overlays),
+  `nav-items.ts`, and one file per space (`today-page.tsx`, `calendar-page.tsx`, `nep-page.tsx`,
+  `friends-page.tsx`).
+- `src/components/ui/**` — design-token primitives: `button.tsx` (3 tiers), `card.tsx`, `chip.tsx`,
+  `icon.tsx`, `nav-rail.tsx`, `bottom-tab-bar.tsx`.
+- `src/components/dashboard/**` — the panels each space renders: `dashboard-data.ts` (pure state +
+  pet economy), `todays-habits.tsx`, `calendar-panel.tsx`, `pet.tsx` / `pet-voice.ts` (companion +
+  VN voice), `friends-card.tsx`, `garden-visit-overlay.tsx`, `sync-onboarding.tsx`.
 - `src/lib/sync/**` — local-first sync engine (queue, shadow LWW, merge laws, importer, engine).
 - `src/lib/server/**` — server actions (`sync-actions.ts`, `social-actions.ts`) + mappers.
 - `src/lib/supabase/**` — SSR/browser clients + env helpers.
@@ -70,6 +80,15 @@ lucide-react · Remotion 4 · Vitest + Testing Library (jsdom). Node ≥ 20.9, p
   per-field LWW for pet name/species, tombstones for habit deletion. Seed/demo history
   (`date <= seedCutoverDate`) NEVER uploads.
 - **Domain purity**: scoring/date/economy are pure TypeScript — no React/Next/browser/persistence imports.
+- **Design tokens** live in `src/app/globals.css` `:root` and are mapped in `tailwind.config.ts`
+  as `var(--token)`. Colour is a role: `--action` is the ONLY primary/streak/link colour (max one
+  primary button per region), `--success` is completion, `--alert` is the new-mail badge and
+  nothing else. `--success` is a FILL — text uses `--success-ink` (the fill is 3.2:1, below AA).
+  Never use a Tailwind opacity modifier on a token colour (`bg-action/10` cannot work with
+  `var()`); add a token instead. Font fallbacks in `tailwind.config.ts` must be valid unquoted
+  CSS identifier sequences — one bad name silently voids the whole utility.
+  `src/app/design-tokens.test.ts` gates presence + AA contrast. The v2 palette
+  (rice/matcha/sakura) is still in the config and retires surface by surface across U1–U4.
 - Never assume a library is available — check `package.json` and existing imports first.
 - Pure logic is unit-tested; components get interaction + accessibility tests. Tests are colocated `*.test.{ts,tsx}`.
 

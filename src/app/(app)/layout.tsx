@@ -1,18 +1,20 @@
 import { redirect } from "next/navigation";
 
-import { DashboardClient } from "@/components/dashboard/dashboard-client";
+import { AppShell } from "@/components/app/app-shell";
+import { StateProvider } from "@/components/app/state-provider";
 import { ensureUserBootstrap } from "@/lib/server/actions";
 import { isDevAuthBypassEnabled } from "@/lib/dev-auth";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function DashboardPage() {
+/** Auth gate + the frame for all four spaces (spec §3). */
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const devAuthBypassEnabled = isDevAuthBypassEnabled();
   const supabase = await createClient();
   let user = null;
   let error = null;
 
   // Supabase unreachable must degrade to "no session", never a crashed page —
-  // the dashboard itself runs from localStorage.
+  // the app itself runs from localStorage.
   try {
     ({
       data: { user },
@@ -24,7 +26,11 @@ export default async function DashboardPage() {
 
   if (error || !user) {
     if (devAuthBypassEnabled) {
-      return <DashboardClient userEmail="dev@betterme.local" />;
+      return (
+        <StateProvider userEmail="dev@betterme.local">
+          <AppShell>{children}</AppShell>
+        </StateProvider>
+      );
     }
 
     redirect("/login");
@@ -33,5 +39,9 @@ export default async function DashboardPage() {
 
   await ensureUserBootstrap();
 
-  return <DashboardClient userEmail={user.email ?? "BetterMe"} />;
+  return (
+    <StateProvider userEmail={user.email ?? "BetterMe"}>
+      <AppShell>{children}</AppShell>
+    </StateProvider>
+  );
 }

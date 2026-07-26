@@ -52,7 +52,7 @@ export function EventsCard({
           <h2 className="font-display text-lg font-bold text-plum">Sự kiện sắp tới</h2>
         </div>
         {!showForm ? (
-          <Button onClick={() => setShowForm(true)} size="sm" type="button" variant="outline">
+          <Button onClick={() => setShowForm(true)} size="sm" type="button" variant="secondary">
             <CirclePlus className="h-4 w-4" />
             Thêm
           </Button>

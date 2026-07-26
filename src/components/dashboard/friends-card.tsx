@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 /**
  * "Bạn vườn 🏡" — Social Garden Phase 1 bento card (spec §3.3).
  *
- * Mounted by dashboard-client ONLY while the sync engine is enabled (a live
+ * Mounted by the Bạn vườn space ONLY while the sync engine is enabled (a live
  * Supabase session + sync opt-in) — the social layer rides on sync. Phase 1
  * boundary: friends are identity only (avatar + display name); ZERO habit,
  * streak, or pet data crosses between users, and every display name renders
