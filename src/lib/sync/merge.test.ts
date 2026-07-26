@@ -903,3 +903,83 @@ describe("log cells carry the v3 reading (U1c)", () => {
     expect(result.state.records["2026-07-01"].completions.english).toBe(false);
   });
 });
+
+describe("habit v3 definition crosses devices (U1c)", () => {
+  const READ_V3: Partial<ServerHabit> = {
+    icon: "📚",
+    trackingType: "duration",
+    target: 20,
+    unit: null,
+    steps: [],
+    repeatDays: [2, 4, 6],
+    timesOfDay: ["evening"],
+    scheduledAt: "21:00",
+    color: "dusk",
+    motivation: "Mỗi tối một chương"
+  };
+
+  it("a habit adopted from the server arrives fully v3, not re-defaulted", () => {
+    const server = makeSnapshot({
+      habits: [makeServerHabit("read", "Đọc sách", { ...READ_V3, clientUpdatedAt: T_MID })]
+    });
+
+    const result = mergeServerIntoLocal(makeState(), server, {}, null);
+    const adopted = result.state.habits.find((habit) => habit.id === "read");
+
+    expect(adopted).toBeTruthy();
+    expect(adopted?.trackingType).toBe("duration");
+    expect(adopted?.target).toBe(20);
+    expect(adopted?.repeatDays).toEqual([2, 4, 6]);
+    expect(adopted?.timesOfDay).toEqual(["evening"]);
+    expect(adopted?.scheduledAt).toBe("21:00");
+    expect(adopted?.color).toBe("dusk");
+    expect(adopted?.icon).toBe("📚");
+    expect(adopted?.motivation).toBe("Mỗi tối một chương");
+  });
+
+  it("a newer server edit overwrites the local v3 fields", () => {
+    const server = makeSnapshot({
+      habits: [
+        makeServerHabit("english", "Học tiếng Anh", {
+          clientUpdatedAt: T_MID,
+          trackingType: "count",
+          target: 5,
+          unit: "lần",
+          repeatDays: [1, 3, 5],
+          pausedAt: "2026-07-28"
+        })
+      ]
+    });
+
+    const result = mergeServerIntoLocal(makeState(), server, {}, null);
+    const merged = result.state.habits.find((habit) => habit.id === "english");
+
+    expect(merged?.trackingType).toBe("count");
+    expect(merged?.target).toBe(5);
+    expect(merged?.unit).toBe("lần");
+    expect(merged?.repeatDays).toEqual([1, 3, 5]);
+    expect(merged?.pausedAt).toBe("2026-07-28");
+  });
+
+  it("garbage from the wire is normalised, never trusted raw", () => {
+    const server = makeSnapshot({
+      habits: [
+        makeServerHabit("read", "Đọc sách", {
+          clientUpdatedAt: T_MID,
+          trackingType: "telepathy" as unknown as ServerHabit["trackingType"],
+          repeatDays: [],
+          timesOfDay: [],
+          color: "neon" as unknown as ServerHabit["color"]
+        })
+      ]
+    });
+
+    const result = mergeServerIntoLocal(makeState(), server, {}, null);
+    const adopted = result.state.habits.find((habit) => habit.id === "read");
+
+    expect(adopted?.trackingType).toBe("check");
+    expect(adopted?.repeatDays).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(adopted?.timesOfDay).toEqual(["anytime"]);
+    expect(adopted?.color).toBe("clay");
+  });
+});

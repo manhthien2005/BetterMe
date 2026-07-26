@@ -792,9 +792,14 @@ function serverEntry(log: ServerHabitLog, previous: LogEntry | undefined): LogEn
   return entry;
 }
 
+/**
+ * A habit arriving from another device. The server's v3 fields go into
+ * `migrateHabitFields` RAW: that is the single place which knows how to
+ * normalise every one of them (an unknown tracking type falls back to check,
+ * empty repeatDays means all seven, "Cả ngày" is exclusive). Validating here
+ * as well would be a second rule set to keep in step with the first.
+ */
 function toDashboardHabit(habit: ServerHabit): DashboardHabit {
-  // The server contract is still v2-shaped (U1c widens it): a habit that
-  // arrives from another device adopts the v3 defaults locally.
   return migrateHabitFields({
     id: habit.key,
     key: habit.key,
@@ -802,18 +807,42 @@ function toDashboardHabit(habit: ServerHabit): DashboardHabit {
     category: habit.category,
     maxScore: habit.maxScore,
     description: habit.description,
-    iconName: habitIcon(habit.key, habit.category)
+    iconName: habitIcon(habit.key, habit.category),
+    ...serverV3Fields(habit)
   });
 }
 
 function applyServerHabitFields(local: DashboardHabit, server: ServerHabit): DashboardHabit {
-  return {
+  return migrateHabitFields({
     ...local,
     name: server.name,
     category: server.category,
     maxScore: server.maxScore,
     description: server.description,
-    iconName: habitIcon(local.key, server.category)
+    iconName: habitIcon(local.key, server.category),
+    ...serverV3Fields(server)
+  });
+}
+
+/**
+ * The v3 slice of a server habit, still raw. `null` becomes `undefined`
+ * because the wire spells "absent" as null while DashboardHabit spells it as
+ * an absent optional — migrateHabitFields reads the latter.
+ */
+function serverV3Fields(habit: ServerHabit) {
+  return {
+    icon: habit.icon,
+    trackingType: habit.trackingType,
+    target: habit.target,
+    unit: habit.unit ?? undefined,
+    steps: habit.steps,
+    repeatDays: habit.repeatDays,
+    timesOfDay: habit.timesOfDay,
+    scheduledAt: habit.scheduledAt ?? undefined,
+    color: habit.color,
+    motivation: habit.motivation,
+    pausedAt: habit.pausedAt ?? undefined,
+    archivedAt: habit.archivedAt ?? undefined
   };
 }
 
