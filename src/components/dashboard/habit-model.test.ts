@@ -6,8 +6,10 @@ import {
   CHECKLIST_MIN_STEPS,
   countSteps,
   entryProgress,
+  HABIT_COLOR_STYLES,
   HABIT_COLORS,
   isEntryComplete,
+  normalizeTimesOfDay,
   isScheduledOn,
   TIME_OF_DAY_ORDER,
   toggleStep,
@@ -176,5 +178,39 @@ describe("isScheduledOn", () => {
 
   it("treats an empty repeat list as 'never scheduled', not 'always'", () => {
     expect(isScheduledOn(checkHabit({ repeatDays: [] }), "2026-07-27")).toBe(false);
+  });
+});
+
+describe("normalizeTimesOfDay", () => {
+  it("defaults to the whole day", () => {
+    expect(normalizeTimesOfDay(undefined)).toEqual(["anytime"]);
+    expect(normalizeTimesOfDay([])).toEqual(["anytime"]);
+    expect(normalizeTimesOfDay(["nonsense"])).toEqual(["anytime"]);
+  });
+
+  it("keeps several parts of the day in reading order", () => {
+    expect(normalizeTimesOfDay(["evening", "morning"])).toEqual(["morning", "evening"]);
+  });
+
+  it("drops duplicates", () => {
+    expect(normalizeTimesOfDay(["morning", "morning"])).toEqual(["morning"]);
+  });
+
+  it("'anytime' is exclusive — it wins over any other pick", () => {
+    expect(normalizeTimesOfDay(["morning", "anytime"])).toEqual(["anytime"]);
+  });
+
+  it("reads the retired singular field when the array is absent", () => {
+    expect(normalizeTimesOfDay(undefined, "evening")).toEqual(["evening"]);
+    expect(normalizeTimesOfDay(["morning"], "evening")).toEqual(["morning"]);
+  });
+});
+
+describe("HABIT_COLOR_STYLES", () => {
+  it("covers every colour with a soft fill and a strong swatch", () => {
+    for (const color of HABIT_COLORS) {
+      expect(HABIT_COLOR_STYLES[color].soft).toContain(color);
+      expect(HABIT_COLOR_STYLES[color].strong).toContain(color);
+    }
   });
 });

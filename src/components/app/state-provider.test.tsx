@@ -155,7 +155,7 @@ describe("StateProvider storage v3", () => {
             trackingType: "check",
             target: 1,
             repeatDays: [1, 2, 3, 4, 5, 6, 7],
-            timeOfDay: "anytime"
+            timesOfDay: ["anytime"]
           }
         ],
         records: {}

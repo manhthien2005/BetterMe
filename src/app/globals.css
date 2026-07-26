@@ -64,6 +64,22 @@
     --alert: #E11D48;
     --alert-ink: #FFFFFF;
 
+    /* Habit card colours (spec §5.1) — `soft` tints the icon bubble, `strong`
+       is the swatch in the picker. The bubble only ever holds an emoji, so
+       `soft` carries no text-contrast duty. */
+    --habit-clay-soft: #FDEBD3;
+    --habit-clay-strong: #D97706;
+    --habit-moss-soft: #DCF5E0;
+    --habit-moss-strong: #16A34A;
+    --habit-sky-soft: #DBEAFE;
+    --habit-sky-strong: #3B82F6;
+    --habit-dusk-soft: #EDE9FE;
+    --habit-dusk-strong: #7C3AED;
+    --habit-rose-soft: #FCE7F3;
+    --habit-rose-strong: #DB2777;
+    --habit-sand-soft: #EFEAE1;
+    --habit-sand-strong: #57534E;
+
     /* Shape + depth */
     --radius-card: 16px;
     --radius-control: 12px;

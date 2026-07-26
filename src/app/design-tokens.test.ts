@@ -87,6 +87,18 @@ describe("design tokens", () => {
       "success-ink",
       "alert",
       "alert-ink",
+      "habit-clay-soft",
+      "habit-clay-strong",
+      "habit-moss-soft",
+      "habit-moss-strong",
+      "habit-sky-soft",
+      "habit-sky-strong",
+      "habit-dusk-soft",
+      "habit-dusk-strong",
+      "habit-rose-soft",
+      "habit-rose-strong",
+      "habit-sand-soft",
+      "habit-sand-strong",
       "radius-card",
       "radius-control",
       "radius-pill",
@@ -137,7 +149,7 @@ describe("design tokens", () => {
 
   it("exposes every colour token through tailwind", () => {
     const colourTokens = Object.keys(tokens).filter((name) =>
-      /^(surface|line|ink|action|success|alert|honey|control)/.test(name)
+      /^(surface|line|ink|action|success|alert|honey|control|habit)/.test(name)
     );
 
     for (const name of colourTokens) {

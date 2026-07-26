@@ -8,6 +8,7 @@ import { habitEmoji } from "@/components/dashboard/habit-style";
 import {
   ALL_WEEKDAYS,
   isEntryComplete,
+  normalizeTimesOfDay,
   type HabitColor,
   type HabitTracking,
   type LogEntry,
@@ -23,7 +24,7 @@ export type HabitV3Fields = {
   unit: string | null;
   steps: string[] | null;
   repeatDays: number[];
-  timeOfDay: TimeOfDay;
+  timesOfDay: TimeOfDay[];
   /** Optional "HH:mm" — display only, and it feeds Giờ vàng later (spec §5.1). */
   scheduledAt: string | null;
   color: HabitColor;
@@ -43,7 +44,7 @@ export function defaultHabitV3Fields(key: string, category: string): HabitV3Fiel
     unit: null,
     steps: null,
     repeatDays: [...ALL_WEEKDAYS],
-    timeOfDay: "anytime",
+    timesOfDay: ["anytime"],
     scheduledAt: null,
     color: "clay",
     motivation: "",
@@ -55,10 +56,6 @@ export function defaultHabitV3Fields(key: string, category: string): HabitV3Fiel
 
 function isTrackingType(value: unknown): value is TrackingType {
   return value === "check" || value === "count" || value === "duration" || value === "checklist";
-}
-
-function isTimeOfDay(value: unknown): value is TimeOfDay {
-  return value === "morning" || value === "afternoon" || value === "evening" || value === "anytime";
 }
 
 function isHabitColor(value: unknown): value is HabitColor {
@@ -118,7 +115,10 @@ export function migrateHabitFields<T extends { key?: string; category?: string }
     unit: optionalString(candidate.unit),
     steps: normalizeSteps(candidate.steps),
     repeatDays: normalizeRepeatDays(candidate.repeatDays),
-    timeOfDay: isTimeOfDay(candidate.timeOfDay) ? candidate.timeOfDay : defaults.timeOfDay,
+    timesOfDay: normalizeTimesOfDay(
+      (candidate as { timesOfDay?: unknown }).timesOfDay,
+      (candidate as { timeOfDay?: unknown }).timeOfDay
+    ),
     scheduledAt: optionalString(candidate.scheduledAt),
     color: isHabitColor(candidate.color) ? candidate.color : defaults.color,
     motivation: typeof candidate.motivation === "string" ? candidate.motivation : "",

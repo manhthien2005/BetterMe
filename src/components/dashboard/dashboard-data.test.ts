@@ -689,7 +689,7 @@ describe("habit model v3", () => {
       expect(habit.trackingType).toBe("check");
       expect(habit.target).toBe(1);
       expect(habit.repeatDays).toEqual([1, 2, 3, 4, 5, 6, 7]);
-      expect(habit.timeOfDay).toBe("anytime");
+      expect(habit.timesOfDay).toEqual(["anytime"]);
       expect(habit.icon.length).toBeGreaterThan(0);
     }
   });
