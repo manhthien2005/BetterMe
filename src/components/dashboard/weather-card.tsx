@@ -1,31 +1,28 @@
-import { CloudRain, Droplets, MapPin, Sun, Wind } from "lucide-react";
+"use client";
+
+import { useEffect, useState } from "react";
+import { CloudRain, Droplets, LocateFixed, MapPin, Pencil, Sun, Wind } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import {
+  fetchWeather,
+  searchPlace,
+  type WeatherSnapshot
+} from "@/components/dashboard/weather-data";
+import {
+  DEFAULT_WEATHER_PLACE,
+  loadWidgetSettings,
+  saveWidgetSettings,
+  type WeatherPlace
+} from "@/components/dashboard/widget-settings";
 import { cn } from "@/lib/utils";
 
-/**
- * Static planning data for the Weather hero (spec:
- * docs/superpowers/specs/2026-07-05-dashboard-weather-spotify-hero-design.md).
- * No live API — the shell is branded and cozy; values are real, readable text.
- */
-export const DASHBOARD_WEATHER = {
-  location: "Sài Gòn",
-  temperature: "31°C",
-  condition: "Trời quang buổi tối",
-  feelsLike: "34°C",
-  humidity: "68%",
-  wind: "9 km/h",
-  rainChance: "12%",
-  uvIndex: "Thấp",
-  planningNote: "Khung giờ đẹp để đi dạo nhẹ sau khi tập trung xong.",
-  emoji: "☀️",
-  emojiLabel: "Trời quang"
-} as const;
+type WeatherStatus = "loading" | "ready" | "error";
 
 type WeatherMetric = {
   key: string;
   label: string;
-  value: string;
+  value: (snapshot: WeatherSnapshot | null) => string;
   icon: LucideIcon;
   /** Animation utility that plays on tile hover/focus (globals.css). */
   motion: string;
@@ -37,7 +34,7 @@ const WEATHER_METRICS: WeatherMetric[] = [
   {
     key: "humidity",
     label: "Độ ẩm",
-    value: DASHBOARD_WEATHER.humidity,
+    value: (snapshot) => snapshot?.humidity ?? "–",
     icon: Droplets,
     motion: "wx-humidity",
     tint: "text-dawn-deep",
@@ -46,7 +43,7 @@ const WEATHER_METRICS: WeatherMetric[] = [
   {
     key: "wind",
     label: "Gió",
-    value: DASHBOARD_WEATHER.wind,
+    value: (snapshot) => snapshot?.wind ?? "–",
     icon: Wind,
     motion: "wx-wind",
     tint: "text-matcha-deep",
@@ -55,7 +52,7 @@ const WEATHER_METRICS: WeatherMetric[] = [
   {
     key: "rain",
     label: "Mưa",
-    value: DASHBOARD_WEATHER.rainChance,
+    value: (snapshot) => snapshot?.rainChance ?? "–",
     icon: CloudRain,
     motion: "wx-rain",
     tint: "text-dawn-deep",
@@ -64,7 +61,7 @@ const WEATHER_METRICS: WeatherMetric[] = [
   {
     key: "uv",
     label: "UV",
-    value: DASHBOARD_WEATHER.uvIndex,
+    value: (snapshot) => snapshot?.uvIndex ?? "–",
     icon: Sun,
     motion: "wx-uv",
     tint: "text-honey",
@@ -73,13 +70,88 @@ const WEATHER_METRICS: WeatherMetric[] = [
 ];
 
 /**
- * The Weather hero — a compact daily-planning banner. The title collapses to a
- * pin + location, the condition is a single line, and the four planning metrics
- * become icon tiles whose glyphs animate (wind gust / humidity breathe / rain
- * fall / UV rays turn) — livelier on hover or keyboard focus, and fully still
- * under prefers-reduced-motion. Values stay as real text for accessibility.
+ * The Weather hero, now live: Open-Meteo current conditions (no API key) for a
+ * user-picked place — default Sài Gòn, changeable by city search or the
+ * device's location, persisted in betterme.widgets.v1. While loading or when
+ * the network fails the shell stays put with gentle placeholders; values are
+ * real text for accessibility, and the icon tiles keep their ambient motion.
  */
 export function WeatherCard() {
+  const [place, setPlace] = useState<WeatherPlace>(DEFAULT_WEATHER_PLACE);
+  const [snapshot, setSnapshot] = useState<WeatherSnapshot | null>(null);
+  const [status, setStatus] = useState<WeatherStatus>("loading");
+  const [editing, setEditing] = useState(false);
+  const [query, setQuery] = useState("");
+  const [editNote, setEditNote] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const stored = loadWidgetSettings().weather;
+
+    if (stored) setPlace(stored);
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    setStatus("loading");
+
+    fetchWeather(place, controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted) return;
+
+        setSnapshot(result);
+        setStatus(result ? "ready" : "error");
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setStatus("error");
+      });
+
+    return () => controller.abort();
+  }, [place, refreshKey]);
+
+  function pickPlace(next: WeatherPlace) {
+    setPlace(next);
+    saveWidgetSettings({ ...loadWidgetSettings(), weather: next });
+    setEditing(false);
+    setEditNote(null);
+    setQuery("");
+  }
+
+  async function handleSearch(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    try {
+      const found = await searchPlace(query);
+
+      if (found) {
+        pickPlace(found);
+      } else {
+        setEditNote("Chưa tìm thấy nơi này — thử tên khác nhé");
+      }
+    } catch {
+      setEditNote("Mạng đang chập chờn — thử lại sau nhé");
+    }
+  }
+
+  function useDeviceLocation() {
+    if (!("geolocation" in navigator)) {
+      setEditNote("Máy này không cho xem vị trí");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        pickPlace({
+          name: "Quanh đây",
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        });
+      },
+      () => setEditNote("Không lấy được vị trí — thử tìm theo tên nhé")
+    );
+  }
+
   return (
     <section
       aria-labelledby="weather-heading"
@@ -90,30 +162,97 @@ export function WeatherCard() {
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-dawn-deep">
               <MapPin aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2.6} />
-              <h2 className="font-display text-xl font-bold text-plum" id="weather-heading">
-                {DASHBOARD_WEATHER.location}
+              <h2 className="truncate font-display text-xl font-bold text-plum" id="weather-heading">
+                {place.name}
               </h2>
+              <button
+                aria-label="Đổi nơi xem thời tiết"
+                className="squishy flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-mauve transition hover:bg-white/70 hover:text-plum focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep"
+                onClick={() => {
+                  setEditing((current) => !current);
+                  setEditNote(null);
+                }}
+                type="button"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
             </div>
-            <p className="mt-1 text-sm font-bold text-mauve">{DASHBOARD_WEATHER.condition}</p>
+            <p className="mt-1 text-sm font-bold text-mauve">
+              {status === "ready" && snapshot
+                ? snapshot.condition
+                : status === "loading"
+                  ? "Đang ngó trời…"
+                  : "Chưa lấy được thời tiết"}
+            </p>
           </div>
           <span
-            aria-label={DASHBOARD_WEATHER.emojiLabel}
+            aria-label={snapshot?.emojiLabel ?? "Thời tiết"}
             className="weather-emoji wx-float"
             role="img"
           >
-            {DASHBOARD_WEATHER.emoji}
+            {status === "ready" && snapshot ? snapshot.emoji : "☁️"}
           </span>
         </div>
 
+        {editing ? (
+          <form className="rounded-2xl border border-wafer bg-white/80 p-3" onSubmit={handleSearch}>
+            <label className="sr-only" htmlFor="weather-place-input">
+              Tên thành phố
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                autoFocus
+                className="h-9 min-w-0 flex-1 rounded-full border border-wafer bg-white px-3 text-sm font-semibold text-plum placeholder:text-mauve/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep"
+                id="weather-place-input"
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="vd. Hà Nội, Đà Lạt…"
+                value={query}
+              />
+              <button
+                className="squishy rounded-full bg-matcha-deep px-3 py-1.5 text-sm font-bold text-white transition hover:bg-[#3F6637] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep"
+                type="submit"
+              >
+                Tìm
+              </button>
+              <button
+                aria-label="Dùng vị trí của máy"
+                className="squishy flex h-9 w-9 items-center justify-center rounded-full border border-wafer bg-white text-mauve transition hover:text-plum focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep"
+                onClick={useDeviceLocation}
+                type="button"
+              >
+                <LocateFixed className="h-4 w-4" />
+              </button>
+            </div>
+            {editNote ? (
+              <p className="mt-2 text-xs font-bold text-mauve">{editNote}</p>
+            ) : null}
+          </form>
+        ) : null}
+
         <div>
           <p className="font-display text-5xl font-bold text-plum sm:text-6xl">
-            {DASHBOARD_WEATHER.temperature}
+            {status === "ready" && snapshot ? snapshot.temperature : "–"}
           </p>
           <p className="mt-1 text-sm font-bold text-mauve">
-            Cảm giác như {DASHBOARD_WEATHER.feelsLike}
+            {status === "ready" && snapshot ? `Cảm giác như ${snapshot.feelsLike}` : " "}
           </p>
           <p className="mt-3 max-w-md text-sm font-semibold leading-6 text-mauve">
-            {DASHBOARD_WEATHER.planningNote}
+            {status === "ready" && snapshot ? (
+              snapshot.planningNote
+            ) : status === "error" ? (
+              <>
+                Mạng đang nghỉ ngơi một chút.{" "}
+                <button
+                  className="font-bold text-matcha-deep underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep"
+                  onClick={() => setRefreshKey((key) => key + 1)}
+                  type="button"
+                >
+                  Thử lại nhé
+                </button>
+              </>
+            ) : (
+              "Đang lấy dự báo cho khu vườn…"
+            )}
           </p>
         </div>
 
@@ -140,7 +279,7 @@ export function WeatherCard() {
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-bold text-plum">
-                    {metric.value}
+                    {metric.value(status === "ready" ? snapshot : null)}
                   </span>
                   <span className="block text-[10px] font-bold uppercase tracking-wide text-mauve">
                     {metric.label}

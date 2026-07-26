@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChart3,
-  CalendarCheck,
   Check,
   CirclePlus,
   Pencil,
@@ -13,6 +12,7 @@ import {
 import { toast } from "sonner";
 
 import {
+  addEventToState,
   addHabitToState,
   adoptPet,
   applyGiftToState,
@@ -21,7 +21,6 @@ import {
   categoryLabel,
   checkComebackGift,
   createInitialDashboardState,
-  EVENT_CATEGORY_LABELS,
   feedActivePet,
   getBondTier,
   getDashboardToday,
@@ -32,18 +31,21 @@ import {
   openGift,
   petActivePet,
   recordGrowthDay,
+  removeEventFromState,
   removeHabitFromState,
   STATUS_LABELS,
   switchActivePet,
   toggleHabitForDate,
   updateHabitInState,
   type DashboardCalendarDay,
+  type DashboardEvent,
   type DashboardHabitView,
   type DashboardState,
   type DashboardStatus,
   type DashboardViewModel,
   type PetSpecies
 } from "@/components/dashboard/dashboard-data";
+import { EventsCard } from "@/components/dashboard/events-card";
 import { AnalyticsPanel } from "@/components/dashboard/analytics-panel";
 import { FriendsCard } from "@/components/dashboard/friends-card";
 import { GardenFairCard } from "@/components/dashboard/garden-fair";
@@ -54,6 +56,7 @@ import { HeroBanner } from "@/components/dashboard/hero-banner";
 import { getPetLine, type PetEvent } from "@/components/dashboard/pet-voice";
 import { ProfileMenu } from "@/components/dashboard/profile-menu";
 import { SiteFooter } from "@/components/dashboard/site-footer";
+import { SpotifyCard } from "@/components/dashboard/spotify-card";
 import { WeatherCard } from "@/components/dashboard/weather-card";
 import {
   ackGardenVisits,
@@ -78,9 +81,6 @@ import { createClient } from "@/lib/supabase/client";
 
 const STORAGE_KEY = "betterme.dashboard.v2";
 const LEGACY_STORAGE_KEY = "betterme.dashboard.v1";
-const SPOTIFY_PLAYLIST_URL = "https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ";
-const SPOTIFY_EMBED_URL =
-  "https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKCadgRdKQ?utm_source=generator&theme=0";
 
 const HABIT_CATEGORIES = ["Discipline", "Learning", "Work", "Health", "Reflection"];
 
@@ -645,6 +645,22 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
     window.location.assign("/login");
   }
 
+  // Sự kiện là dữ liệu local-only (không sync) — chỉ cần commitState là đủ.
+  function addEvent(input: { title: string; at: string; category: DashboardEvent["category"] }) {
+    const next = addEventToState(state, input);
+
+    if (next === state) return;
+
+    commitState(next);
+    toast.success("Đã ghi sự kiện vào lịch 🌿");
+  }
+
+  function removeEvent(eventId: string) {
+    const next = removeEventFromState(state, eventId);
+
+    if (next !== state) commitState(next);
+  }
+
   function handleOpenProfile() {
     toast("Trang hồ sơ đang được ươm mầm 🌱", {
       description: "Sắp có nơi để bạn khoe khu vườn của mình."
@@ -700,7 +716,12 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
               viewModel={viewModel}
             />
             <CalendarPanel days={viewModel.calendar.days} viewModel={viewModel} />
-            <UpcomingEvents viewModel={viewModel} />
+            <EventsCard
+              events={viewModel.events}
+              onAdd={addEvent}
+              onRemove={removeEvent}
+              today={today}
+            />
             <AnalyticsPanel viewModel={viewModel} />
             {/* Social layer rides on sync (spec §3.3): the card exists ONLY
                 while the engine is enabled — live Supabase session + sync
@@ -1114,77 +1135,6 @@ function HabitRow({
         </button>
       ) : null}
     </div>
-  );
-}
-
-function SpotifyCard() {
-  return (
-    <section className="card-lift overflow-hidden rounded-lg bg-[#15171A] p-4 text-white shadow-mochi ring-1 ring-white/10 sm:p-5">
-      <div className="grid gap-4">
-        <div className="flex flex-col gap-4">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-wide text-[#1db954]">
-              Spotify
-            </p>
-            <h2 className="mt-2 font-display text-2xl font-bold text-white">
-              Nhạc tập trung
-            </h2>
-            <p className="mt-3 max-w-sm text-sm font-semibold leading-6 text-white/70">
-              Deep Focus của Spotify — sẵn sàng cho giờ code và những phút ôn bài yên tĩnh.
-            </p>
-          </div>
-
-          <a
-            className="squishy inline-flex w-fit items-center rounded-full bg-[#1db954] px-4 py-2 text-sm font-bold text-black transition hover:bg-[#1ed760] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1ed760] focus-visible:ring-offset-2 focus-visible:ring-offset-[#15171A]"
-            href={SPOTIFY_PLAYLIST_URL}
-            rel="noreferrer"
-            target="_blank"
-          >
-            Mở trong Spotify
-          </a>
-        </div>
-
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl">
-          <iframe
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            className="block h-[352px] w-full border-0"
-            loading="lazy"
-            src={SPOTIFY_EMBED_URL}
-            title="Playlist Deep Focus trên Spotify"
-          />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function UpcomingEvents({ viewModel }: { viewModel: DashboardViewModel }) {
-  return (
-    <section className="soft-panel card-lift rounded-lg p-4 sm:p-5 xl:[grid-area:2/1/3/8]">
-      <div className="mb-4 flex items-center gap-2">
-        <CalendarCheck className="h-5 w-5 text-matcha-deep" />
-        <h2 className="font-display text-lg font-bold text-plum">Sự kiện sắp tới</h2>
-      </div>
-
-      <div className="grid gap-3">
-        {viewModel.events.map((event) => (
-          <div
-            className="rounded-2xl border border-wafer bg-white/75 p-3"
-            key={event.id}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-bold text-plum">{event.title}</p>
-                <p className="mt-1 text-xs font-bold text-mauve">{event.time}</p>
-              </div>
-              <span className="rounded-full bg-sakura/40 px-2.5 py-1 text-xs font-bold text-sakura-deep">
-                {EVENT_CATEGORY_LABELS[event.category]}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
   );
 }
 

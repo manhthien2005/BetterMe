@@ -51,9 +51,17 @@ export type DashboardDayRecord = {
 export type DashboardEvent = {
   id: string;
   title: string;
-  time: string;
+  /** Thời điểm ISO local "YYYY-MM-DDTHH:mm" — người dùng tự tạo, không sync. */
+  at: string;
   category: "habit" | "planning" | "reflection" | "personal";
 };
+
+const EVENT_CATEGORIES: ReadonlyArray<DashboardEvent["category"]> = [
+  "habit",
+  "planning",
+  "reflection",
+  "personal"
+];
 
 export type PetSpecies = "dog" | "cat";
 
@@ -309,12 +317,75 @@ export function createInitialDashboardState(today = getDashboardToday()): Dashbo
   return {
     habits,
     records,
-    events: createSeedEvents(),
+    // Sự kiện là dữ liệu thật của người dùng — không có seed fiction.
+    events: [],
     bestStreakFloor: BEST_STREAK_FLOOR,
     seedCutoverDate: today,
     deletedHabits: [],
     companion: createInitialCompanionState()
   };
+}
+
+/** Chỉ giữ event hợp lệ theo shape mới ({at} ISO); seed cũ ({time} text) bị loại. */
+function normalizeEvents(raw: unknown): DashboardEvent[] {
+  if (!Array.isArray(raw)) return [];
+
+  return raw.filter((item): item is DashboardEvent => {
+    if (item === null || typeof item !== "object") return false;
+
+    const candidate = item as Partial<DashboardEvent>;
+
+    return (
+      typeof candidate.id === "string" &&
+      typeof candidate.title === "string" &&
+      typeof candidate.at === "string" &&
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(candidate.at) &&
+      EVENT_CATEGORIES.includes(candidate.category as DashboardEvent["category"])
+    );
+  });
+}
+
+export function addEventToState(
+  state: DashboardState,
+  input: { title: string; at: string; category: DashboardEvent["category"] }
+): DashboardState {
+  const title = input.title.trim().slice(0, 80);
+
+  if (!title || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(input.at)) return state;
+
+  const event: DashboardEvent = {
+    id: `event_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+    title,
+    at: input.at.slice(0, 16),
+    category: input.category
+  };
+
+  return { ...state, events: [...state.events, event] };
+}
+
+export function removeEventFromState(state: DashboardState, eventId: string): DashboardState {
+  if (!state.events.some((event) => event.id === eventId)) return state;
+
+  return { ...state, events: state.events.filter((event) => event.id !== eventId) };
+}
+
+const EVENT_DAY_LABELS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"] as const;
+
+/** "Hôm nay · 20:30", "Ngày mai · 07:45", còn lại "T2 28/07 · 19:15". */
+export function formatEventTime(at: string, today = getDashboardToday()): string {
+  const date = at.slice(0, 10);
+  const time = at.slice(11, 16);
+
+  if (date === today) return `Hôm nay · ${time}`;
+  if (date === addDaysIso(today, 1)) return `Ngày mai · ${time}`;
+
+  const parsed = parseIsoDate(date);
+  const dayLabel = EVENT_DAY_LABELS[parsed.getDay()];
+  const dayMonth = `${String(parsed.getDate()).padStart(2, "0")}/${String(
+    parsed.getMonth() + 1
+  ).padStart(2, "0")}`;
+
+  return `${dayLabel} ${dayMonth} · ${time}`;
 }
 
 export function addHabitToState(
@@ -464,7 +535,7 @@ export function migrateDashboardState(
   return {
     habits: candidate.habits,
     records: candidate.records ?? {},
-    events: Array.isArray(candidate.events) ? candidate.events : [],
+    events: normalizeEvents(candidate.events),
     bestStreakFloor:
       typeof candidate.bestStreakFloor === "number"
         ? candidate.bestStreakFloor
@@ -1267,7 +1338,10 @@ export function buildDashboardViewModel(
       days: monthDays
     },
     analytics,
-    events: state.events,
+    // Chỉ hiện sự kiện của hôm nay trở đi, gần nhất trước.
+    events: state.events
+      .filter((event) => event.at.slice(0, 10) >= today)
+      .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)),
     companion: buildCompanionViewModel(state, today)
   };
 }
@@ -1282,35 +1356,6 @@ function isSeedHabitComplete(key: string, index: number, offsetFromToday: number
   }
 
   return (offsetFromToday + index) % 4 !== 0;
-}
-
-function createSeedEvents(): DashboardEvent[] {
-  return [
-    {
-      id: "event-weekly-review",
-      title: "Ôn lại tuần",
-      time: "Tối nay, 20:30",
-      category: "reflection"
-    },
-    {
-      id: "event-english-focus",
-      title: "Khối luyện nói tiếng Anh",
-      time: "Sáng mai, 07:45",
-      category: "habit"
-    },
-    {
-      id: "event-project-sprint",
-      title: "Tập trung sâu cho dự án",
-      time: "Tối mai, 21:00",
-      category: "planning"
-    },
-    {
-      id: "event-reset",
-      title: "Dọn lại bàn làm việc",
-      time: "Thứ Hai, 19:15",
-      category: "personal"
-    }
-  ];
 }
 
 function scoreDate(state: DashboardState, date: string) {

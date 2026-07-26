@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { redirect } from "next/navigation";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import DashboardPage from "@/app/dashboard/page";
 import HomePage from "@/app/page";
@@ -43,6 +43,13 @@ describe("dashboard route", () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     envMocks.devBypass.mockReturnValue(false);
+    // Tests never touch the network: the live WeatherCard degrades to its
+    // gentle placeholder state ("–" values) on a failed fetch.
+    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new Error("offline"))));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("redirects guests to login", async () => {
@@ -100,8 +107,6 @@ describe("dashboard route", () => {
     expect(screen.queryByLabelText("Add widget")).toBeNull();
     expect(screen.queryByText("Deep work")).toBeNull();
     expect(screen.getByRole("heading", { name: "Sài Gòn" })).toBeTruthy();
-    expect(screen.getByText("31°C")).toBeTruthy();
-    expect(screen.getByText("Cảm giác như 34°C")).toBeTruthy();
     expect(screen.getByText("Độ ẩm")).toBeTruthy();
     expect(screen.getByText("Gió")).toBeTruthy();
     expect(screen.getByText("Mưa")).toBeTruthy();
@@ -109,7 +114,7 @@ describe("dashboard route", () => {
     const rightRail = screen.getByLabelText("Thời tiết và nhạc tập trung");
     expect(within(rightRail).getByRole("heading", { name: "Sài Gòn" })).toBeTruthy();
     expect(within(rightRail).getByRole("heading", { name: "Nhạc tập trung" })).toBeTruthy();
-    const spotifyFrame = screen.getByTitle("Playlist Deep Focus trên Spotify");
+    const spotifyFrame = screen.getByTitle("Playlist Spotify của Sếp");
     expect(spotifyFrame.getAttribute("src")).toContain(
       "https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKCadgRdKQ"
     );
