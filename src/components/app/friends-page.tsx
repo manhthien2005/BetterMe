@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { useAppState } from "@/components/app/state-provider";
 import { FriendsCard } from "@/components/dashboard/friends-card";
 import { GardenFairCard } from "@/components/dashboard/garden-fair";
@@ -12,6 +14,14 @@ import { Card } from "@/components/ui/card";
  */
 export function FriendsPage() {
   const app = useAppState();
+  const { clearSocialBadge, newSocialCount } = app;
+
+  // Having this space open IS reading the mail (spec §3). It watches the count
+  // rather than firing once on mount, because the mailbox pass resolves
+  // asynchronously and may land AFTER this page mounted.
+  useEffect(() => {
+    if (newSocialCount > 0) clearSocialBadge();
+  }, [clearSocialBadge, newSocialCount]);
 
   if (app.syncStatus === "disabled") {
     return (

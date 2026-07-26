@@ -92,6 +92,9 @@ export type AppState = {
   bubble: string | null;
   celebrate: boolean;
   eating: boolean;
+  /** Unseen garden visits found in this session's mailbox pass. */
+  newSocialCount: number;
+  clearSocialBadge: () => void;
   toggleHabit: (habitId: string) => void;
   addHabit: (name: string, category: string) => void;
   removeHabit: (habitId: string) => void;
@@ -156,6 +159,7 @@ export function StateProvider({
   const [showSyncOnboarding, setShowSyncOnboarding] = useState(false);
   const [visitingFriendId, setVisitingFriendId] = useState<string | null>(null);
   const [detailHabitId, setDetailHabitId] = useState<string | null>(null);
+  const [newSocialCount, setNewSocialCount] = useState(0);
   // The engine reads state through this ref so merges/flushes always see the
   // latest value synchronously — even mid-flush, before React re-renders.
   const stateRef = useRef(state);
@@ -210,6 +214,9 @@ export function StateProvider({
     markSyncDirty({ kind: "companionSnapshot", clientTs: new Date().toISOString() });
   }, [markSyncDirty]);
 
+  // Stable identity: the Bạn vườn effect depends on it.
+  const clearSocialBadge = useCallback(() => setNewSocialCount(0), []);
+
   /**
    * Mailbox delivery (spec §4.2.1): after the sync hydrate, fetch my pending
    * garden_visits (applied_at IS NULL), absorb each one into local state via
@@ -231,6 +238,9 @@ export function StateProvider({
     // Which visits have we already celebrated? (persisted, pruned to 30d.)
     const seen = loadMailboxSeen(today);
     const unseen = result.visits.filter((visit) => seen[visit.visitId] === undefined);
+
+    // The nav badge counts exactly what the collective toast greets (spec §3).
+    setNewSocialCount(unseen.length);
 
     let next = stateRef.current;
     const appliedIds: string[] = [];
@@ -684,6 +694,8 @@ export function StateProvider({
     bubble,
     celebrate,
     eating,
+    newSocialCount,
+    clearSocialBadge,
     toggleHabit,
     addHabit,
     removeHabit,

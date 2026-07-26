@@ -35,7 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <NavRail activeKey={activeKey} badgeCount={0} footer={accountMenu} />
+      <NavRail activeKey={activeKey} badgeCount={app.newSocialCount} footer={accountMenu} />
 
       <div className="flex min-h-screen w-full min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line bg-surface-page/95 px-4 py-2.5 backdrop-blur lg:hidden">
@@ -54,7 +54,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      <BottomTabBar activeKey={activeKey} badgeCount={0} />
+      <BottomTabBar activeKey={activeKey} badgeCount={app.newSocialCount} />
 
       <SyncStatusDot status={app.syncStatus} />
 
