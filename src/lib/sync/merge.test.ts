@@ -783,3 +783,123 @@ describe("buildCompanionSyncPayload / applyCompanionPushResult", () => {
     expect(next.companion.pets.dog?.bond).toBe(1);
   });
 });
+
+describe("log cells carry the v3 reading (U1c)", () => {
+  it("a newer server cell replaces value and completedAt wholesale", () => {
+    const local = makeState({
+      records: {
+        "2026-07-01": {
+          date: "2026-07-01",
+          entries: { english: { value: 1, completedAt: "06:10" } },
+          completions: { english: true }
+        }
+      }
+    });
+    const server = makeSnapshot({
+      habits: [makeServerHabit("english", "Học tiếng Anh")],
+      logs: [
+        {
+          habitKey: "english",
+          date: "2026-07-01",
+          done: true,
+          mutatedAt: T_MID,
+          value: 1,
+          completedAt: "05:45"
+        }
+      ]
+    });
+
+    const result = mergeServerIntoLocal(local, server, { "2026-07-01": { english: T_EARLY } }, null);
+
+    expect(result.state.records["2026-07-01"].entries.english).toEqual({
+      value: 1,
+      completedAt: "05:45"
+    });
+  });
+
+  it("a newer server cell brings partial progress across", () => {
+    const server = makeSnapshot({
+      habits: [makeServerHabit("english", "Học tiếng Anh")],
+      logs: [
+        {
+          habitKey: "english",
+          date: "2026-07-01",
+          done: false,
+          mutatedAt: T_MID,
+          value: 4,
+          completedAt: null
+        }
+      ]
+    });
+
+    const result = mergeServerIntoLocal(makeState(), server, {}, null);
+
+    expect(result.state.records["2026-07-01"].entries.english).toEqual({ value: 4 });
+    expect(result.state.records["2026-07-01"].completions.english).toBe(false);
+  });
+
+  it("an old server (value null) still never downgrades a richer local cell", () => {
+    // Deployment order is not guaranteed: the app can ship before the owner
+    // applies schema.sql. A tick from such a server must not turn eight
+    // glasses into a bare 1.
+    const local = makeState({
+      records: {
+        "2026-07-01": {
+          date: "2026-07-01",
+          entries: { english: { value: 8, completedAt: "21:40" } },
+          completions: { english: true }
+        }
+      }
+    });
+    const server = makeSnapshot({
+      habits: [makeServerHabit("english", "Học tiếng Anh")],
+      logs: [
+        {
+          habitKey: "english",
+          date: "2026-07-01",
+          done: true,
+          mutatedAt: T_MID,
+          value: null,
+          completedAt: null
+        }
+      ]
+    });
+
+    const result = mergeServerIntoLocal(local, server, {}, null);
+
+    expect(result.state.records["2026-07-01"].entries.english).toEqual({
+      value: 8,
+      completedAt: "21:40"
+    });
+  });
+
+  it("a remote untick still clears the cell", () => {
+    const local = makeState({
+      records: {
+        "2026-07-01": {
+          date: "2026-07-01",
+          entries: { english: { value: 1, completedAt: "06:10" } },
+          completions: { english: true }
+        }
+      }
+    });
+    const server = makeSnapshot({
+      habits: [makeServerHabit("english", "Học tiếng Anh")],
+      logs: [
+        {
+          habitKey: "english",
+          date: "2026-07-01",
+          done: false,
+          mutatedAt: T_MID,
+          value: 0,
+          completedAt: null
+        }
+      ]
+    });
+
+    const result = mergeServerIntoLocal(local, server, {}, null);
+
+    expect(result.state.records["2026-07-01"].entries.english).toEqual({ value: 0 });
+    expect(result.state.records["2026-07-01"].completions.english).toBe(false);
+  });
+});

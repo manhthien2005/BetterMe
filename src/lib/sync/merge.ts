@@ -1,4 +1,5 @@
 import { migrateHabitFields } from "@/components/dashboard/habit-migration";
+import type { LogEntry } from "@/components/dashboard/habit-model";
 import { habitIcon } from "@/lib/defaults";
 import { clamp } from "@/lib/utils";
 import {
@@ -21,6 +22,7 @@ import type {
   ServerCompanionPet,
   ServerCompanionState,
   ServerHabit,
+  ServerHabitLog,
   ServerSnapshot,
   ShadowMap,
   SyncMutation
@@ -231,17 +233,13 @@ export function mergeServerIntoLocal(
     if (!serverWins) return;
 
     const record = nextRecords[log.date] ?? { date: log.date, entries: {}, completions: {} };
-    // The server still speaks boolean (U1c widens the contract). A remote tick
-    // keeps whatever richer value this device already had — never overwriting
-    // "8 glasses" with a bare 1 — while a remote untick clears the cell.
+    // One LWW stamp per cell: winning brings value, completedAt and done
+    // across together. serverEntry() handles a server that only knows done.
     const previous = record.entries[log.habitKey];
 
     nextRecords[log.date] = {
       date: log.date,
-      entries: {
-        ...record.entries,
-        [log.habitKey]: log.done ? (previous ?? { value: 1 }) : { value: 0 }
-      },
+      entries: { ...record.entries, [log.habitKey]: serverEntry(log, previous) },
       completions: { ...record.completions, [log.habitKey]: log.done }
     };
     recordsChanged = true;
@@ -774,6 +772,25 @@ function stableStringify(value: unknown): string {
 // ---------------------------------------------------------------------------
 // Habit/record helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * The cell the server just won, as a LogEntry. One LWW stamp covers the whole
+ * cell, so when the server wins it wins value + completedAt + done together.
+ *
+ * `value === null` means the server genuinely does not know the reading, only
+ * the boolean — the row predates U1c, or the deployed schema does. Then the
+ * pre-U1c contract still holds: a remote tick preserves whatever richer value
+ * this device already had, so "8 glasses" is never flattened to a bare 1.
+ */
+function serverEntry(log: ServerHabitLog, previous: LogEntry | undefined): LogEntry {
+  if (log.value === null) return log.done ? (previous ?? { value: 1 }) : { value: 0 };
+
+  const entry: LogEntry = { value: Math.max(0, Math.trunc(log.value)) };
+
+  if (log.completedAt) entry.completedAt = log.completedAt;
+
+  return entry;
+}
 
 function toDashboardHabit(habit: ServerHabit): DashboardHabit {
   // The server contract is still v2-shaped (U1c widens it): a habit that
