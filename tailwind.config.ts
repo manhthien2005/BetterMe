@@ -45,6 +45,20 @@ const config: Config = {
           DEFAULT: "var(--alert)",
           ink: "var(--alert-ink)"
         },
+        habit: {
+          "clay-soft": "var(--habit-clay-soft)",
+          "clay-strong": "var(--habit-clay-strong)",
+          "moss-soft": "var(--habit-moss-soft)",
+          "moss-strong": "var(--habit-moss-strong)",
+          "sky-soft": "var(--habit-sky-soft)",
+          "sky-strong": "var(--habit-sky-strong)",
+          "dusk-soft": "var(--habit-dusk-soft)",
+          "dusk-strong": "var(--habit-dusk-strong)",
+          "rose-soft": "var(--habit-rose-soft)",
+          "rose-strong": "var(--habit-rose-strong)",
+          "sand-soft": "var(--habit-sand-soft)",
+          "sand-strong": "var(--habit-sand-strong)"
+        },
         // ——— v2 palette below — retired surface by surface across U1–U4. ———
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

@@ -118,12 +118,12 @@ describe("the four spaces", () => {
     );
 
     const { unmount } = renderSpace("/dashboard", <TodayPage />);
-    const unchecked = screen
-      .getAllByRole("button", { pressed: false })
-      .find((button) => button.className.includes("min-h-16"));
+    const open = screen
+      .getAllByRole("checkbox")
+      .find((box) => box.getAttribute("aria-checked") === "false");
 
-    expect(unchecked).toBeTruthy();
-    fireEvent.click(unchecked!);
+    expect(open).toBeTruthy();
+    fireEvent.click(open!);
     unmount();
 
     renderSpace("/nep", <NepPage />);

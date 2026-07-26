@@ -8,6 +8,7 @@ import { useAppState } from "@/components/app/state-provider";
 import { SyncStatusDot } from "@/components/app/sync-status-dot";
 import { HABIT_CATEGORIES } from "@/components/dashboard/dashboard-data";
 import { GardenVisitOverlay } from "@/components/dashboard/garden-visit-overlay";
+import { HabitEditorSheet } from "@/components/dashboard/habit-editor-sheet";
 import { HabitDetailOverlay } from "@/components/dashboard/habit-detail-overlay";
 import { ProfileMenu } from "@/components/dashboard/profile-menu";
 import { SiteFooter } from "@/components/dashboard/site-footer";
@@ -60,6 +61,20 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {app.showSyncOnboarding ? (
         <SyncOnboarding onChoose={app.chooseSync} onDismiss={app.dismissSync} />
+      ) : null}
+
+      {app.editingHabitId !== null ? (
+        <HabitEditorSheet
+          habit={
+            app.editingHabitId
+              ? (app.viewModel.habits.find((item) => item.id === app.editingHabitId) ?? null)
+              : null
+          }
+          onArchive={app.archiveHabit}
+          onClose={app.closeHabitEditor}
+          onPause={app.pauseHabit}
+          onSubmit={app.submitHabitDraft}
+        />
       ) : null}
 
       {app.habitDetail ? (

@@ -32,6 +32,20 @@ function Probe() {
       <button onClick={() => app.setHabitEntry(first.id, 1)} type="button">
         set
       </button>
+      <span data-testid="value">
+        {app.todayRecord?.entries[app.viewModel.habits[0].id]?.value ?? 0}
+      </span>
+      <button
+        onClick={() => {
+          // Two presses inside ONE React batch — exactly what a fast
+          // double-tap on "+1 ly" produces.
+          app.adjustHabitEntry(app.viewModel.habits[0].id, 1);
+          app.adjustHabitEntry(app.viewModel.habits[0].id, 1);
+        }}
+        type="button"
+      >
+        bump twice
+      </button>
     </div>
   );
 }
@@ -155,7 +169,7 @@ describe("StateProvider storage v3", () => {
             trackingType: "check",
             target: 1,
             repeatDays: [1, 2, 3, 4, 5, 6, 7],
-            timeOfDay: "anytime"
+            timesOfDay: ["anytime"]
           }
         ],
         records: {}
@@ -184,5 +198,23 @@ describe("StateProvider storage v3", () => {
     fireEvent.click(screen.getByRole("button", { name: "set" }));
 
     expect(screen.getByTestId("food").textContent).toBe("2");
+  });
+});
+
+describe("adjustHabitEntry", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new Error("offline"))));
+  });
+
+  it("two presses in the same React batch both land", () => {
+    renderProbe();
+
+    const before = Number(screen.getByTestId("value").textContent);
+
+    fireEvent.click(screen.getByRole("button", { name: "bump twice" }));
+
+    // Reading the rendered state instead of the ref would drop one press.
+    expect(Number(screen.getByTestId("value").textContent)).toBe(before + 2);
   });
 });

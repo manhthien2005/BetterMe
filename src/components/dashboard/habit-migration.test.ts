@@ -15,7 +15,7 @@ describe("defaultHabitV3Fields", () => {
     expect(fields.trackingType).toBe("check");
     expect(fields.target).toBe(1);
     expect(fields.repeatDays).toEqual([...ALL_WEEKDAYS]);
-    expect(fields.timeOfDay).toBe("anytime");
+    expect(fields.timesOfDay).toEqual(["anytime"]);
     expect(fields.pausedAt).toBeNull();
     expect(fields.archivedAt).toBeNull();
   });
@@ -54,7 +54,7 @@ describe("migrateHabitFields", () => {
       unit: "ly",
       icon: "💧",
       repeatDays: [1, 3, 5],
-      timeOfDay: "morning" as const,
+      timesOfDay: ["morning"] as const,
       pausedAt: "2026-07-01"
     });
 
@@ -118,5 +118,31 @@ describe("deriveCompletions", () => {
 
   it("drops cells whose habit no longer exists", () => {
     expect(deriveCompletions({ ghost: { value: 1 } }, tracking)).toEqual({});
+  });
+});
+
+describe("timesOfDay migration", () => {
+  it("a v2 habit lands on the whole day", () => {
+    expect(migrateHabitFields({ key: "x", category: "Work" }).timesOfDay).toEqual(["anytime"]);
+  });
+
+  it("upgrades a U1a habit that still carries the singular field", () => {
+    const migrated = migrateHabitFields({
+      key: "x",
+      category: "Work",
+      timeOfDay: "evening"
+    } as unknown as { key: string; category: string });
+
+    expect(migrated.timesOfDay).toEqual(["evening"]);
+  });
+
+  it("leaves an already-multi habit alone", () => {
+    const habit = migrateHabitFields({
+      key: "x",
+      category: "Work",
+      timesOfDay: ["morning", "evening"]
+    });
+
+    expect(migrateHabitFields(habit).timesOfDay).toEqual(["morning", "evening"]);
   });
 });

@@ -34,10 +34,11 @@ Breaking either is a failure, not a tradeoff. If a request seems to require it, 
 - In shell calls, use PowerShell-safe commands — no `head`/`grep`/`|` unix pipes. Prefer the
   dedicated read/search tools over shell for reading and searching.
 
-Current state: 360 tests green. Social Garden Phases 0–3 are all committed; auth is live
+Current state: 432 tests green. Social Garden Phases 0–3 are all committed; auth is live
 email+password with a signup OTP (see `docs/auth-email-config.md`). UI overhaul: **U0** (design
-tokens, fonts, `ui/` primitives, four-space shell) is merged into `main`; **U1a** (habit model v3
-+ v2→v3 migration) is on branch `u1a-habit-model-v3`. See
+tokens, fonts, `ui/` primitives, four-space shell) is merged into `main`; **U1a** (habit model v3 +
+v2→v3 migration) is merged; **U1b** (habit editor, day view grouped by part of the day, archive
+screen) is on branch `u1b-editor-and-day-view`. See
 `docs/superpowers/specs/2026-07-26-uiux-overhaul-design.md` §10 for what is left and `HANDOFF.md`
 for progress and next steps.
 
@@ -87,8 +88,12 @@ lucide-react · Remotion 4 · Vitest + Testing Library (jsdom). Node ≥ 20.9, p
   DERIVED boolean cache (same pattern as `CompanionState.food` over the ledger) — only
   `setHabitEntry` and the migration may write it, and it is never merged as truth. Migration
   functions run on every load, so they must stay idempotent. `repeatDays` uses ISO weekday
-  numbers (1 = Monday). `completedAt` is a local `"HH:mm"`, never a full timestamp. Storage key
-  is `betterme.dashboard.v3`; v2/v1 are read-only fallbacks kept as rollback snapshots.
+  numbers (1 = Monday). `timesOfDay` is an ARRAY — a habit can sit in several parts of the day,
+  and `"anytime"` is exclusive. `completedAt` is a local `"HH:mm"`, never a full timestamp.
+  Storage key is `betterme.dashboard.v3`; v2/v1 are read-only fallbacks kept as rollback
+  snapshots. The derived cache is written ONCE per cell and never re-derived on load — editing a
+  target must not re-interpret finished days (spec §5.1). Increments go through
+  `adjustHabitEntry`, which reads `stateRef`, so two taps in one React batch both land.
 - **Design tokens** live in `src/app/globals.css` `:root` and are mapped in `tailwind.config.ts`
   as `var(--token)`. Colour is a role: `--action` is the ONLY primary/streak/link colour (max one
   primary button per region), `--success` is completion, `--alert` is the new-mail badge and
