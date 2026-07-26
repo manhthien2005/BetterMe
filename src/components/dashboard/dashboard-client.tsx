@@ -73,6 +73,7 @@ import {
 } from "@/components/dashboard/sync-onboarding";
 import { Button } from "@/components/ui/button";
 import { fetchSyncSnapshot, pushMutations } from "@/lib/server/sync-actions";
+import { loadMailboxSeen, saveMailboxSeen, type MailboxSeen } from "@/lib/social/mailbox-seen";
 import { createSyncEngine, type SyncEngine } from "@/lib/sync/engine";
 import { runSyncOnboarding, type InitialUploadMode } from "@/lib/sync/importer";
 import type { SyncStatus } from "@/lib/sync/types";
@@ -104,56 +105,6 @@ async function hasSupabaseSession(): Promise<boolean> {
     return data.session !== null;
   } catch {
     return false;
-  }
-}
-
-// Mailbox celebration dedupe (spec §4.2.1): which garden-visit ids have already
-// been celebrated, so a stuck/unacked visit never re-fires the toast + bubble
-// on the next mount. Map visitId -> visitDate, pruned to a 30-day window to
-// match the other ledger horizons.
-const MAILBOX_SEEN_KEY = "betterme.mailboxseen.v1";
-const MAILBOX_SEEN_RETENTION_DAYS = 30;
-
-type MailboxSeen = Record<string, string>;
-
-/** today − days as an ISO YYYY-MM-DD (UTC arithmetic; lexicographically ordered). */
-function isoDaysBefore(today: string, days: number): string {
-  const date = new Date(`${today}T00:00:00Z`);
-
-  date.setUTCDate(date.getUTCDate() - days);
-
-  return date.toISOString().slice(0, 10);
-}
-
-/** Load the celebrated-visit map, dropping entries older than the retention window. */
-function loadMailboxSeen(today: string): MailboxSeen {
-  try {
-    const raw = window.localStorage.getItem(MAILBOX_SEEN_KEY);
-
-    if (!raw) return {};
-
-    const parsed: unknown = JSON.parse(raw);
-
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-
-    const cutoff = isoDaysBefore(today, MAILBOX_SEEN_RETENTION_DAYS);
-    const seen: MailboxSeen = {};
-
-    for (const [visitId, visitDate] of Object.entries(parsed as Record<string, unknown>)) {
-      if (typeof visitDate === "string" && visitDate >= cutoff) seen[visitId] = visitDate;
-    }
-
-    return seen;
-  } catch {
-    return {};
-  }
-}
-
-function saveMailboxSeen(seen: MailboxSeen) {
-  try {
-    window.localStorage.setItem(MAILBOX_SEEN_KEY, JSON.stringify(seen));
-  } catch {
-    // Best-effort: a full/blocked store just means we might re-celebrate later.
   }
 }
 
