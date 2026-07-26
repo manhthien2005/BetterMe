@@ -1,3 +1,15 @@
+import {
+  deriveCompletions,
+  migrateEntries,
+  migrateHabitFields,
+  type HabitV3Fields
+} from "@/components/dashboard/habit-migration";
+import {
+  isEntryComplete,
+  isScheduledOn,
+  type HabitTracking,
+  type LogEntry
+} from "@/components/dashboard/habit-model";
 import { DEFAULT_HABITS, habitIcon } from "@/lib/defaults";
 import {
   addDaysIso,
@@ -41,10 +53,17 @@ export type DashboardHabit = {
   maxScore: number;
   description: string;
   iconName: string;
-};
+} & HabitV3Fields;
 
 export type DashboardDayRecord = {
   date: string;
+  /** Source of truth for one day (spec §9.3). */
+  entries: Record<string, LogEntry>;
+  /**
+   * Derived cache of `isEntryComplete` per habit — the same pattern as
+   * `CompanionState.food` over the ledger. ONLY `setHabitEntry` and the
+   * migration write it; never hand-edit it, and never merge it as truth.
+   */
   completions: Record<string, boolean>;
 };
 
@@ -152,6 +171,22 @@ export const CATEGORY_LABELS: Record<string, string> = {
 
 export function categoryLabel(category: string): string {
   return CATEGORY_LABELS[category] ?? category;
+}
+
+/** The tracking subset the pure predicates need. */
+export function habitTracking(habit: DashboardHabit): HabitTracking {
+  return {
+    trackingType: habit.trackingType,
+    target: habit.target,
+    steps: habit.steps ?? undefined,
+    repeatDays: habit.repeatDays,
+    pausedAt: habit.pausedAt,
+    archivedAt: habit.archivedAt
+  };
+}
+
+export function trackingIndex(habits: DashboardHabit[]): Map<string, HabitTracking> {
+  return new Map(habits.map((habit) => [habit.id, habitTracking(habit)]));
 }
 
 /** The categories a habit can be filed under — used by the editor form. */
@@ -298,29 +333,29 @@ export function getDashboardToday() {
 }
 
 export function createInitialDashboardState(today = getDashboardToday()): DashboardState {
-  const habits = DEFAULT_HABITS.map((item) => ({
-    id: item.key,
-    key: item.key,
-    name: item.name,
-    category: item.category,
-    maxScore: item.maxScore,
-    description: item.description,
-    iconName: habitIcon(item.key, item.category)
-  }));
+  const habits: DashboardHabit[] = DEFAULT_HABITS.map((item) =>
+    migrateHabitFields({
+      id: item.key,
+      key: item.key,
+      name: item.name,
+      category: item.category,
+      maxScore: item.maxScore,
+      description: item.description,
+      iconName: habitIcon(item.key, item.category)
+    })
+  );
+  const tracking = trackingIndex(habits);
   const records: Record<string, DashboardDayRecord> = {};
 
   for (let offset = HISTORY_DAYS; offset >= 0; offset -= 1) {
     const date = addDaysIso(today, -offset);
-    const completions: Record<string, boolean> = {};
+    const entries: Record<string, LogEntry> = {};
 
     habits.forEach((habit, index) => {
-      completions[habit.id] = isSeedHabitComplete(habit.key, index, offset);
+      entries[habit.id] = { value: isSeedHabitComplete(habit.key, index, offset) ? 1 : 0 };
     });
 
-    records[date] = {
-      date,
-      completions
-    };
+    records[date] = { date, entries, completions: deriveCompletions(entries, tracking) };
   }
 
   return {
@@ -421,7 +456,7 @@ export function addHabitToState(
     suffix += 1;
   }
 
-  const habit: DashboardHabit = {
+  const habit: DashboardHabit = migrateHabitFields({
     id,
     key: id,
     name,
@@ -429,7 +464,7 @@ export function addHabitToState(
     maxScore: 1,
     description: "",
     iconName: habitIcon(id, input.category)
-  };
+  });
 
   return {
     ...state,
@@ -451,15 +486,17 @@ export function removeHabitFromState(
   Object.keys(state.records).forEach((date) => {
     const record = state.records[date];
 
-    if (!(habitId in record.completions)) {
+    if (!(habitId in record.entries) && !(habitId in record.completions)) {
       records[date] = record;
       return;
     }
 
+    const entries = { ...record.entries };
     const completions = { ...record.completions };
 
+    delete entries[habitId];
     delete completions[habitId];
-    records[date] = { ...record, completions };
+    records[date] = { ...record, entries, completions };
   });
 
   return {
@@ -489,16 +526,25 @@ export function rekeyHabit(state: DashboardState, oldKey: string, newKey: string
   Object.keys(state.records).forEach((date) => {
     const record = state.records[date];
 
-    if (!(oldKey in record.completions)) {
+    if (!(oldKey in record.entries) && !(oldKey in record.completions)) {
       records[date] = record;
       return;
     }
 
+    const entries = { ...record.entries };
     const completions = { ...record.completions };
 
-    completions[newKey] = completions[oldKey];
-    delete completions[oldKey];
-    records[date] = { ...record, completions };
+    if (oldKey in entries) {
+      entries[newKey] = entries[oldKey];
+      delete entries[oldKey];
+    }
+
+    if (oldKey in completions) {
+      completions[newKey] = completions[oldKey];
+      delete completions[oldKey];
+    }
+
+    records[date] = { ...record, entries, completions };
   });
 
   return { ...state, habits, records };
@@ -540,10 +586,19 @@ export function migrateDashboardState(
   }
 
   const companion = normalizeCompanion(candidate.companion);
+  const habits = (candidate.habits as DashboardHabit[]).map((habit) => migrateHabitFields(habit));
+  const tracking = trackingIndex(habits);
+  const records: Record<string, DashboardDayRecord> = {};
+
+  for (const [date, raw] of Object.entries(candidate.records ?? {})) {
+    const entries = migrateEntries(raw as { completions?: unknown; entries?: unknown });
+
+    records[date] = { date, entries, completions: deriveCompletions(entries, tracking) };
+  }
 
   return {
-    habits: candidate.habits,
-    records: candidate.records ?? {},
+    habits,
+    records,
     events: normalizeEvents(candidate.events),
     bestStreakFloor:
       typeof candidate.bestStreakFloor === "number"
@@ -1158,19 +1213,42 @@ function isHabitDone(state: DashboardState, date: string, habitId: string): bool
 }
 
 /**
- * Chuỗi ngày liên tiếp một thói quen được hoàn thành. Ngày đang diễn ra chưa
- * tick KHÔNG làm đứt chuỗi (vẫn còn cơ hội) — chuỗi chỉ đứt khi một ngày ĐÃ
- * QUA bị bỏ trống (invariant 1: không dọa mất chuỗi giữa ngày).
+ * Chuỗi riêng của một thói quen (spec §5.2): ngày trong lịch mà hoàn thành thì
+ * +1; ngày KHÔNG trong lịch (hoặc đang tạm dừng) được bỏ qua — không cộng,
+ * không làm đứt; ngày trong lịch ĐÃ QUA mà bỏ lỡ thì bắt đầu nhịp mới. Hôm nay
+ * chưa làm không bao giờ làm đứt chuỗi (invariant 1: không dọa mất chuỗi giữa
+ * ngày).
  */
 export function calculateHabitStreak(
   state: DashboardState,
   habitId: string,
   today = getDashboardToday()
 ): number {
-  let streak = 0;
-  let date = isHabitDone(state, today, habitId) ? today : addDaysIso(today, -1);
+  const habit = state.habits.find((item) => item.id === habitId);
 
-  while (isHabitDone(state, date, habitId)) {
+  if (!habit) return 0;
+
+  const tracking = habitTracking(habit);
+  // Floor for the walk: without it a habit that repeats on one weekday only
+  // would step backwards forever through empty history.
+  const earliest = minIsoDate(...Object.keys(state.records), today);
+  let streak = 0;
+  let date = today;
+
+  // Today is still an open chance: if it is scheduled but not done yet, start
+  // counting from yesterday instead of breaking here.
+  if (isScheduledOn(tracking, today) && !isHabitDone(state, today, habitId)) {
+    date = addDaysIso(today, -1);
+  }
+
+  while (date >= earliest) {
+    if (!isScheduledOn(tracking, date)) {
+      date = addDaysIso(date, -1);
+      continue;
+    }
+
+    if (!isHabitDone(state, date, habitId)) break;
+
     streak += 1;
     date = addDaysIso(date, -1);
   }
@@ -1260,15 +1338,37 @@ export function updateHabitInState(
   };
 }
 
-export function toggleHabitForDate(
+/**
+ * The ONLY writer of a log cell. Writes the entry (truth) and the derived
+ * `completions` cache in one step so the two can never drift.
+ *
+ * `completedAtHHmm` is a local "HH:mm". It is stamped on the transition into
+ * completeness and kept from then on — growing a finished cell further must
+ * not move its Giờ vàng (spec §6.3) — and cleared if the cell drops back.
+ */
+export function setHabitEntry(
   state: DashboardState,
   date: string,
-  habitId: string
+  habitId: string,
+  value: number,
+  completedAtHHmm?: string
 ): DashboardState {
-  const currentRecord = state.records[date] ?? {
-    date,
-    completions: Object.fromEntries(state.habits.map((habit) => [habit.id, false]))
-  };
+  const habit = state.habits.find((item) => item.id === habitId);
+
+  if (!habit) return state;
+
+  const tracking = habitTracking(habit);
+  const record = state.records[date] ?? { date, entries: {}, completions: {} };
+  const previous = record.entries[habitId];
+  const candidate: LogEntry = { value: Math.max(0, Math.trunc(value)) };
+  const nowComplete = isEntryComplete(tracking, candidate);
+
+  if (nowComplete) {
+    const stamp =
+      previous && isEntryComplete(tracking, previous) ? previous.completedAt : completedAtHHmm;
+
+    if (stamp) candidate.completedAt = stamp;
+  }
 
   return {
     ...state,
@@ -1276,13 +1376,46 @@ export function toggleHabitForDate(
       ...state.records,
       [date]: {
         date,
-        completions: {
-          ...currentRecord.completions,
-          [habitId]: !currentRecord.completions[habitId]
-        }
+        entries: { ...record.entries, [habitId]: candidate },
+        completions: { ...record.completions, [habitId]: nowComplete }
       }
     }
   };
+}
+
+/**
+ * Flip a habit for a day. Ticking a non-check habit fills it to its target;
+ * unticking empties it — an untick is a valid action and must be unambiguous
+ * (invariant 2), never an off-by-one step down.
+ */
+export function toggleHabitForDate(
+  state: DashboardState,
+  date: string,
+  habitId: string,
+  completedAtHHmm?: string
+): DashboardState {
+  const habit = state.habits.find((item) => item.id === habitId);
+
+  if (!habit) return state;
+
+  const done = state.records[date]?.completions[habitId] === true;
+  const target =
+    habit.trackingType === "checklist"
+      ? (1 << (habit.steps?.length ?? Math.max(1, habit.target))) - 1
+      : habit.trackingType === "check"
+        ? 1
+        : Math.max(1, habit.target);
+
+  return setHabitEntry(state, date, habitId, done ? 0 : target, completedAtHHmm);
+}
+
+/** How many of the day's habits meet their own target. */
+export function countCompletedOn(state: DashboardState, date: string): number {
+  const record = state.records[date];
+
+  if (!record) return 0;
+
+  return state.habits.filter((habit) => record.completions[habit.id] === true).length;
 }
 
 export function buildDashboardViewModel(

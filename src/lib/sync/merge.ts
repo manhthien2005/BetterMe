@@ -1,3 +1,4 @@
+import { migrateHabitFields } from "@/components/dashboard/habit-migration";
 import { habitIcon } from "@/lib/defaults";
 import { clamp } from "@/lib/utils";
 import {
@@ -229,10 +230,18 @@ export function mergeServerIntoLocal(
 
     if (!serverWins) return;
 
-    const record = nextRecords[log.date] ?? { date: log.date, completions: {} };
+    const record = nextRecords[log.date] ?? { date: log.date, entries: {}, completions: {} };
+    // The server still speaks boolean (U1c widens the contract). A remote tick
+    // keeps whatever richer value this device already had — never overwriting
+    // "8 glasses" with a bare 1 — while a remote untick clears the cell.
+    const previous = record.entries[log.habitKey];
 
     nextRecords[log.date] = {
       date: log.date,
+      entries: {
+        ...record.entries,
+        [log.habitKey]: log.done ? (previous ?? { value: 1 }) : { value: 0 }
+      },
       completions: { ...record.completions, [log.habitKey]: log.done }
     };
     recordsChanged = true;
@@ -767,7 +776,9 @@ function stableStringify(value: unknown): string {
 // ---------------------------------------------------------------------------
 
 function toDashboardHabit(habit: ServerHabit): DashboardHabit {
-  return {
+  // The server contract is still v2-shaped (U1c widens it): a habit that
+  // arrives from another device adopts the v3 defaults locally.
+  return migrateHabitFields({
     id: habit.key,
     key: habit.key,
     name: habit.name,
@@ -775,7 +786,7 @@ function toDashboardHabit(habit: ServerHabit): DashboardHabit {
     maxScore: habit.maxScore,
     description: habit.description,
     iconName: habitIcon(habit.key, habit.category)
-  };
+  });
 }
 
 function applyServerHabitFields(local: DashboardHabit, server: ServerHabit): DashboardHabit {
@@ -797,19 +808,23 @@ function pruneRecordKeys(
 
   Object.keys(records).forEach((date) => {
     const record = records[date];
-    const hasAny = Object.keys(record.completions).some((key) => keys.has(key));
+    const hasAny = [...Object.keys(record.entries), ...Object.keys(record.completions)].some(
+      (key) => keys.has(key)
+    );
 
     if (!hasAny) {
       next[date] = record;
       return;
     }
 
+    const entries = { ...record.entries };
     const completions = { ...record.completions };
 
     keys.forEach((key) => {
+      delete entries[key];
       delete completions[key];
     });
-    next[date] = { ...record, completions };
+    next[date] = { ...record, entries, completions };
   });
 
   return next;
