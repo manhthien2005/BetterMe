@@ -1,18 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Baloo_2, Nunito } from "next/font/google";
+import { Be_Vietnam_Pro, Bricolage_Grotesque } from "next/font/google";
 
 import "@/app/globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryProvider } from "@/components/query-provider";
 
-const displayFont = Baloo_2({
+// Variable font — the wght axis alone is what the design uses.
+const displayFont = Bricolage_Grotesque({
   subsets: ["latin", "vietnamese"],
   variable: "--font-display"
 });
 
-const bodyFont = Nunito({
+// Static font — the weights must be listed explicitly.
+const bodyFont = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-body"
 });
 
@@ -24,7 +27,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#fdf5f1",
+  themeColor: "#FEFBF3",
   width: "device-width",
   initialScale: 1
 };
@@ -32,7 +35,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html className={`${displayFont.variable} ${bodyFont.variable}`} lang="vi">
-      <body className="meadow min-h-screen">
+      <body className="min-h-screen">
         <QueryProvider>
           <TooltipProvider delayDuration={160}>
             {children}

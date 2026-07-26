@@ -83,37 +83,26 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-surface-page text-ink antialiased;
     max-width: 100%;
     min-height: 100vh;
     overflow-x: hidden;
-    font-family: var(--font-body), "Nunito", sans-serif;
+    font-family: var(--font-body), "Be Vietnam Pro", sans-serif;
     letter-spacing: 0;
   }
 
   h1,
   h2,
   h3 {
-    font-family: var(--font-display), "Baloo 2", sans-serif;
+    font-family: var(--font-display), "Bricolage Grotesque", sans-serif;
   }
 
   ::selection {
-    background: rgb(246 198 206 / 0.6);
+    background: rgb(180 83 9 / 0.18);
   }
 }
 
 @layer utilities {
-  /* Rice-paper meadow: sakura mist top-right, matcha mist left, rice-grain dots. */
-  .meadow {
-    background-color: #fdf5f1;
-    background-image:
-      radial-gradient(900px 520px at 88% -8%, rgb(246 198 206 / 0.32), transparent 62%),
-      radial-gradient(760px 460px at -6% 24%, rgb(127 176 105 / 0.14), transparent 58%),
-      radial-gradient(rgb(74 61 70 / 0.05) 1px, transparent 1.4px);
-    background-size: auto, auto, 26px 26px;
-    background-attachment: fixed;
-  }
-
   .soft-panel {
     background-color: #fffdfc;
     border: 1px solid #f5e6e0;
