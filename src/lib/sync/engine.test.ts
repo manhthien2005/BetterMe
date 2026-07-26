@@ -1,10 +1,12 @@
+import { migrateHabitFields } from "@/components/dashboard/habit-migration";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createInitialCompanionState,
   createInitialDashboardState,
   type CompanionPetState,
-  type DashboardState
+  type DashboardState,
+  type DashboardDayRecord,
 } from "@/components/dashboard/dashboard-data";
 
 import { createSyncEngine, loadLastSyncedAt, type SyncEngineOptions } from "./engine";
@@ -19,6 +21,18 @@ import type {
   SyncStatus
 } from "./types";
 
+/** A v3 day record built from plain booleans — every habit here is `check`. */
+function dayRecord(date: string, completions: Record<string, boolean>): DashboardDayRecord {
+  return {
+    date,
+    entries: Object.fromEntries(
+      Object.entries(completions).map(([key, done]) => [key, { value: done ? 1 : 0 }])
+    ),
+    completions
+  };
+}
+
+
 const T1 = "2026-07-04T09:00:00.000Z";
 const NOW = "2026-07-04T10:00:00.000Z";
 /** Server clock at snapshot/merge time — deliberately ≠ NOW (client clock). */
@@ -27,7 +41,7 @@ const SERVER_NOW = "2026-07-04T09:58:00.000Z";
 function makeState(overrides: Partial<DashboardState> = {}): DashboardState {
   return {
     habits: [
-      {
+      migrateHabitFields({
         id: "english",
         key: "english",
         name: "Học tiếng Anh",
@@ -35,7 +49,7 @@ function makeState(overrides: Partial<DashboardState> = {}): DashboardState {
         maxScore: 1,
         description: "",
         iconName: "BookOpen"
-      }
+      })
     ],
     records: {},
     events: [],
@@ -248,7 +262,7 @@ describe("sync engine — slug collision re-key", () => {
     const h = setup(
       makeState({
         habits: [
-          {
+          migrateHabitFields({
             id: "custom_doc_sach",
             key: "custom_doc_sach",
             name: "Đọc sách",
@@ -256,10 +270,10 @@ describe("sync engine — slug collision re-key", () => {
             maxScore: 1,
             description: "",
             iconName: "BookOpen"
-          }
+          })
         ],
         records: {
-          "2026-07-03": { date: "2026-07-03", completions: { custom_doc_sach: true } }
+          "2026-07-03": dayRecord("2026-07-03", { custom_doc_sach: true })
         }
       })
     );

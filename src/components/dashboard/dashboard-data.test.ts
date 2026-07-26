@@ -20,12 +20,16 @@ import {
   pruneFoodLedgers,
   recordGrowthDay,
   rekeyHabit,
+  countCompletedOn,
   removeHabitFromState,
+  setHabitEntry,
   switchActivePet,
   toggleHabitForDate,
+  trackingIndex,
   updateHabitInState,
   type DashboardState
 } from "@/components/dashboard/dashboard-data";
+import { isEntryComplete } from "@/components/dashboard/habit-model";
 
 const today = "2026-07-04";
 
@@ -674,5 +678,266 @@ describe("habit detail", () => {
     expect(habit.weekDots[6].date).toBe(today);
     expect(habit.weekDots[6].isToday).toBe(true);
     expect(typeof habit.streak).toBe("number");
+  });
+});
+
+describe("habit model v3", () => {
+  it("gives every seeded habit a full v3 definition", () => {
+    const state = createInitialDashboardState("2026-07-27");
+
+    for (const habit of state.habits) {
+      expect(habit.trackingType).toBe("check");
+      expect(habit.target).toBe(1);
+      expect(habit.repeatDays).toEqual([1, 2, 3, 4, 5, 6, 7]);
+      expect(habit.timeOfDay).toBe("anytime");
+      expect(habit.icon.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("keeps the derived completions cache in step with the entries", () => {
+    const state = createInitialDashboardState("2026-07-27");
+    const tracking = trackingIndex(state.habits);
+
+    for (const record of Object.values(state.records)) {
+      for (const habit of state.habits) {
+        const entry = record.entries[habit.id];
+        const cached = record.completions[habit.id] === true;
+
+        expect(cached, `${record.date}/${habit.id}`).toBe(
+          isEntryComplete(tracking.get(habit.id)!, entry)
+        );
+      }
+    }
+  });
+
+  it("migrates a v2 state — booleans become entries, habits gain v3 fields", () => {
+    const migrated = migrateDashboardState(
+      {
+        habits: [
+          {
+            id: "wake_up",
+            key: "wake_up",
+            name: "Dậy đúng giờ",
+            category: "Discipline",
+            maxScore: 1,
+            description: "",
+            iconName: "AlarmClock"
+          }
+        ],
+        records: {
+          "2026-07-26": { date: "2026-07-26", completions: { wake_up: true } },
+          "2026-07-25": { date: "2026-07-25", completions: { wake_up: false } }
+        }
+      },
+      "2026-07-27"
+    );
+
+    expect(migrated).not.toBeNull();
+    expect(migrated!.habits[0].trackingType).toBe("check");
+    expect(migrated!.habits[0].icon).toBe("⏰");
+    expect(migrated!.records["2026-07-26"].entries.wake_up).toEqual({ value: 1 });
+    expect(migrated!.records["2026-07-26"].completions.wake_up).toBe(true);
+    expect(migrated!.records["2026-07-25"].completions.wake_up).toBe(false);
+  });
+
+  it("migrating an already-v3 state changes nothing", () => {
+    const once = migrateDashboardState(createInitialDashboardState("2026-07-27"), "2026-07-27");
+    const twice = migrateDashboardState(once, "2026-07-27");
+
+    expect(twice).toEqual(once);
+  });
+
+  it("drops entries whose habit was deleted", () => {
+    const state = createInitialDashboardState("2026-07-27");
+    const pruned = removeHabitFromState(state, "wake_up", "2026-07-27T08:00:00.000Z");
+
+    for (const record of Object.values(pruned.records)) {
+      expect(record.entries.wake_up).toBeUndefined();
+      expect(record.completions.wake_up).toBeUndefined();
+    }
+  });
+});
+
+describe("setHabitEntry", () => {
+  function stateWithCountHabit() {
+    const base = createInitialDashboardState("2026-07-27");
+
+    return {
+      ...base,
+      habits: base.habits.map((habit) =>
+        habit.id === "wake_up"
+          ? { ...habit, trackingType: "count" as const, target: 8, unit: "ly" }
+          : habit
+      )
+    };
+  }
+
+  it("writes the entry and the derived cache together", () => {
+    const next = setHabitEntry(stateWithCountHabit(), "2026-07-27", "wake_up", 6);
+    const record = next.records["2026-07-27"];
+
+    expect(record.entries.wake_up.value).toBe(6);
+    expect(record.completions.wake_up).toBe(false);
+  });
+
+  it("flips the cache the moment the target is met", () => {
+    const next = setHabitEntry(stateWithCountHabit(), "2026-07-27", "wake_up", 8);
+
+    expect(next.records["2026-07-27"].completions.wake_up).toBe(true);
+  });
+
+  it("stamps the completion clock only when the cell becomes complete", () => {
+    const partial = setHabitEntry(stateWithCountHabit(), "2026-07-27", "wake_up", 6, "20:15");
+    const complete = setHabitEntry(partial, "2026-07-27", "wake_up", 8, "21:30");
+
+    expect(partial.records["2026-07-27"].entries.wake_up.completedAt).toBeUndefined();
+    expect(complete.records["2026-07-27"].entries.wake_up.completedAt).toBe("21:30");
+  });
+
+  it("keeps the first completion clock when a done cell grows further", () => {
+    const done = setHabitEntry(stateWithCountHabit(), "2026-07-27", "wake_up", 8, "21:30");
+    const more = setHabitEntry(done, "2026-07-27", "wake_up", 10, "22:45");
+
+    expect(more.records["2026-07-27"].entries.wake_up.completedAt).toBe("21:30");
+  });
+
+  it("clears the clock when the cell drops back below its target", () => {
+    const done = setHabitEntry(stateWithCountHabit(), "2026-07-27", "wake_up", 8, "21:30");
+    const undone = setHabitEntry(done, "2026-07-27", "wake_up", 3, "22:00");
+
+    expect(undone.records["2026-07-27"].entries.wake_up.completedAt).toBeUndefined();
+    expect(undone.records["2026-07-27"].completions.wake_up).toBe(false);
+  });
+
+  it("never stores a negative value", () => {
+    const next = setHabitEntry(stateWithCountHabit(), "2026-07-27", "wake_up", -5);
+
+    expect(next.records["2026-07-27"].entries.wake_up.value).toBe(0);
+  });
+
+  it("returns the same state for an unknown habit", () => {
+    const state = stateWithCountHabit();
+
+    expect(setHabitEntry(state, "2026-07-27", "ghost", 1)).toBe(state);
+  });
+
+  it("creates the day when it does not exist yet", () => {
+    const next = setHabitEntry(stateWithCountHabit(), "2026-08-09", "wake_up", 8);
+
+    expect(next.records["2026-08-09"].completions.wake_up).toBe(true);
+  });
+});
+
+describe("toggleHabitForDate on v3", () => {
+  it("still flips a check habit both ways", () => {
+    const state = createInitialDashboardState("2026-07-27");
+    const on = setHabitEntry(state, "2026-07-27", "clean", 1);
+    const off = toggleHabitForDate(on, "2026-07-27", "clean");
+
+    expect(on.records["2026-07-27"].completions.clean).toBe(true);
+    expect(off.records["2026-07-27"].completions.clean).toBe(false);
+    expect(off.records["2026-07-27"].entries.clean.value).toBe(0);
+  });
+
+  it("untick empties a count habit rather than stepping it down by one", () => {
+    const base = createInitialDashboardState("2026-07-27");
+    const state = {
+      ...base,
+      habits: base.habits.map((habit) =>
+        habit.id === "wake_up" ? { ...habit, trackingType: "count" as const, target: 8 } : habit
+      )
+    };
+    const done = setHabitEntry(state, "2026-07-27", "wake_up", 8);
+    const off = toggleHabitForDate(done, "2026-07-27", "wake_up");
+
+    expect(off.records["2026-07-27"].entries.wake_up.value).toBe(0);
+  });
+
+  it("tick fills a count habit straight to its target", () => {
+    const base = createInitialDashboardState("2026-07-27");
+    const state = {
+      ...base,
+      habits: base.habits.map((habit) =>
+        habit.id === "clean" ? { ...habit, trackingType: "count" as const, target: 8 } : habit
+      )
+    };
+    const emptied = setHabitEntry(state, "2026-07-27", "clean", 0);
+    const on = toggleHabitForDate(emptied, "2026-07-27", "clean");
+
+    expect(on.records["2026-07-27"].entries.clean.value).toBe(8);
+    expect(on.records["2026-07-27"].completions.clean).toBe(true);
+  });
+});
+
+describe("countCompletedOn", () => {
+  it("counts the cells that meet their own target", () => {
+    const base = createInitialDashboardState("2026-07-27");
+    const state = {
+      ...base,
+      habits: base.habits.map((habit) =>
+        habit.id === "wake_up" ? { ...habit, trackingType: "count" as const, target: 8 } : habit
+      )
+    };
+    const partial = setHabitEntry(state, "2026-07-27", "wake_up", 6);
+    const full = setHabitEntry(state, "2026-07-27", "wake_up", 8);
+
+    expect(countCompletedOn(full, "2026-07-27") - countCompletedOn(partial, "2026-07-27")).toBe(1);
+  });
+});
+
+describe("calculateHabitStreak with a repeat schedule", () => {
+  /** A state where `wake_up` runs only on the given ISO weekdays. */
+  function scheduled(repeatDays: number[], doneDates: string[], today: string) {
+    const base = createInitialDashboardState(today);
+    const habits = base.habits.map((habit) =>
+      habit.id === "wake_up" ? { ...habit, repeatDays } : habit
+    );
+    const records: typeof base.records = {};
+
+    // Drive every cell from the test rather than the seed history.
+    for (const [date, record] of Object.entries(base.records)) {
+      records[date] = {
+        date,
+        entries: { ...record.entries, wake_up: { value: doneDates.includes(date) ? 1 : 0 } },
+        completions: { ...record.completions, wake_up: doneDates.includes(date) }
+      };
+    }
+
+    return { ...base, habits, records };
+  }
+
+  it("skips the days the habit is not scheduled for", () => {
+    // 2026-07-27 Mon … 2026-08-02 Sun. Habit runs Mon/Wed/Fri only.
+    const state = scheduled([1, 3, 5], ["2026-07-27", "2026-07-29", "2026-07-31"], "2026-07-31");
+
+    expect(calculateHabitStreak(state, "wake_up", "2026-07-31")).toBe(3);
+  });
+
+  it("a missed scheduled day starts a new rhythm", () => {
+    const state = scheduled([1, 3, 5], ["2026-07-27", "2026-07-31"], "2026-07-31");
+
+    expect(calculateHabitStreak(state, "wake_up", "2026-07-31")).toBe(1);
+  });
+
+  it("today still counts as an open chance, never a break", () => {
+    const state = scheduled([1, 3, 5], ["2026-07-27", "2026-07-29"], "2026-07-31");
+
+    expect(calculateHabitStreak(state, "wake_up", "2026-07-31")).toBe(2);
+  });
+
+  it("a paused habit freezes its streak instead of losing it", () => {
+    const base = scheduled(
+      [1, 2, 3, 4, 5, 6, 7],
+      ["2026-07-25", "2026-07-26", "2026-07-27"],
+      "2026-07-31"
+    );
+    const state = {
+      ...base,
+      habits: base.habits.map((habit) =>
+        habit.id === "wake_up" ? { ...habit, pausedAt: "2026-07-28" } : habit
+      )
+    };
+
+    expect(calculateHabitStreak(state, "wake_up", "2026-07-31")).toBe(3);
   });
 });
