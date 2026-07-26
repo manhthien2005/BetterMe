@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  BarChart3,
   CalendarCheck,
   Check,
   CirclePlus,
@@ -16,6 +17,7 @@ import {
   adoptPet,
   applyGiftToState,
   buildDashboardViewModel,
+  buildHabitDetail,
   categoryLabel,
   checkComebackGift,
   createInitialDashboardState,
@@ -34,6 +36,7 @@ import {
   STATUS_LABELS,
   switchActivePet,
   toggleHabitForDate,
+  updateHabitInState,
   type DashboardCalendarDay,
   type DashboardHabitView,
   type DashboardState,
@@ -45,6 +48,8 @@ import { AnalyticsPanel } from "@/components/dashboard/analytics-panel";
 import { FriendsCard } from "@/components/dashboard/friends-card";
 import { GardenFairCard } from "@/components/dashboard/garden-fair";
 import { GardenVisitOverlay } from "@/components/dashboard/garden-visit-overlay";
+import { HabitDetailOverlay } from "@/components/dashboard/habit-detail-overlay";
+import { habitEmoji, habitIconBubbleClass } from "@/components/dashboard/habit-style";
 import { HeroBanner } from "@/components/dashboard/hero-banner";
 import { getPetLine, type PetEvent } from "@/components/dashboard/pet-voice";
 import { ProfileMenu } from "@/components/dashboard/profile-menu";
@@ -164,6 +169,7 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("disabled");
   const [showSyncOnboarding, setShowSyncOnboarding] = useState(false);
   const [visitingFriendId, setVisitingFriendId] = useState<string | null>(null);
+  const [detailHabitId, setDetailHabitId] = useState<string | null>(null);
   // The engine reads state through this ref so merges/flushes always see the
   // latest value synchronously — even mid-flush, before React re-renders.
   const stateRef = useRef(state);
@@ -174,6 +180,10 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
   const bumpedDateRef = useRef<string | null>(null);
   const viewModel = useMemo(() => buildDashboardViewModel(state, today), [state, today]);
   const activePet = viewModel.companion.activePet;
+  const habitDetail = useMemo(
+    () => (detailHabitId ? buildHabitDetail(state, detailHabitId, today) : null),
+    [detailHabitId, state, today]
+  );
 
   useEffect(() => {
     stateRef.current = state;
@@ -600,6 +610,35 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
     markSyncDirty({ kind: "deleteHabit", habitKey: habitId, deletedAt });
   }
 
+  function saveHabitEdit(habitId: string, name: string, category: string) {
+    const next = updateHabitInState(state, habitId, { name, category });
+
+    if (next === state) return;
+
+    const updated = next.habits.find((habit) => habit.id === habitId);
+
+    commitState(next);
+
+    if (updated) {
+      // Same-key upsert = rename, never a create — no expectCreate (spec §2.2).
+      markSyncDirty({
+        kind: "upsertHabit",
+        habit: {
+          key: updated.id,
+          name: updated.name,
+          category: updated.category,
+          maxScore: updated.maxScore,
+          active: true,
+          description: updated.description,
+          sortOrder: next.habits.findIndex((habit) => habit.id === habitId)
+        },
+        clientTs: new Date().toISOString()
+      });
+    }
+
+    toast.success("Đã cập nhật thói quen 🌿");
+  }
+
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -655,6 +694,7 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
             <TodaysHabits
               habits={viewModel.habits}
               onAdd={addHabit}
+              onOpenDetail={setDetailHabitId}
               onRemove={removeHabit}
               onToggle={toggleHabit}
               viewModel={viewModel}
@@ -697,6 +737,19 @@ export function DashboardClient({ userEmail }: { userEmail: string }) {
 
       {showSyncOnboarding ? (
         <SyncOnboarding onChoose={handleSyncChoice} onDismiss={handleSyncDismiss} />
+      ) : null}
+
+      {habitDetail ? (
+        <HabitDetailOverlay
+          categories={HABIT_CATEGORIES}
+          detail={habitDetail}
+          onClose={() => setDetailHabitId(null)}
+          onRemove={(habitId) => {
+            removeHabit(habitId);
+            setDetailHabitId(null);
+          }}
+          onSave={saveHabitEdit}
+        />
       ) : null}
 
       {visitingFriendId ? (
@@ -799,12 +852,14 @@ function CalendarPanel({
 function TodaysHabits({
   habits,
   onAdd,
+  onOpenDetail,
   onRemove,
   onToggle,
   viewModel
 }: {
   habits: DashboardHabitView[];
   onAdd: (name: string, category: string) => void;
+  onOpenDetail: (habitId: string) => void;
   onRemove: (habitId: string) => void;
   onToggle: (habitId: string) => void;
   viewModel: DashboardViewModel;
@@ -859,6 +914,7 @@ function TodaysHabits({
             habit={habit}
             isEasyWin={habit.id === easyWinId}
             key={habit.id}
+            onOpenDetail={onOpenDetail}
             onRemove={onRemove}
             onToggle={onToggle}
           />
@@ -937,23 +993,26 @@ function HabitRow({
   editing,
   habit,
   isEasyWin,
+  onOpenDetail,
   onRemove,
   onToggle
 }: {
   editing: boolean;
   habit: DashboardHabitView;
   isEasyWin: boolean;
+  onOpenDetail: (habitId: string) => void;
   onRemove: (habitId: string) => void;
   onToggle: (habitId: string) => void;
 }) {
   const emoji = habitEmoji(habit.key, habit.category);
+  const doneThisWeek = habit.weekDots.filter((dot) => dot.done).length;
 
   return (
-    <div className="relative">
+    <div className="relative flex items-stretch gap-2">
       <button
         aria-pressed={habit.completed}
         className={cn(
-          "squishy grid min-h-16 w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl border bg-white/80 p-3 text-left shadow-mochi transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep focus-visible:ring-offset-2",
+          "squishy grid min-h-16 w-full min-w-0 flex-1 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl border bg-white/80 p-3 text-left shadow-mochi transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep focus-visible:ring-offset-2",
           habit.completed ? "border-matcha/50 bg-matcha/5" : "border-wafer"
         )}
         onClick={() => onToggle(habit.id)}
@@ -984,11 +1043,37 @@ function HabitRow({
           </span>
           <span className="mt-1 flex items-center gap-2 text-xs font-bold text-mauve">
             <span className="truncate">{categoryLabel(habit.category)}</span>
+            {habit.streak >= 2 ? (
+              <span
+                className="shrink-0 rounded-full bg-butter/50 px-2 py-0.5 text-[10px] font-bold text-plum"
+                title={`Chuỗi ${habit.streak} ngày liên tiếp`}
+              >
+                🔥 {habit.streak}
+              </span>
+            ) : null}
             {isEasyWin && !habit.completed ? (
               <span className="shrink-0 rounded-full bg-butter/50 px-2 py-0.5 text-[10px] font-bold text-plum">
                 ✨ dễ bắt đầu
               </span>
             ) : null}
+            <span
+              aria-label={`Tuần này xong ${doneThisWeek}/7 ngày`}
+              className="ml-auto hidden shrink-0 items-center gap-1 sm:flex"
+              role="img"
+              title={`Tuần này: ${doneThisWeek}/7 ngày`}
+            >
+              {habit.weekDots.map((dot) => (
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    dot.done ? "bg-matcha" : "bg-wafer",
+                    dot.isToday && "ring-1 ring-sakura-deep ring-offset-1"
+                  )}
+                  key={dot.date}
+                />
+              ))}
+            </span>
           </span>
         </span>
         <span className="relative flex h-9 w-9 items-center justify-center">
@@ -1010,6 +1095,14 @@ function HabitRow({
           </span>
         </span>
       </button>
+      <button
+        aria-label={`Chi tiết thói quen ${habit.name}`}
+        className="squishy flex w-9 shrink-0 items-center justify-center self-center rounded-full border border-wafer bg-white/80 py-2 text-mauve shadow-mochi transition hover:bg-white hover:text-plum focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep focus-visible:ring-offset-2"
+        onClick={() => onOpenDetail(habit.id)}
+        type="button"
+      >
+        <BarChart3 className="h-4 w-4" />
+      </button>
       {editing ? (
         <button
           aria-label={`Xóa thói quen ${habit.name}`}
@@ -1021,54 +1114,6 @@ function HabitRow({
         </button>
       ) : null}
     </div>
-  );
-}
-
-function habitEmoji(key: string, category?: string) {
-  const byKey: Record<string, string> = {
-    wake_up: "⏰",
-    english: "🗣️",
-    coding: "💻",
-    exercise: "💪",
-    focus: "🎯",
-    clean: "✨",
-    review: "📝"
-  };
-
-  const byCategory: Record<string, string> = {
-    Discipline: "🛡️",
-    Learning: "📚",
-    Work: "🚀",
-    Health: "💚",
-    Reflection: "🌙"
-  };
-
-  return byKey[key] || byCategory[category || ""] || "⭐";
-}
-
-function habitIconBubbleClass(key: string, category?: string) {
-  const bubbleByKey: Record<string, string> = {
-    wake_up: "border-butter/70 bg-gradient-to-br from-butter/30 via-sakura/20 to-white",
-    english: "border-dawn/70 bg-gradient-to-br from-dawn/30 via-white to-white",
-    coding: "border-mauve/20 bg-gradient-to-br from-wafer via-white to-white",
-    exercise: "border-matcha/50 bg-gradient-to-br from-matcha/25 via-white to-white",
-    focus: "border-sakura bg-gradient-to-br from-sakura/40 via-white to-white",
-    clean: "border-butter/70 bg-gradient-to-br from-butter/35 via-white to-white",
-    review: "border-dawn/60 bg-gradient-to-br from-dawn/25 via-sakura/15 to-white"
-  };
-
-  const bubbleByCategory: Record<string, string> = {
-    Discipline: "border-matcha/50 bg-gradient-to-br from-matcha/20 via-white to-white",
-    Learning: "border-dawn/70 bg-gradient-to-br from-dawn/25 via-white to-white",
-    Work: "border-mauve/20 bg-gradient-to-br from-wafer via-white to-white",
-    Health: "border-matcha/50 bg-gradient-to-br from-matcha/25 via-white to-white",
-    Reflection: "border-sakura bg-gradient-to-br from-sakura/30 via-white to-white"
-  };
-
-  return (
-    bubbleByKey[key] ||
-    bubbleByCategory[category || ""] ||
-    "border-wafer bg-gradient-to-br from-white via-rice to-white"
   );
 }
 

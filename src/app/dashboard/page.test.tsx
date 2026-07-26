@@ -213,6 +213,27 @@ describe("dashboard route", () => {
     expect(screen.getByLabelText("1 món ăn trong tủ")).toBeTruthy();
   });
 
+  it("opens a habit's detail overlay with stats and heatmap, then closes it", async () => {
+    authMocks.getUser.mockResolvedValue({
+      data: { user: { id: "user-1", email: "thien@example.com" } },
+      error: null
+    });
+
+    render(await DashboardPage());
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Chi tiết thói quen Dậy đúng giờ" })
+    );
+
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Dậy đúng giờ" })).toBeTruthy();
+    expect(screen.getByText("Chuỗi ngày")).toBeTruthy();
+    expect(screen.getByText("Nhịp 30 ngày")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Đóng chi tiết thói quen" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("uses the dashboard as the default landing route", () => {
     HomePage();
 

@@ -4,6 +4,8 @@ import {
   addHabitToState,
   adoptPet,
   buildDashboardViewModel,
+  buildHabitDetail,
+  calculateHabitStreak,
   checkComebackGift,
   createInitialDashboardState,
   deriveFoodBalance,
@@ -21,6 +23,7 @@ import {
   removeHabitFromState,
   switchActivePet,
   toggleHabitForDate,
+  updateHabitInState,
   type DashboardState
 } from "@/components/dashboard/dashboard-data";
 
@@ -583,5 +586,93 @@ describe("phase 0 sync groundwork", () => {
     expect(later.companion.foodGrantedByDate).toEqual({});
     expect(later.companion.foodSpentEvents).toEqual({});
     expect(later.companion.foodCarryover).toBe(5);
+  });
+});
+
+describe("habit detail", () => {
+  function bareState(): DashboardState {
+    const state = createInitialDashboardState(today);
+
+    // Wipe seed history so every completion below is explicit.
+    return { ...state, records: {} };
+  }
+
+  it("counts a per-habit streak without breaking on an unticked today", () => {
+    let state = bareState();
+
+    state = toggleHabitForDate(state, "2026-07-02", "wake_up");
+    state = toggleHabitForDate(state, "2026-07-03", "wake_up");
+
+    // Today (07-04) not ticked yet: the streak holds at 2, never drops to 0.
+    expect(calculateHabitStreak(state, "wake_up", today)).toBe(2);
+
+    state = toggleHabitForDate(state, today, "wake_up");
+    expect(calculateHabitStreak(state, "wake_up", today)).toBe(3);
+
+    // A gap on a PAST day does end the run.
+    expect(calculateHabitStreak(state, "english", today)).toBe(0);
+  });
+
+  it("builds a Monday-aligned five-week heatmap with rates and totals", () => {
+    let state = bareState();
+
+    state = toggleHabitForDate(state, today, "wake_up");
+    state = toggleHabitForDate(state, "2026-07-03", "wake_up");
+
+    const detail = buildHabitDetail(state, "wake_up", today)!;
+
+    expect(detail.habit.id).toBe("wake_up");
+    expect(detail.completedToday).toBe(true);
+    expect(detail.streak).toBe(2);
+    expect(detail.weeks).toHaveLength(5);
+    expect(detail.weeks.every((week) => week.length === 7)).toBe(true);
+    // 2026-07-04 is a Saturday; the last row starts on Monday 2026-06-29.
+    expect(detail.weeks[4][0].date).toBe("2026-06-29");
+    expect(detail.weeks[4][5].date).toBe(today);
+    expect(detail.weeks[4][5].isToday).toBe(true);
+    expect(detail.weeks[4][5].done).toBe(true);
+    expect(detail.weeks[4][6].isFuture).toBe(true);
+    expect(detail.totalCompletions).toBe(2);
+    expect(detail.rate7).toBeCloseTo(2 / 7);
+    expect(detail.rate30).toBeCloseTo(2 / 30);
+  });
+
+  it("returns null for an unknown habit id", () => {
+    expect(buildHabitDetail(bareState(), "ghost", today)).toBeNull();
+  });
+
+  it("renames and re-categorizes a habit without touching records or key", () => {
+    const state = createInitialDashboardState(today);
+    const next = updateHabitInState(state, "coding", {
+      name: "Dự án BetterMe",
+      category: "Learning"
+    });
+
+    const updated = next.habits.find((habit) => habit.id === "coding")!;
+
+    expect(updated.name).toBe("Dự án BetterMe");
+    expect(updated.category).toBe("Learning");
+    expect(updated.key).toBe("coding");
+    expect(next.records).toBe(state.records);
+  });
+
+  it("ignores empty names, unknown ids, and no-op edits", () => {
+    const state = createInitialDashboardState(today);
+
+    expect(updateHabitInState(state, "coding", { name: "   ", category: "Work" })).toBe(state);
+    expect(updateHabitInState(state, "ghost", { name: "X", category: "Work" })).toBe(state);
+    expect(
+      updateHabitInState(state, "coding", { name: "Code / làm dự án", category: "Work" })
+    ).toBe(state);
+  });
+
+  it("exposes streak and week dots on every habit view", () => {
+    const viewModel = buildDashboardViewModel(createInitialDashboardState(today), today);
+    const habit = viewModel.habits[0];
+
+    expect(habit.weekDots).toHaveLength(7);
+    expect(habit.weekDots[6].date).toBe(today);
+    expect(habit.weekDots[6].isToday).toBe(true);
+    expect(typeof habit.streak).toBe("number");
   });
 });

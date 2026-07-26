@@ -153,8 +153,36 @@ export const EVENT_CATEGORY_LABELS: Record<DashboardEvent["category"], string> =
   personal: "cá nhân"
 };
 
+export type HabitWeekDot = {
+  date: string;
+  done: boolean;
+  isToday: boolean;
+};
+
 export type DashboardHabitView = DashboardHabit & {
   completed: boolean;
+  /** Chuỗi ngày liên tiếp đã hoàn thành (hôm nay chưa tick KHÔNG làm đứt chuỗi). */
+  streak: number;
+  /** 7 ngày gần nhất, cũ → mới, cho dải chấm trên dòng. */
+  weekDots: HabitWeekDot[];
+};
+
+export type HabitHeatCell = {
+  date: string;
+  done: boolean;
+  isToday: boolean;
+  isFuture: boolean;
+};
+
+export type HabitDetail = {
+  habit: DashboardHabit;
+  completedToday: boolean;
+  streak: number;
+  rate7: number;
+  rate30: number;
+  totalCompletions: number;
+  /** 5 hàng tuần × 7 cột T2→CN; tuần hiện tại là hàng cuối. */
+  weeks: HabitHeatCell[][];
 };
 
 export type DashboardCalendarDay = {
@@ -1045,6 +1073,113 @@ function buildPetView(
   };
 }
 
+function isHabitDone(state: DashboardState, date: string, habitId: string): boolean {
+  return state.records[date]?.completions[habitId] === true;
+}
+
+/**
+ * Chuỗi ngày liên tiếp một thói quen được hoàn thành. Ngày đang diễn ra chưa
+ * tick KHÔNG làm đứt chuỗi (vẫn còn cơ hội) — chuỗi chỉ đứt khi một ngày ĐÃ
+ * QUA bị bỏ trống (invariant 1: không dọa mất chuỗi giữa ngày).
+ */
+export function calculateHabitStreak(
+  state: DashboardState,
+  habitId: string,
+  today = getDashboardToday()
+): number {
+  let streak = 0;
+  let date = isHabitDone(state, today, habitId) ? today : addDaysIso(today, -1);
+
+  while (isHabitDone(state, date, habitId)) {
+    streak += 1;
+    date = addDaysIso(date, -1);
+  }
+
+  return streak;
+}
+
+function habitCompletionRateOver(
+  state: DashboardState,
+  habitId: string,
+  days: number,
+  today: string
+): number {
+  const window = Array.from({ length: days }, (_, index) => addDaysIso(today, index - (days - 1)));
+
+  return average(window.map((date) => (isHabitDone(state, date, habitId) ? 1 : 0)));
+}
+
+/** Thứ Hai của tuần chứa `date` (tuần hiển thị T2 → CN). */
+function mondayOf(date: string): string {
+  const offsetFromMonday = (parseIsoDate(date).getDay() + 6) % 7;
+
+  return addDaysIso(date, -offsetFromMonday);
+}
+
+/** Dữ liệu cho panel chi tiết một thói quen. null nếu id không tồn tại. */
+export function buildHabitDetail(
+  state: DashboardState,
+  habitId: string,
+  today = getDashboardToday()
+): HabitDetail | null {
+  const habit = state.habits.find((item) => item.id === habitId);
+
+  if (!habit) return null;
+
+  const start = addDaysIso(mondayOf(today), -28);
+  const weeks = Array.from({ length: 5 }, (_, week) =>
+    Array.from({ length: 7 }, (_, day) => {
+      const date = addDaysIso(start, week * 7 + day);
+
+      return {
+        date,
+        done: isHabitDone(state, date, habitId),
+        isToday: date === today,
+        isFuture: date > today
+      };
+    })
+  );
+  const totalCompletions = Object.values(state.records).reduce(
+    (sum, record) => sum + (record.completions[habitId] === true ? 1 : 0),
+    0
+  );
+
+  return {
+    habit,
+    completedToday: isHabitDone(state, today, habitId),
+    streak: calculateHabitStreak(state, habitId, today),
+    rate7: habitCompletionRateOver(state, habitId, 7, today),
+    rate30: habitCompletionRateOver(state, habitId, 30, today),
+    totalCompletions,
+    weeks
+  };
+}
+
+/**
+ * Đổi tên / nhóm một thói quen (immutable). Tên rỗng hoặc không đổi gì → trả
+ * về state cũ nguyên vẹn. Id/key giữ nguyên — records và sync không xáo trộn.
+ */
+export function updateHabitInState(
+  state: DashboardState,
+  habitId: string,
+  input: { name: string; category: string }
+): DashboardState {
+  const habit = state.habits.find((item) => item.id === habitId);
+  const name = input.name.trim().slice(0, 60);
+
+  if (!habit || !name) return state;
+  if (habit.name === name && habit.category === input.category) return state;
+
+  return {
+    ...state,
+    habits: state.habits.map((item) =>
+      item.id === habitId
+        ? { ...item, name, category: input.category, iconName: habitIcon(item.key, input.category) }
+        : item
+    )
+  };
+}
+
 export function toggleHabitForDate(
   state: DashboardState,
   date: string,
@@ -1098,9 +1233,16 @@ export function buildDashboardViewModel(
   const monthScores = monthDays
     .filter((day) => day.inCurrentMonth && state.records[day.date])
     .map((day) => day.fillRatio);
+  const lastSevenDays = Array.from({ length: 7 }, (_, index) => addDaysIso(today, index - 6));
   const habitViews = state.habits.map((habit) => ({
     ...habit,
-    completed: state.records[today]?.completions[habit.id] === true
+    completed: state.records[today]?.completions[habit.id] === true,
+    streak: calculateHabitStreak(state, habit.id, today),
+    weekDots: lastSevenDays.map((date) => ({
+      date,
+      done: isHabitDone(state, date, habit.id),
+      isToday: date === today
+    }))
   }));
 
   return {
