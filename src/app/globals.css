@@ -23,6 +23,53 @@
     --input: 17 51% 92%;
     --ring: 110 29% 37%;
     --radius: 1.5rem;
+
+    /* ——— U0 tokens (spec §2.1). Colour is a ROLE, never decoration. ———
+       Everything above this line is the v2 palette; U1–U4 retire it surface
+       by surface. Contrast is gated by src/app/design-tokens.test.ts. */
+
+    /* Surfaces */
+    --surface-page: #FEFBF3;
+    --surface-card: #FFFDF9;
+    --surface-success: #F2FBF3;
+    --surface-warm: #FEF0D3;
+    --honey-from: #FFF9EC;
+    --honey-to: #FFE9C2;
+
+    /* Lines. Hairlines are decorative; --control-line is the only one a
+       control's boundary may use (WCAG 1.4.11 wants 3:1 there). */
+    --line: #EFE7D8;
+    --line-strong: #E7E0D2;
+    --line-success: #CDEDD2;
+    --line-honey: #F8D793;
+    --control-line: #948877;
+
+    /* Ink. Every value here is AA on --surface-page AND --surface-card, so
+       there is deliberately NO faint-text token: #A8A29E is only 2.5:1. */
+    --ink: #1C1917;
+    --ink-mid: #57534E;
+    --ink-soft: #78716C;
+
+    /* Action — the ONLY primary / streak / link colour. */
+    --action: #B45309;
+    --action-hover: #92400E;
+    --action-ink: #FFFFFF;
+
+    /* Success — fill and ink are different on purpose: #16A34A is 3.2:1,
+       fine for a filled shape, not for text. */
+    --success: #16A34A;
+    --success-ink: #15803D;
+
+    /* Alert — the new-mail badge, and nothing else. */
+    --alert: #E11D48;
+    --alert-ink: #FFFFFF;
+
+    /* Shape + depth */
+    --radius-card: 16px;
+    --radius-control: 12px;
+    --radius-pill: 999px;
+    --shadow-card: 0 1px 2px rgb(120 89 51 / 0.04), 0 8px 24px rgb(120 89 51 / 0.06);
+    --shadow-action: 0 2px 6px rgb(180 83 9 / 0.28);
   }
 
   * {
