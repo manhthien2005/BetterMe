@@ -20,12 +20,20 @@ import {
   pruneFoodLedgers,
   recordGrowthDay,
   rekeyHabit,
+  activeHabits,
+  archivedHabits,
   countCompletedOn,
+  createHabitInState,
+  deleteHabitPermanently,
+  moveHabitInState,
   removeHabitFromState,
+  setHabitArchived,
+  setHabitPaused,
   setHabitEntry,
   switchActivePet,
   toggleHabitForDate,
   trackingIndex,
+  updateHabitFieldsInState,
   updateHabitInState,
   type DashboardState
 } from "@/components/dashboard/dashboard-data";
@@ -939,5 +947,140 @@ describe("calculateHabitStreak with a repeat schedule", () => {
     };
 
     expect(calculateHabitStreak(state, "wake_up", "2026-07-31")).toBe(3);
+  });
+});
+
+describe("habit lifecycle", () => {
+  const draft = {
+    name: "Uống đủ nước",
+    icon: "💧",
+    trackingType: "count" as const,
+    target: 8,
+    unit: "ly",
+    steps: null,
+    repeatDays: [1, 2, 3, 4, 5],
+    timesOfDay: ["morning" as const, "evening" as const],
+    scheduledAt: "21:00",
+    color: "sky" as const,
+    motivation: "Da đẹp, đầu óc tỉnh táo",
+    category: "Health"
+  };
+
+  it("creates a habit carrying every v3 field", () => {
+    const next = createHabitInState(createInitialDashboardState("2026-07-27"), draft);
+    const created = next.habits[next.habits.length - 1];
+
+    expect(created.name).toBe("Uống đủ nước");
+    expect(created.icon).toBe("💧");
+    expect(created.trackingType).toBe("count");
+    expect(created.target).toBe(8);
+    expect(created.unit).toBe("ly");
+    expect(created.repeatDays).toEqual([1, 2, 3, 4, 5]);
+    expect(created.timesOfDay).toEqual(["morning", "evening"]);
+    expect(created.scheduledAt).toBe("21:00");
+    expect(created.color).toBe("sky");
+    expect(created.motivation).toBe("Da đẹp, đầu óc tỉnh táo");
+    expect(created.updatedAt).not.toBeNull();
+  });
+
+  it("refuses a blank name and keeps ids unique", () => {
+    const state = createInitialDashboardState("2026-07-27");
+
+    expect(createHabitInState(state, { ...draft, name: "   " })).toBe(state);
+
+    const once = createHabitInState(state, draft);
+    const twice = createHabitInState(once, draft);
+    const ids = twice.habits.map((habit) => habit.id);
+
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("editing keeps the id, the history, and stamps updatedAt", () => {
+    const base = createHabitInState(createInitialDashboardState("2026-07-27"), draft);
+    const id = base.habits[base.habits.length - 1].id;
+    const logged = setHabitEntry(base, "2026-07-27", id, 8);
+    const edited = updateHabitFieldsInState(logged, id, { ...draft, target: 10, name: "Nước" });
+    const habit = edited.habits.find((item) => item.id === id)!;
+
+    expect(habit.name).toBe("Nước");
+    expect(habit.target).toBe(10);
+    // History survives a tracking-target change untouched (spec §5.1).
+    expect(edited.records["2026-07-27"].entries[id].value).toBe(8);
+  });
+
+  it("changing a target never re-reads yesterday as unfinished", () => {
+    const base = createHabitInState(createInitialDashboardState("2026-07-27"), draft);
+    const id = base.habits[base.habits.length - 1].id;
+    const logged = setHabitEntry(base, "2026-07-26", id, 8);
+
+    expect(logged.records["2026-07-26"].completions[id]).toBe(true);
+
+    const raised = updateHabitFieldsInState(logged, id, { ...draft, target: 10 });
+    const reloaded = migrateDashboardState(JSON.parse(JSON.stringify(raised)), "2026-07-27")!;
+
+    // The day was finished under the rule in force when it was recorded.
+    expect(reloaded.records["2026-07-26"].completions[id]).toBe(true);
+    expect(reloaded.records["2026-07-26"].entries[id].value).toBe(8);
+  });
+
+  it("pausing takes the habit out of the day and resuming brings it back", () => {
+    const base = createHabitInState(createInitialDashboardState("2026-07-27"), {
+      ...draft,
+      repeatDays: [1, 2, 3, 4, 5, 6, 7]
+    });
+    const id = base.habits[base.habits.length - 1].id;
+    const paused = setHabitPaused(base, id, "2026-07-27");
+
+    expect(activeHabits(paused, "2026-07-27").some((habit) => habit.id === id)).toBe(false);
+    expect(
+      activeHabits(setHabitPaused(paused, id, null), "2026-07-27").some((h) => h.id === id)
+    ).toBe(true);
+  });
+
+  it("archiving hides the habit from the day but keeps its history", () => {
+    const base = createHabitInState(createInitialDashboardState("2026-07-27"), draft);
+    const id = base.habits[base.habits.length - 1].id;
+    const logged = setHabitEntry(base, "2026-07-27", id, 8);
+    const archived = setHabitArchived(logged, id, "2026-07-27");
+
+    expect(activeHabits(archived, "2026-07-27").some((habit) => habit.id === id)).toBe(false);
+    expect(archivedHabits(archived).map((habit) => habit.id)).toContain(id);
+    expect(archived.records["2026-07-27"].entries[id].value).toBe(8);
+  });
+
+  it("permanent delete removes the habit and every trace of its log", () => {
+    const base = createHabitInState(createInitialDashboardState("2026-07-27"), draft);
+    const id = base.habits[base.habits.length - 1].id;
+    const logged = setHabitEntry(base, "2026-07-27", id, 8);
+    const gone = deleteHabitPermanently(logged, id, "2026-07-27T09:00:00.000Z");
+
+    expect(gone.habits.some((habit) => habit.id === id)).toBe(false);
+    expect(gone.records["2026-07-27"].entries[id]).toBeUndefined();
+    // A tombstone must survive so the delete beats a stale remote copy.
+    expect(gone.deletedHabits.some((tombstone) => tombstone.key === id)).toBe(true);
+  });
+
+  it("moving a habit swaps it with its neighbour and stops at the ends", () => {
+    const state = createInitialDashboardState("2026-07-27");
+    const first = state.habits[0].id;
+    const second = state.habits[1].id;
+    const moved = moveHabitInState(state, second, -1);
+
+    expect(moved.habits[0].id).toBe(second);
+    expect(moved.habits[1].id).toBe(first);
+    expect(moveHabitInState(state, first, -1)).toBe(state);
+    expect(moveHabitInState(state, state.habits[state.habits.length - 1].id, 1)).toBe(state);
+  });
+
+  it("activeHabits respects the repeat schedule", () => {
+    const base = createHabitInState(createInitialDashboardState("2026-07-27"), {
+      ...draft,
+      repeatDays: [1]
+    });
+    const id = base.habits[base.habits.length - 1].id;
+
+    // 2026-07-27 is a Monday, 2026-07-28 a Tuesday.
+    expect(activeHabits(base, "2026-07-27").some((habit) => habit.id === id)).toBe(true);
+    expect(activeHabits(base, "2026-07-28").some((habit) => habit.id === id)).toBe(false);
   });
 });

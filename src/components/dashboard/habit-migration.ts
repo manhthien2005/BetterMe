@@ -169,12 +169,21 @@ export function migrateEntries(record: {
 }
 
 /**
- * Rebuilds the derived boolean cache from the entries. Cells whose habit no
- * longer exists are dropped — orphans must never survive to be merged back.
+ * Rebuilds the derived boolean cache from the entries.
+ *
+ * A boolean ALREADY stored for a cell is kept exactly as it is: it records
+ * "done under the rule in force when it was written". Re-deriving it would let
+ * a later target change silently take away a day the user really did finish —
+ * raise a water goal from 8 to 10 glasses and yesterday's 8 would turn red.
+ * Spec §5.1 is explicit that history is never re-interpreted.
+ *
+ * Cells whose habit no longer exists are dropped — orphans must never survive
+ * to be merged back.
  */
 export function deriveCompletions(
   entries: Record<string, LogEntry>,
-  trackingByKey: Map<string, HabitTracking>
+  trackingByKey: Map<string, HabitTracking>,
+  stored?: Record<string, boolean>
 ): Record<string, boolean> {
   const completions: Record<string, boolean> = {};
 
@@ -183,7 +192,8 @@ export function deriveCompletions(
 
     if (!tracking) continue;
 
-    completions[key] = isEntryComplete(tracking, entry);
+    completions[key] =
+      typeof stored?.[key] === "boolean" ? stored[key] : isEntryComplete(tracking, entry);
   }
 
   return completions;

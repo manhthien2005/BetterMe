@@ -7,8 +7,12 @@ import {
 import {
   isEntryComplete,
   isScheduledOn,
+  normalizeTimesOfDay,
+  type HabitColor,
   type HabitTracking,
-  type LogEntry
+  type LogEntry,
+  type TimeOfDay,
+  type TrackingType
 } from "@/components/dashboard/habit-model";
 import { DEFAULT_HABITS, habitIcon } from "@/lib/defaults";
 import {
@@ -432,14 +436,8 @@ export function formatEventTime(at: string, today = getDashboardToday()): string
   return `${dayLabel} ${dayMonth} · ${time}`;
 }
 
-export function addHabitToState(
-  state: DashboardState,
-  input: { name: string; category: string }
-): DashboardState {
-  const name = input.name.trim();
-
-  if (!name) return state;
-
+/** Slug id, unique within the state. The exact algorithm ids have always used. */
+function uniqueHabitId(state: DashboardState, name: string): string {
   const slug = name
     .toLowerCase()
     .normalize("NFD")
@@ -456,6 +454,18 @@ export function addHabitToState(
     suffix += 1;
   }
 
+  return id;
+}
+
+export function addHabitToState(
+  state: DashboardState,
+  input: { name: string; category: string }
+): DashboardState {
+  const name = input.name.trim();
+
+  if (!name) return state;
+
+  const id = uniqueHabitId(state, name);
   const habit: DashboardHabit = migrateHabitFields({
     id,
     key: id,
@@ -470,6 +480,164 @@ export function addHabitToState(
     ...state,
     habits: [...state.habits, habit]
   };
+}
+
+export type HabitDraft = {
+  name: string;
+  icon: string;
+  trackingType: TrackingType;
+  target: number;
+  unit: string | null;
+  steps: string[] | null;
+  repeatDays: number[];
+  timesOfDay: TimeOfDay[];
+  scheduledAt: string | null;
+  color: HabitColor;
+  motivation: string;
+  category: string;
+};
+
+function normalizeRepeatDaysForDraft(days: number[]): number[] {
+  const kept = [...new Set(days.filter((day) => day >= 1 && day <= 7))].sort((a, b) => a - b);
+
+  return kept.length > 0 ? kept : [1, 2, 3, 4, 5, 6, 7];
+}
+
+/** The v3 fields a draft carries, shared by create and edit. */
+function draftFields(draft: HabitDraft, nowIso: string) {
+  return {
+    icon: draft.icon,
+    trackingType: draft.trackingType,
+    target: Math.max(1, Math.trunc(draft.target)),
+    unit: draft.trackingType === "count" ? draft.unit : null,
+    steps: draft.trackingType === "checklist" ? draft.steps : null,
+    repeatDays: normalizeRepeatDaysForDraft(draft.repeatDays),
+    timesOfDay: normalizeTimesOfDay(draft.timesOfDay),
+    scheduledAt: draft.scheduledAt,
+    color: draft.color,
+    motivation: draft.motivation.trim().slice(0, 140),
+    updatedAt: nowIso
+  };
+}
+
+export function createHabitInState(
+  state: DashboardState,
+  draft: HabitDraft,
+  nowIso = new Date().toISOString()
+): DashboardState {
+  const name = draft.name.trim().slice(0, 60);
+
+  if (!name) return state;
+
+  const id = uniqueHabitId(state, name);
+  const habit: DashboardHabit = migrateHabitFields({
+    id,
+    key: id,
+    name,
+    category: draft.category,
+    maxScore: 1,
+    description: "",
+    iconName: habitIcon(id, draft.category),
+    ...draftFields(draft, nowIso)
+  });
+
+  return { ...state, habits: [...state.habits, habit] };
+}
+
+/**
+ * Editing never touches the id, the key, or the history — changing how a habit
+ * is tracked leaves old days exactly as they were (spec §5.1).
+ */
+export function updateHabitFieldsInState(
+  state: DashboardState,
+  habitId: string,
+  draft: HabitDraft,
+  nowIso = new Date().toISOString()
+): DashboardState {
+  const name = draft.name.trim().slice(0, 60);
+
+  if (!name || !state.habits.some((habit) => habit.id === habitId)) return state;
+
+  return {
+    ...state,
+    habits: state.habits.map((habit) =>
+      habit.id === habitId
+        ? { ...habit, name, category: draft.category, ...draftFields(draft, nowIso) }
+        : habit
+    )
+  };
+}
+
+function stampHabit(
+  state: DashboardState,
+  habitId: string,
+  patch: Partial<DashboardHabit>,
+  nowIso: string
+): DashboardState {
+  if (!state.habits.some((habit) => habit.id === habitId)) return state;
+
+  return {
+    ...state,
+    habits: state.habits.map((habit) =>
+      habit.id === habitId ? { ...habit, ...patch, updatedAt: nowIso } : habit
+    )
+  };
+}
+
+/** Pause from a date on; `null` resumes. The streak freezes, never resets. */
+export function setHabitPaused(
+  state: DashboardState,
+  habitId: string,
+  pausedFrom: string | null,
+  nowIso = new Date().toISOString()
+): DashboardState {
+  return stampHabit(state, habitId, { pausedAt: pausedFrom }, nowIso);
+}
+
+/** Archive from a date on; `null` restores. History is kept in full. */
+export function setHabitArchived(
+  state: DashboardState,
+  habitId: string,
+  archivedFrom: string | null,
+  nowIso = new Date().toISOString()
+): DashboardState {
+  return stampHabit(state, habitId, { archivedAt: archivedFrom }, nowIso);
+}
+
+/** Reorder by one slot. Out-of-range moves return the same state. */
+export function moveHabitInState(
+  state: DashboardState,
+  habitId: string,
+  direction: -1 | 1
+): DashboardState {
+  const index = state.habits.findIndex((habit) => habit.id === habitId);
+  const target = index + direction;
+
+  if (index < 0 || target < 0 || target >= state.habits.length) return state;
+
+  const habits = [...state.habits];
+
+  [habits[index], habits[target]] = [habits[target], habits[index]];
+
+  return { ...state, habits };
+}
+
+/** Destructive, and only reachable from the archive screen behind a confirm. */
+export function deleteHabitPermanently(
+  state: DashboardState,
+  habitId: string,
+  nowIso = new Date().toISOString()
+): DashboardState {
+  return removeHabitFromState(state, habitId, nowIso);
+}
+
+/** Habits that belong to that day — schedule, pauses and archives applied. */
+export function activeHabits(state: DashboardState, date: string): DashboardHabit[] {
+  return state.habits.filter((habit) => isScheduledOn(habitTracking(habit), date));
+}
+
+export function archivedHabits(state: DashboardState): DashboardHabit[] {
+  return state.habits.filter((habit) => habit.archivedAt !== null);
 }
 
 export function removeHabitFromState(
@@ -591,9 +759,18 @@ export function migrateDashboardState(
   const records: Record<string, DashboardDayRecord> = {};
 
   for (const [date, raw] of Object.entries(candidate.records ?? {})) {
-    const entries = migrateEntries(raw as { completions?: unknown; entries?: unknown });
+    const rawRecord = raw as { completions?: unknown; entries?: unknown };
+    const entries = migrateEntries(rawRecord);
+    // Hand the stored booleans back in so a later target change cannot
+    // re-interpret a finished day (spec §5.1).
+    const stored =
+      rawRecord.completions !== null &&
+      typeof rawRecord.completions === "object" &&
+      !Array.isArray(rawRecord.completions)
+        ? (rawRecord.completions as Record<string, boolean>)
+        : undefined;
 
-    records[date] = { date, entries, completions: deriveCompletions(entries, tracking) };
+    records[date] = { date, entries, completions: deriveCompletions(entries, tracking, stored) };
   }
 
   return {
