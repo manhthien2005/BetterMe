@@ -36,14 +36,17 @@ function record(completions: Record<string, boolean> = {}): DashboardDayRecord {
 function setup(habits: DashboardHabit[], dayRecord = record()) {
   const onSetEntry = vi.fn();
   const onOpenEditor = vi.fn();
+  const onOpenDetail = vi.fn();
   const onCreate = vi.fn();
   const onMove = vi.fn();
 
   render(
     <HabitDayList
       habits={habits}
+      onAdjustEntry={vi.fn()}
       onCreate={onCreate}
       onMove={onMove}
+      onOpenDetail={onOpenDetail}
       onOpenEditor={onOpenEditor}
       onSetEntry={onSetEntry}
       record={dayRecord}
@@ -51,7 +54,7 @@ function setup(habits: DashboardHabit[], dayRecord = record()) {
     />
   );
 
-  return { onSetEntry, onOpenEditor, onCreate, onMove };
+  return { onSetEntry, onOpenEditor, onOpenDetail, onCreate, onMove };
 }
 
 const morning: TimeOfDay[] = ["morning"];
@@ -122,8 +125,10 @@ describe("HabitDayList — rows", () => {
     render(
       <HabitDayList
         habits={[counter]}
+        onAdjustEntry={vi.fn()}
         onCreate={vi.fn()}
         onMove={vi.fn()}
+        onOpenDetail={vi.fn()}
         onOpenEditor={vi.fn()}
         onSetEntry={vi.fn()}
         record={{
@@ -146,6 +151,13 @@ describe("HabitDayList — rows", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Sửa Chạy bộ/ }));
     expect(onOpenEditor).toHaveBeenCalledWith("a");
+  });
+
+  it("keeps a way through to the habit's own detail view", () => {
+    const { onOpenDetail } = setup([habit("a", "Chạy bộ", { timesOfDay: morning })]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Chi tiết thói quen Chạy bộ" }));
+    expect(onOpenDetail).toHaveBeenCalledWith("a");
   });
 
   it("shows the planned time when the habit has one", () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, CirclePlus } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, BarChart3, CirclePlus } from "lucide-react";
 
 import {
   habitTracking,
@@ -38,16 +38,20 @@ function groupLabel(slot: TimeOfDay): string {
  */
 export function HabitDayList({
   habits,
+  onAdjustEntry,
   onCreate,
   onMove,
+  onOpenDetail,
   onOpenEditor,
   onSetEntry,
   record,
   streaks
 }: {
   habits: DashboardHabit[];
+  onAdjustEntry: (habitId: string, delta: number) => void;
   onCreate: () => void;
   onMove: (habitId: string, direction: -1 | 1) => void;
+  onOpenDetail: (habitId: string) => void;
   onOpenEditor: (habitId: string) => void;
   onSetEntry: (habitId: string, value: number) => void;
   record: DashboardDayRecord | undefined;
@@ -102,7 +106,9 @@ export function HabitDayList({
                   entry={record?.entries[habit.id]}
                   habit={habit}
                   key={`${group.slot}:${habit.id}`}
+                  onAdjustEntry={onAdjustEntry}
                   onMove={onMove}
+                  onOpenDetail={onOpenDetail}
                   onOpenEditor={onOpenEditor}
                   onSetEntry={onSetEntry}
                   slot={group.slot}
@@ -121,7 +127,9 @@ export function HabitDayList({
 function HabitRow({
   entry,
   habit,
+  onAdjustEntry,
   onMove,
+  onOpenDetail,
   onOpenEditor,
   onSetEntry,
   slot,
@@ -130,7 +138,9 @@ function HabitRow({
 }: {
   entry: { value: number; completedAt?: string } | undefined;
   habit: DashboardHabit;
+  onAdjustEntry: (habitId: string, delta: number) => void;
   onMove: (habitId: string, direction: -1 | 1) => void;
+  onOpenDetail: (habitId: string) => void;
   onOpenEditor: (habitId: string) => void;
   onSetEntry: (habitId: string, value: number) => void;
   slot: TimeOfDay;
@@ -202,9 +212,19 @@ function HabitRow({
           </span>
         </span>
 
+        <button
+          aria-label={`Chi tiết thói quen ${habit.name}`}
+          className="squishy flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-soft transition hover:bg-surface-warm hover:text-action focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action"
+          onClick={() => onOpenDetail(habit.id)}
+          type="button"
+        >
+          <BarChart3 aria-hidden="true" className="h-4 w-4" />
+        </button>
+
         <HabitEntryControl
           entry={entry}
           habit={habit}
+          onAdjust={(delta) => onAdjustEntry(habit.id, delta)}
           onSet={(value) => onSetEntry(habit.id, value)}
         />
       </div>

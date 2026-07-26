@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 
 import {
+  activeHabits,
   addEventToState,
   addHabitToState,
   adoptPet as adoptPetInState,
@@ -19,8 +20,11 @@ import {
   buildDashboardViewModel,
   buildHabitDetail,
   checkComebackGift,
+  calculateHabitStreak,
   countCompletedOn,
+  createHabitInState,
   createInitialDashboardState,
+  deleteHabitPermanently,
   feedActivePet,
   getBondTier,
   getDashboardToday,
@@ -28,16 +32,23 @@ import {
   grantAllDoneBonus,
   grantFoodForHabitCompletion,
   migrateDashboardState,
+  moveHabitInState,
   openGift as openGiftInState,
   petActivePet,
   recordGrowthDay,
   removeEventFromState,
   removeHabitFromState,
+  setHabitArchived,
   setHabitEntry as setHabitEntryInState,
+  setHabitPaused,
   switchActivePet,
   toggleHabitForDate,
+  updateHabitFieldsInState,
   updateHabitInState,
+  type DashboardDayRecord,
+  type DashboardHabit,
   type DashboardEvent,
+  type HabitDraft,
   type DashboardState,
   type DashboardViewModel,
   type HabitDetail,
@@ -116,6 +127,28 @@ export type AppState = {
   closeHabitDetail: () => void;
   /** Direct write for count / duration / checklist controls (spec §4.2). */
   setHabitEntry: (habitId: string, value: number) => void;
+  /**
+   * Add to today's value. Reads the CURRENT state rather than the rendered
+   * one, so two quick taps in the same React batch both land.
+   */
+  adjustHabitEntry: (habitId: string, delta: number) => void;
+  /** Habits that belong to today — schedule, pauses and archives applied. */
+  todaysHabits: DashboardHabit[];
+  /** Today's log cells. Undefined until the first thing is recorded. */
+  todayRecord: DashboardDayRecord | undefined;
+  /** Every habit, including the archived ones — the archive screen reads this. */
+  allHabits: DashboardHabit[];
+  /** Per-habit streak, keyed by habit id, for the day list's 🔥 chips. */
+  habitStreaks: Record<string, number>;
+  /** null = the sheet is closed; "" = creating; an id = editing that habit. */
+  editingHabitId: string | null;
+  openHabitEditor: (habitId: string | null) => void;
+  closeHabitEditor: () => void;
+  submitHabitDraft: (draft: HabitDraft) => void;
+  pauseHabit: (habitId: string, paused: boolean) => void;
+  archiveHabit: (habitId: string, archived: boolean) => void;
+  moveHabit: (habitId: string, direction: -1 | 1) => void;
+  deleteHabitForever: (habitId: string) => void;
   addEvent: (input: {
     title: string;
     at: string;
@@ -175,6 +208,8 @@ export function StateProvider({
   const [visitingFriendId, setVisitingFriendId] = useState<string | null>(null);
   const [detailHabitId, setDetailHabitId] = useState<string | null>(null);
   const [newSocialCount, setNewSocialCount] = useState(0);
+  // null = closed · "" = creating a new habit · an id = editing that habit.
+  const [editingHabitId, setEditingHabitId] = useState<string | null>(null);
   // The engine reads state through this ref so merges/flushes always see the
   // latest value synchronously — even mid-flush, before React re-renders.
   const stateRef = useRef(state);
@@ -185,6 +220,14 @@ export function StateProvider({
   const bumpedDateRef = useRef<string | null>(null);
   const viewModel = useMemo(() => buildDashboardViewModel(state, today), [state, today]);
   const activePet = viewModel.companion.activePet;
+  const todaysHabits = useMemo(() => activeHabits(state, today), [state, today]);
+  const habitStreaks = useMemo(
+    () =>
+      Object.fromEntries(
+        todaysHabits.map((habit) => [habit.id, calculateHabitStreak(state, habit.id, today)])
+      ),
+    [state, today, todaysHabits]
+  );
   const habitDetail = useMemo(
     () => (detailHabitId ? buildHabitDetail(state, detailHabitId, today) : null),
     [detailHabitId, state, today]
@@ -520,11 +563,14 @@ export function StateProvider({
    * caps per day, so paying on both paths can never double-reward.
    */
   function setEntry(habitId: string, value: number) {
-    const before = countCompletedOn(state, today);
-    let next = setHabitEntryInState(state, today, habitId, value, clockHHmm());
+    // `stateRef` rather than `state`: a second press inside the same React
+    // batch must build on the first one's result, not on the rendered state.
+    const base = stateRef.current;
+    const before = countCompletedOn(base, today);
+    let next = setHabitEntryInState(base, today, habitId, value, clockHHmm());
     const after = countCompletedOn(next, today);
 
-    if (after === before && next === state) return;
+    if (after === before && next === base) return;
 
     const total = viewModel.today.totalHabits;
     const justCompleted = after > before;
@@ -535,13 +581,13 @@ export function StateProvider({
       window.setTimeout(() => setCelebrate(false), 1300);
     }
 
-    if (justCompleted && state.companion.activeSpecies) {
+    if (justCompleted && base.companion.activeSpecies) {
       next = grantFoodForHabitCompletion(next, today, after, total);
       next = recordGrowthDay(next, today);
 
       if (completesTheDay) next = grantAllDoneBonus(next, today);
 
-      speakAfter(next, state, completesTheDay ? "allDone" : "habitDone");
+      speakAfter(next, base, completesTheDay ? "allDone" : "habitDone");
     }
 
     commitState(next);
@@ -560,6 +606,95 @@ export function StateProvider({
       markCompanionDirty();
       maybeBumpSharedRhythms();
     }
+  }
+
+  /**
+   * Creating and editing share one submit path — the sheet does not know
+   * which it is doing, only what the draft says. The server contract is still
+   * v2-shaped (U1c widens it), so the upsert carries the fields it can.
+   */
+  function submitHabitDraft(draft: HabitDraft) {
+    const editing = editingHabitId !== null && editingHabitId !== "";
+    const next = editing
+      ? updateHabitFieldsInState(state, editingHabitId, draft)
+      : createHabitInState(state, draft);
+
+    if (next === state) return;
+
+    const habit = editing
+      ? next.habits.find((item) => item.id === editingHabitId)
+      : next.habits[next.habits.length - 1];
+
+    commitState(next);
+    setEditingHabitId(null);
+
+    if (habit) {
+      markSyncDirty({
+        kind: "upsertHabit",
+        habit: {
+          key: habit.id,
+          name: habit.name,
+          category: habit.category,
+          maxScore: habit.maxScore,
+          active: habit.archivedAt === null,
+          description: habit.description,
+          sortOrder: next.habits.findIndex((item) => item.id === habit.id)
+        },
+        clientTs: new Date().toISOString(),
+        ...(editing ? {} : { expectCreate: true })
+      });
+    }
+
+    toast.success(editing ? "Đã cập nhật thói quen 🌿" : "Đã trồng thói quen mới 🌱");
+  }
+
+  function pauseHabit(habitId: string, paused: boolean) {
+    const next = setHabitPaused(state, habitId, paused ? today : null);
+
+    if (next === state) return;
+
+    commitState(next);
+    setEditingHabitId(null);
+    toast(paused ? "Đã tạm dừng — chuỗi vẫn giữ nguyên 🍃" : "Chào mừng quay lại 🌱");
+  }
+
+  function archiveHabit(habitId: string, archived: boolean) {
+    const next = setHabitArchived(state, habitId, archived ? today : null);
+
+    if (next === state) return;
+
+    commitState(next);
+    setEditingHabitId(null);
+    toast(archived ? "Đã cất vào Lưu trữ — lịch sử vẫn còn nguyên 🗃" : "Đã đưa trở lại 🌱");
+  }
+
+  function moveHabit(habitId: string, direction: -1 | 1) {
+    const next = moveHabitInState(state, habitId, direction);
+
+    if (next !== state) commitState(next);
+  }
+
+  /** Destructive, and only reachable from the archive screen behind a confirm. */
+  function deleteHabitForever(habitId: string) {
+    const deletedAt = new Date().toISOString();
+    const next = deleteHabitPermanently(state, habitId, deletedAt);
+
+    if (next === state) return;
+
+    commitState(next);
+    // Tombstone (sync §2.4): the delete must beat any stale remote copy.
+    markSyncDirty({ kind: "deleteHabit", habitKey: habitId, deletedAt });
+  }
+
+  /**
+   * "+1 ly" pressed twice before React re-renders must count twice. Reading
+   * `state` from the render closure would make both presses compute the same
+   * new value and silently drop one; `stateRef` is always current.
+   */
+  function adjustEntry(habitId: string, delta: number) {
+    const current = stateRef.current.records[today]?.entries[habitId]?.value ?? 0;
+
+    setEntry(habitId, current + delta);
   }
 
   function feedPet() {
@@ -766,6 +901,19 @@ export function StateProvider({
     clearSocialBadge,
     toggleHabit,
     setHabitEntry: setEntry,
+    adjustHabitEntry: adjustEntry,
+    todaysHabits,
+    todayRecord: state.records[today],
+    allHabits: state.habits,
+    habitStreaks,
+    editingHabitId,
+    openHabitEditor: setEditingHabitId,
+    closeHabitEditor: () => setEditingHabitId(null),
+    submitHabitDraft,
+    pauseHabit,
+    archiveHabit,
+    moveHabit,
+    deleteHabitForever,
     addHabit,
     removeHabit,
     saveHabitEdit,

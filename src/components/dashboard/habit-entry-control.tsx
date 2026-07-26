@@ -24,10 +24,13 @@ const DURATION_STEP = 5;
 export function HabitEntryControl({
   entry,
   habit,
+  onAdjust,
   onSet
 }: {
   entry: LogEntry | undefined;
   habit: DashboardHabit;
+  /** Adds to today's value. Falls back to onSet when the caller omits it. */
+  onAdjust?: (delta: number) => void;
   onSet: (value: number) => void;
 }) {
   const tracking = habitTracking(habit);
@@ -89,7 +92,9 @@ export function HabitEntryControl({
       ) : (
         <button
           className="squishy flex min-h-[44px] items-center rounded-pill bg-action px-3.5 text-xs font-semibold text-action-ink shadow-action transition hover:bg-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
-          onClick={() => onSet(progress.done + step)}
+          onClick={() =>
+            onAdjust ? onAdjust(step) : onSet(progress.done + step)
+          }
           type="button"
         >
           {`+${step} ${unitLabel}`}
