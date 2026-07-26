@@ -1,7 +1,7 @@
 # HANDOFF — Nếp's Garden / Vườn Có Bạn
 
-> **Ngày cập nhật:** 2026-07-27 · **Trạng thái tree:** sạch, 4 gates xanh (**360/360 test, 38 file**)
-> **Nhánh:** `u1a-habit-model-v3` (U0 đã merge vào `main`) · File này là điểm vào duy nhất cho người nhận bàn giao.
+> **Ngày cập nhật:** 2026-07-27 · **Trạng thái tree:** sạch, 4 gates xanh (**432/432 test, 43 file**)
+> **Nhánh:** `u1b-editor-and-day-view` (U0 + U1a đã merge vào `main`) · File này là điểm vào duy nhất cho người nhận bàn giao.
 > Quy ước cho agent: đọc `AGENTS.md`. Spec hành vi: `docs/superpowers/specs/`.
 
 ---
@@ -25,7 +25,8 @@ App: **Nếp's Garden** — habit tracker tiếng Việt, cozy, có pet nuôi đ
 
 | Commit | Nội dung |
 |---|---|
-| `u1a-habit-model-v3` (4 commit, chưa merge) | **U1a habit model v3**: 4 kiểu theo dõi (check/count/duration/checklist), lịch lặp theo thứ, buổi, tạm dừng/lưu trữ; ô log thành `{ value, completedAt? }` với `completions` còn lại làm cache dẫn xuất; migration v2→v3 idempotent; khoá `betterme.dashboard.v3` (v2 chỉ-đọc, là ảnh chụp rollback); chuỗi riêng tôn trọng lịch lặp. Giao diện **không đổi một chút nào** |
+| `u1b-editor-and-day-view` (7 commit, chưa merge) | **U1b editor + day view**: sheet tạo/sửa habit (5 mẫu 1 chạm, gợi ý emoji theo tên, 4 kiểu theo dõi, lặp theo thứ, nhiều buổi, giờ dự kiến, 6 màu thẻ, ghi chú động lực) · day view nhóm theo buổi với điều khiển riêng từng kiểu · tạm dừng/lưu trữ/sắp xếp · màn `/nep/archive` xoá vĩnh viễn 2 bước |
+| `d287f42` (PR #2) | **U1a habit model v3**: 4 kiểu theo dõi (check/count/duration/checklist), lịch lặp theo thứ, buổi, tạm dừng/lưu trữ; ô log thành `{ value, completedAt? }` với `completions` còn lại làm cache dẫn xuất; migration v2→v3 idempotent; khoá `betterme.dashboard.v3` (v2 chỉ-đọc, là ảnh chụp rollback); chuỗi riêng tôn trọng lịch lặp. Giao diện **không đổi một chút nào** |
 | `07cea7b` (PR #1) | **U0 đại tu UI**: design token + gate tương phản AA, font Bricolage/Be Vietnam Pro, bộ `ui/` (Button 3 cấp, Card, Chip, Icon, NavRail, BottomTabBar), `StateProvider`, 4 route trong group `(app)`, badge tin mới. Kèm `fix`: `.font-display` trước nay vô hiệu vì fallback `Baloo 2` không phải ident CSS hợp lệ — mọi tiêu đề đang rơi về font body |
 | `b3a372e` | **Spec đại tu UI/UX**: 4 không gian, habit model v3, luật streak + 🍃 lá chắn, Nếp & 4 tính năng mới, lộ trình U0→U4 + 5 mockup đã duyệt |
 | `bc2ea68` | **Agent instruction layer**: `AGENTS.md` + `.kiro/` (steering, skills: verification / schema conventions / sync-engine / pet-voice / ui-styling / ui-ux-pro-max). `.gitignore` chặn `__pycache__`, giữ `.kiro/settings/mcp.json` (token) ngoài git |
@@ -91,8 +92,8 @@ pnpm dev         # next dev
   1. `entries` là nguồn chân lý, `completions` ở lại làm **cache dẫn xuất** (spec §9.3 đọc thẳng là thay thế hẳn). Lý do: server contract còn nói `done: boolean` tới tận U1c; và giữ lại thì 304 test cũ thành lưới an toàn thật cho migration. Luật: chỉ `setHabitEntry` được ghi cả hai, có test invariant chặn drift.
   2. `completedAt` lưu `"HH:mm"` giờ địa phương, không phải ISO đầy đủ — Giờ vàng chỉ cần giờ trong ngày, và tránh bẫy múi giờ khi U1c đẩy lên server.
   3. `repeatDays` dùng số ISO 1–7 (1 = Thứ Hai), khớp cột T2→CN.
-- **U1b — kế tiếp**: emoji picker, form tạo nhanh + tinh chỉnh sâu, day view nhóm theo buổi, điều khiển theo từng kiểu, kéo-thả, màn Lưu trữ.
-- **U1c**: đẩy `value`/`completedAt` + field định nghĩa v3 qua sync — cần cột mới trong `supabase/schema.sql`, soát `merge.ts`/`importer.ts` từng field, ghi "Amendment 2026-07-26" vào cuối spec social. **PR riêng** vì đụng schema DB thật.
+- **U1b — XONG** (nhánh `u1b-editor-and-day-view`, 7 commit, 432 test xanh). Plan: `docs/superpowers/plans/2026-07-27-u1b-editor-and-day-view.md`. Quyết định: một habit thuộc **nhiều buổi** (owner chốt 2026-07-27, khác cách đọc số ít của spec §5.1) · "Cả ngày" loại trừ các buổi khác · habit ở 2 buổi hiện ở cả 2 nhóm nhưng là MỘT ô log, bản lặp có nhãn "cũng ở …" · bỏ chọn thứ cuối cùng bị **từ chối** thay vì âm thầm reset về cả 7 · editor không có ô "nhóm" (category mặc định `Discipline`).
+- **U1c — kế tiếp**: đẩy `value`/`completedAt` + field định nghĩa v3 qua sync — cần cột mới trong `supabase/schema.sql`, soát `merge.ts`/`importer.ts` từng field, ghi "Amendment 2026-07-26" vào cuối spec social. **PR riêng** vì đụng schema DB thật.
 
 ⚠️ **Rollback U1a rất rẻ:** v2 vẫn nằm nguyên trong localStorage, không bị ghi đè. Muốn quay lại chỉ cần xoá khoá `betterme.dashboard.v3` trong DevTools → Application → Local Storage. Vẫn nên export JSON để backup trước khi dùng dữ liệu thật lâu dài.
 
