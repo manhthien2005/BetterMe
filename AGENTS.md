@@ -38,10 +38,9 @@ Current state: 574 tests green. Social Garden Phases 0–3 are all committed; au
 email+password with a signup OTP (see `docs/auth-email-config.md`). UI overhaul: **U0** (design
 tokens, fonts, `ui/` primitives, four-space shell), **U1a** (habit model v3 + v2→v3 migration),
 **U1b** (habit editor, day view grouped by part of the day, archive screen) and **U1c** (the sync
-contract speaks v3) are all merged into `main`; **U2a** (sky hero, `ProgressRing`, `TabSwitch`,
-weather lifted into the provider) is on branch `u2-hero-and-week`; **U2b** (the Hôm nay/Tuần này
-switch, the T2→CN week grid, and the hero's dots turned into that same week) is on branch
-`u2b-day-week-tabs`.
+contract speaks v3) and **U2a** (sky hero, `ProgressRing`, `TabSwitch`, weather lifted into the
+provider) are all merged into `main`; **U2b** (the Hôm nay/Tuần này switch, the T2→CN week grid,
+and the hero's dots turned into that same week) is on branch `u2b-day-week-tabs`.
 
 ⚠️ **U1c needs `supabase/schema.sql` applied to Supabase BEFORE the app deploys.** Reversing the
 order loses no data (the client classes `PGRST202` as retryable, so the queue re-pushes), but sync
