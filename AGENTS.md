@@ -34,13 +34,15 @@ Breaking either is a failure, not a tradeoff. If a request seems to require it, 
 - In shell calls, use PowerShell-safe commands — no `head`/`grep`/`|` unix pipes. Prefer the
   dedicated read/search tools over shell for reading and searching.
 
-Current state: 574 tests green. Social Garden Phases 0–3 are all committed; auth is live
+Current state: 595 tests green. Social Garden Phases 0–3 are all committed; auth is live
 email+password with a signup OTP (see `docs/auth-email-config.md`). UI overhaul: **U0** (design
 tokens, fonts, `ui/` primitives, four-space shell), **U1a** (habit model v3 + v2→v3 migration),
-**U1b** (habit editor, day view grouped by part of the day, archive screen) and **U1c** (the sync
-contract speaks v3) and **U2a** (sky hero, `ProgressRing`, `TabSwitch`, weather lifted into the
-provider) are all merged into `main`; **U2b** (the Hôm nay/Tuần này switch, the T2→CN week grid,
-and the hero's dots turned into that same week) is on branch `u2b-day-week-tabs`.
+**U1b** (habit editor, day view grouped by part of the day, archive screen), **U1c** (the sync
+contract speaks v3), **U2a** (sky hero, `ProgressRing`, `TabSwitch`, weather lifted into the
+provider) and **U2b** (the Hôm nay/Tuần này switch, the T2→CN week grid, and the hero's dots turned
+into that same week) are all merged into `main`; **U2c** (weather and music shrunk to two chips with
+popovers, plus the desktop "sân sau" holding a condensed Nếp card) is on branch
+`u2c-widget-chips-and-backyard`. That completes U2 — U3 and U4 are still open.
 
 ⚠️ **U1c needs `supabase/schema.sql` applied to Supabase BEFORE the app deploys.** Reversing the
 order loses no data (the client classes `PGRST202` as retryable, so the queue re-pushes), but sync
@@ -63,12 +65,14 @@ lucide-react · Remotion 4 · Vitest + Testing Library (jsdom). Node ≥ 20.9, p
   `nav-items.ts`, and one file per space (`today-page.tsx`, `calendar-page.tsx`, `nep-page.tsx`,
   `friends-page.tsx`).
 - `src/components/ui/**` — design-token primitives: `button.tsx` (3 tiers), `card.tsx`, `chip.tsx`,
-  `icon.tsx`, `nav-rail.tsx`, `bottom-tab-bar.tsx`, `progress-ring.tsx`, `tab-switch.tsx`.
+  `icon.tsx`, `nav-rail.tsx`, `bottom-tab-bar.tsx`, `popover.tsx`, `progress-ring.tsx`,
+  `tab-switch.tsx`.
 - `src/components/dashboard/**` — the panels each space renders: `dashboard-data.ts` (pure state +
   pet economy), `habit-day-list.tsx` + `habit-entry-control.tsx` + `habit-editor-sheet.tsx` (the
   day view and the create/edit sheet), `hero-banner.tsx` + `sky.ts` (the sky hero),
   `calendar-panel.tsx`, `pet.tsx` / `pet-voice.ts` (companion + VN voice), `friends-card.tsx`,
-  `garden-visit-overlay.tsx`, `sync-onboarding.tsx`.
+  `garden-visit-overlay.tsx`, `sync-onboarding.tsx`, `widget-chips.tsx` (the two chips and their
+  popovers), `nep-mini-card.tsx` (the backyard's Nếp).
 - `src/lib/sync/**` — local-first sync engine (queue, shadow LWW, merge laws, importer, engine,
   and `payloads.ts` — the only place local state becomes a wire payload).
 - `tests/schema-contract.test.ts` — reads `supabase/schema.sql` as text; the only gate on SQL,
@@ -149,6 +153,24 @@ lucide-react · Remotion 4 · Vitest + Testing Library (jsdom). Node ≥ 20.9, p
   breakpoint, or it is announced twice.
 - **Weather lives in `StateProvider`** — one fetch for the whole app, exposed as `app.weather`.
   The hero and the weather card read the same object, so they can never show two different numbers.
+- **There is exactly one popover**: `src/components/ui/popover.tsx`, wrapping Radix. Do not
+  hand-roll one — focus trapping, Escape, click-outside and viewport-aware positioning are four
+  things a hand-rolled popover gets subtly wrong, and each is invisible until someone uses a
+  keyboard. `forceMount` must reach BOTH the `Portal` and the `Content` (the Portal unmounts its
+  subtree), and Radix gives a force-mounted panel only `data-state` — hiding a closed one with
+  `hidden` + `aria-hidden` is the caller's job, which is why the music chip is controlled.
+  Radix portals to `document.body`, so tests must query via `screen`, never `container`.
+- **Weather and music are chips, not a column** (spec §4.3). `widget-chips.tsx` renders two
+  triggers under the habit list and `weather-card.tsx` / `spotify-card.tsx` live inside their
+  popovers. The Spotify iframe stays mounted while closed (owner's call, 2026-07-27) so shutting
+  the chip does not stop the music.
+- **The backyard is desktop-only and prop-driven** (spec §4.4). `<aside aria-label="Sân sau">` is
+  `hidden xl:grid`; Nếp does not vanish on a phone because `/nep` is its real home. `NepMiniCard`
+  takes props rather than reading `useAppState()`, so it can be tested at every pet state without
+  driving the provider there. It shows bond as a BAR — the app's one ring belongs to the day's
+  completion, and a second ring beside it would read as two competing scores.
+- **Spotify green (`#1db954`) and its dark ground are BRAND, not roles** — a deliberate, documented
+  exception to "colour is a role". Shadow and radius still come from repo tokens.
 - **A week cell tells `off`, `future`, `empty` and `missed` apart** (`week-model.ts`). They all look
   like "not done" and mean four different things: a weekday the habit was never scheduled for, a day
   that has not arrived, TODAY with nothing on it yet (still the user's to spend), and a day that
