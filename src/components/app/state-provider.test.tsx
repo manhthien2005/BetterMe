@@ -7,6 +7,8 @@ import {
   createInitialDashboardState,
   getDashboardToday
 } from "@/components/dashboard/dashboard-data";
+import { weekdayIso } from "@/components/dashboard/habit-model";
+import { addDaysIso, getWeekStartIso } from "@/lib/date";
 
 function Probe() {
   const app = useAppState();
@@ -45,6 +47,36 @@ function Probe() {
         type="button"
       >
         bump twice
+      </button>
+      <span data-testid="week-days">{app.weekGrid.days.length}</span>
+      <span data-testid="week-start">{app.weekGrid.weekStart}</span>
+      <span data-testid="week-done">{app.weekGrid.total.done}</span>
+      <span data-testid="last-week-done">{app.lastWeekDone}</span>
+      <span data-testid="rows-without-streak">
+        {app.weekGrid.rows.filter((row) => app.habitStreaks[row.habit.id] === undefined).length}
+      </span>
+      <button
+        onClick={() =>
+          app.submitHabitDraft({
+            name: "Chạy bộ",
+            icon: "🏃",
+            trackingType: "check",
+            target: 1,
+            unit: null,
+            steps: null,
+            // One weekday only, and never today — the case the week grid shows
+            // a row for but the day list never mentions.
+            repeatDays: [weekdayIso(addDaysIso(getDashboardToday(), 1))],
+            timesOfDay: ["anytime"],
+            scheduledAt: null,
+            color: "sky",
+            motivation: "",
+            category: "Health"
+          })
+        }
+        type="button"
+      >
+        add one-weekday habit
       </button>
     </div>
   );
@@ -216,5 +248,63 @@ describe("adjustHabitEntry", () => {
 
     // Reading the rendered state instead of the ref would drop one press.
     expect(Number(screen.getByTestId("value").textContent)).toBe(before + 2);
+  });
+});
+
+describe("the week the provider hands down", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new Error("offline"))));
+  });
+
+  it("is built once here, so no page has to compute a week of its own", () => {
+    renderProbe();
+
+    // Seven columns from the first render, before the user records anything —
+    // a week is a calendar fact, not a consequence of having data.
+    expect(screen.getByTestId("week-days").textContent).toBe("7");
+    expect(screen.getByTestId("week-start").textContent).toBe(
+      getWeekStartIso(getDashboardToday())
+    );
+  });
+
+  it("moves the week's tally when a habit is ticked", () => {
+    renderProbe();
+
+    const before = Number(screen.getByTestId("week-done").textContent);
+
+    fireEvent.click(screen.getByRole("button", { name: "tick" }));
+
+    // A memo keyed on something narrower than `state` would leave this frozen.
+    expect(Number(screen.getByTestId("week-done").textContent)).toBe(before + 1);
+  });
+
+  it("carries last week's total separately from this week's", () => {
+    renderProbe();
+
+    // Seeded history stops at the cutover, so the number is whatever the seed
+    // left — what matters is that it is a real number and not undefined.
+    expect(Number.isNaN(Number(screen.getByTestId("last-week-done").textContent))).toBe(false);
+
+    const lastWeek = Number(screen.getByTestId("last-week-done").textContent);
+
+    fireEvent.click(screen.getByRole("button", { name: "tick" }));
+
+    // Ticking TODAY must not touch last week's count — if it moves, the two
+    // windows are sharing a range and the comparison compares a week to itself.
+    expect(Number(screen.getByTestId("last-week-done").textContent)).toBe(lastWeek);
+  });
+
+  it("has a streak for every row it shows, including habits not on today", () => {
+    // habitStreaks was built for the day list, so it only covered today's
+    // habits. The week grid shows a row for a habit that repeats on ONE other
+    // weekday — that row's 🔥 would read 0 for a habit with a live streak.
+    renderProbe();
+
+    expect(screen.getByTestId("rows-without-streak").textContent).toBe("0");
+
+    fireEvent.click(screen.getByRole("button", { name: "add one-weekday habit" }));
+
+    expect(screen.getByTestId("rows-without-streak").textContent).toBe("0");
   });
 });

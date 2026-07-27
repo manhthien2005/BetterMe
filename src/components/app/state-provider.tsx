@@ -265,12 +265,16 @@ export function StateProvider({
   const viewModel = useMemo(() => buildDashboardViewModel(state, today), [state, today]);
   const activePet = viewModel.companion.activePet;
   const todaysHabits = useMemo(() => activeHabits(state, today), [state, today]);
+  // Keyed on EVERY habit, not just today's: the week grid shows a row for a
+  // habit that repeats on Tuesday only, and that row needs its 🔥 on a Monday
+  // too. The day list looks its habits up by id, so the extra keys cost it
+  // nothing.
   const habitStreaks = useMemo(
     () =>
       Object.fromEntries(
-        todaysHabits.map((habit) => [habit.id, calculateHabitStreak(state, habit.id, today)])
+        state.habits.map((habit) => [habit.id, calculateHabitStreak(state, habit.id, today)])
       ),
-    [state, today, todaysHabits]
+    [state, today]
   );
   const habitDetail = useMemo(
     () => (detailHabitId ? buildHabitDetail(state, detailHabitId, today) : null),
