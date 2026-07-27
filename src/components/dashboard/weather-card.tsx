@@ -16,55 +16,55 @@ type WeatherMetric = {
   icon: LucideIcon;
   /** Animation utility that plays on tile hover/focus (globals.css). */
   motion: string;
-  tint: string;
-  chip: string;
 };
 
+// The four tiles used to be tinted one colour each (dawn / matcha / butter).
+// Under "colour is a role" a humidity reading is not a role — it is data — so
+// they now share the neutral warm surface and the icon shape carries the
+// difference. WCAG 1.4.1 is happier for it: the label was always the real
+// signal.
 const WEATHER_METRICS: WeatherMetric[] = [
   {
     key: "humidity",
     label: "Độ ẩm",
     value: (snapshot) => snapshot?.humidity ?? "–",
     icon: Droplets,
-    motion: "wx-humidity",
-    tint: "text-dawn-deep",
-    chip: "bg-dawn/20"
+    motion: "wx-humidity"
   },
   {
     key: "wind",
     label: "Gió",
     value: (snapshot) => snapshot?.wind ?? "–",
     icon: Wind,
-    motion: "wx-wind",
-    tint: "text-matcha-deep",
-    chip: "bg-matcha/15"
+    motion: "wx-wind"
   },
   {
     key: "rain",
     label: "Mưa",
     value: (snapshot) => snapshot?.rainChance ?? "–",
     icon: CloudRain,
-    motion: "wx-rain",
-    tint: "text-dawn-deep",
-    chip: "bg-dawn/20"
+    motion: "wx-rain"
   },
   {
     key: "uv",
     label: "UV",
     value: (snapshot) => snapshot?.uvIndex ?? "–",
     icon: Sun,
-    motion: "wx-uv",
-    tint: "text-honey",
-    chip: "bg-butter/35"
+    motion: "wx-uv"
   }
 ];
 
 /**
- * The Weather hero, now live: Open-Meteo current conditions (no API key) for a
- * user-picked place — default Sài Gòn, changeable by city search or the
- * device's location, persisted in betterme.widgets.v1. While loading or when
- * the network fails the shell stays put with gentle placeholders; values are
- * real text for accessibility, and the icon tiles keep their ambient motion.
+ * The weather detail, live from Open-Meteo (no API key) for a user-picked place
+ * — default Sài Gòn, changeable by city search or the device's location,
+ * persisted in betterme.widgets.v1. While loading or when the network fails the
+ * shell stays put with gentle placeholders; values are real text for
+ * accessibility, and the icon tiles keep their ambient motion.
+ *
+ * Since U2c this lives inside the weather chip's popover (spec §4.3) rather
+ * than owning a column. That is why it renders a plain `<div>` and no longer
+ * reserves a 280px minimum: the popover is already a labelled region, and a
+ * floor height inside one only buys empty space.
  */
 export function WeatherCard() {
   // The reading itself belongs to StateProvider — one fetch for the whole app,
@@ -119,143 +119,134 @@ export function WeatherCard() {
   }
 
   return (
-    <section
-      aria-labelledby="weather-heading"
-      className="soft-panel card-lift dawn-band relative overflow-hidden rounded-lg p-4 sm:p-5"
-    >
-      <div className="relative z-10 flex min-h-[280px] flex-col justify-between gap-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-dawn-deep">
-              <MapPin aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2.6} />
-              <h2 className="truncate font-display text-xl font-bold text-plum" id="weather-heading">
-                {place.name}
-              </h2>
-              <button
-                aria-label="Đổi nơi xem thời tiết"
-                className="squishy flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-mauve transition hover:bg-white/70 hover:text-plum focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep"
-                onClick={() => {
-                  setEditing((current) => !current);
-                  setEditNote(null);
-                }}
-                type="button"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <p className="mt-1 text-sm font-bold text-mauve">
-              {status === "ready" && snapshot
-                ? snapshot.condition
-                : status === "loading"
-                  ? "Đang ngó trời…"
-                  : "Chưa lấy được thời tiết"}
-            </p>
+    <div className="grid gap-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 text-ink-mid">
+            <MapPin aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2.6} />
+            <h2 className="truncate font-display text-xl font-bold text-ink" id="weather-heading">
+              {place.name}
+            </h2>
+            <button
+              aria-label="Đổi nơi xem thời tiết"
+              className="squishy flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-mid transition hover:bg-surface-warm hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action"
+              onClick={() => {
+                setEditing((current) => !current);
+                setEditNote(null);
+              }}
+              type="button"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
           </div>
-          <span
-            aria-label={snapshot?.emojiLabel ?? "Thời tiết"}
-            className="weather-emoji wx-float"
-            role="img"
-          >
-            {status === "ready" && snapshot ? snapshot.emoji : "☁️"}
-          </span>
+          <p className="mt-1 text-sm font-bold text-ink-mid">
+            {status === "ready" && snapshot
+              ? snapshot.condition
+              : status === "loading"
+                ? "Đang ngó trời…"
+                : "Chưa lấy được thời tiết"}
+          </p>
         </div>
+        <span
+          aria-label={snapshot?.emojiLabel ?? "Thời tiết"}
+          className="weather-emoji wx-float"
+          role="img"
+        >
+          {status === "ready" && snapshot ? snapshot.emoji : "☁️"}
+        </span>
+      </div>
 
-        {editing ? (
-          <form className="rounded-2xl border border-wafer bg-white/80 p-3" onSubmit={handleSearch}>
-            <label className="sr-only" htmlFor="weather-place-input">
-              Tên thành phố
-            </label>
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                autoFocus
-                className="h-9 min-w-0 flex-1 rounded-full border border-wafer bg-white px-3 text-sm font-semibold text-plum placeholder:text-mauve/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep"
-                id="weather-place-input"
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="vd. Hà Nội, Đà Lạt…"
-                value={query}
-              />
+      {editing ? (
+        <form
+          className="rounded-card border border-line bg-surface-warm p-3"
+          onSubmit={handleSearch}
+        >
+          <label className="sr-only" htmlFor="weather-place-input">
+            Tên thành phố
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              autoFocus
+              className="h-9 min-w-0 flex-1 rounded-pill border border-line-control bg-surface-card px-3 text-sm font-semibold text-ink placeholder:text-ink-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action"
+              id="weather-place-input"
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="vd. Hà Nội, Đà Lạt…"
+              value={query}
+            />
+            <button
+              className="squishy rounded-pill bg-action px-3 py-1.5 text-sm font-bold text-action-ink transition hover:bg-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2 focus-visible:ring-offset-surface-card"
+              type="submit"
+            >
+              Tìm
+            </button>
+            <button
+              aria-label="Dùng vị trí của máy"
+              className="squishy flex h-9 w-9 items-center justify-center rounded-full border border-line-control bg-surface-card text-ink-mid transition hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action"
+              onClick={useDeviceLocation}
+              type="button"
+            >
+              <LocateFixed className="h-4 w-4" />
+            </button>
+          </div>
+          {editNote ? <p className="mt-2 text-xs font-bold text-ink-mid">{editNote}</p> : null}
+        </form>
+      ) : null}
+
+      <div>
+        <p className="font-display text-5xl font-bold text-ink">
+          {status === "ready" && snapshot ? snapshot.temperature : "–"}
+        </p>
+        <p className="mt-1 text-sm font-bold text-ink-mid">
+          {status === "ready" && snapshot ? `Cảm giác như ${snapshot.feelsLike}` : " "}
+        </p>
+        <p className="mt-3 text-sm font-semibold leading-6 text-ink-mid">
+          {status === "ready" && snapshot ? (
+            snapshot.planningNote
+          ) : status === "error" ? (
+            <>
+              Mạng đang nghỉ ngơi một chút.{" "}
               <button
-                className="squishy rounded-full bg-matcha-deep px-3 py-1.5 text-sm font-bold text-white transition hover:bg-[#3F6637] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep"
-                type="submit"
-              >
-                Tìm
-              </button>
-              <button
-                aria-label="Dùng vị trí của máy"
-                className="squishy flex h-9 w-9 items-center justify-center rounded-full border border-wafer bg-white text-mauve transition hover:text-plum focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep"
-                onClick={useDeviceLocation}
+                className="font-bold text-action underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action"
+                onClick={refreshWeather}
                 type="button"
               >
-                <LocateFixed className="h-4 w-4" />
+                Thử lại nhé
               </button>
-            </div>
-            {editNote ? (
-              <p className="mt-2 text-xs font-bold text-mauve">{editNote}</p>
-            ) : null}
-          </form>
-        ) : null}
-
-        <div>
-          <p className="font-display text-5xl font-bold text-plum sm:text-6xl">
-            {status === "ready" && snapshot ? snapshot.temperature : "–"}
-          </p>
-          <p className="mt-1 text-sm font-bold text-mauve">
-            {status === "ready" && snapshot ? `Cảm giác như ${snapshot.feelsLike}` : " "}
-          </p>
-          <p className="mt-3 max-w-md text-sm font-semibold leading-6 text-mauve">
-            {status === "ready" && snapshot ? (
-              snapshot.planningNote
-            ) : status === "error" ? (
-              <>
-                Mạng đang nghỉ ngơi một chút.{" "}
-                <button
-                  className="font-bold text-matcha-deep underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-matcha-deep"
-                  onClick={refreshWeather}
-                  type="button"
-                >
-                  Thử lại nhé
-                </button>
-              </>
-            ) : (
-              "Đang lấy dự báo cho khu vườn…"
-            )}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          {WEATHER_METRICS.map((metric) => {
-            const Icon = metric.icon;
-
-            return (
-              <div
-                className="wx-tile group flex items-center gap-2.5 rounded-2xl border border-wafer bg-white/70 p-2.5 transition hover:border-dawn/60 hover:bg-white"
-                key={metric.key}
-              >
-                <span
-                  className={cn(
-                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-                    metric.chip
-                  )}
-                >
-                  <Icon
-                    aria-hidden="true"
-                    className={cn("h-5 w-5", metric.motion, metric.tint)}
-                    strokeWidth={2.4}
-                  />
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-bold text-plum">
-                    {metric.value(status === "ready" ? snapshot : null)}
-                  </span>
-                  <span className="block text-[10px] font-bold uppercase tracking-wide text-mauve">
-                    {metric.label}
-                  </span>
-                </span>
-              </div>
-            );
-          })}
-        </div>
+            </>
+          ) : (
+            "Đang lấy dự báo cho khu vườn…"
+          )}
+        </p>
       </div>
-    </section>
+
+      <div className="grid grid-cols-2 gap-2">
+        {WEATHER_METRICS.map((metric) => {
+          const Icon = metric.icon;
+
+          return (
+            <div
+              className="wx-tile group flex items-center gap-2.5 rounded-card border border-line bg-surface-warm p-2.5 transition hover:border-line-strong"
+              key={metric.key}
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-card">
+                <Icon
+                  aria-hidden="true"
+                  className={cn("h-5 w-5 text-ink-mid", metric.motion)}
+                  strokeWidth={2.4}
+                />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-bold text-ink">
+                  {metric.value(status === "ready" ? snapshot : null)}
+                </span>
+                <span className="block text-[10px] font-bold uppercase tracking-wide text-ink-mid">
+                  {metric.label}
+                </span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

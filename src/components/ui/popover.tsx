@@ -19,10 +19,15 @@ const PopoverTrigger = PopoverPrimitive.Trigger;
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
->(({ className, align = "start", sideOffset = 8, ...props }, ref) => (
-  <PopoverPrimitive.Portal>
+>(({ className, align = "start", forceMount, sideOffset = 8, ...props }, ref) => (
+  // forceMount has to reach the Portal, not just the Content: the Portal
+  // unmounts its whole subtree when the popover closes, so a force-mounted
+  // Content inside a default Portal still disappears — which defeats the one
+  // reason a caller asks for it (keeping a playing iframe alive).
+  <PopoverPrimitive.Portal forceMount={forceMount}>
     <PopoverPrimitive.Content
       align={align}
+      forceMount={forceMount}
       className={cn(
         // Width is capped against the viewport, not just the design width: on a
         // narrow phone a fixed 20rem panel would hang off the edge.
