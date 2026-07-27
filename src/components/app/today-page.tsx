@@ -13,7 +13,12 @@ export function TodayPage() {
   return (
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,18fr)_minmax(320px,6fr)] xl:items-start">
       <div className="grid grid-cols-1 gap-5">
-        <HeroBanner celebrate={app.celebrate} viewModel={app.viewModel} />
+        <HeroBanner
+          bubble={app.bubble}
+          celebrate={app.celebrate}
+          viewModel={app.viewModel}
+          weather={app.weather}
+        />
         <HabitDayList
           habits={app.todaysHabits}
           onAdjustEntry={app.adjustHabitEntry}
