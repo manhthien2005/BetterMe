@@ -52,6 +52,20 @@ export function getDayLabel(value: string) {
   return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day - 1];
 }
 
+/**
+ * The weekday labels in the app's own voice, Monday first — the order every
+ * week surface reads in (spec §4.1, §4.2). One array so the week grid's column
+ * headers and the hero's dots can never drift apart by a day.
+ */
+export const VI_WEEKDAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"] as const;
+
+/** The label for one date. Sunday closes the week, so it maps to the last slot. */
+export function viWeekdayLabel(value: string) {
+  const day = parseIsoDate(value).getDay();
+
+  return VI_WEEKDAY_LABELS[day === 0 ? 6 : day - 1];
+}
+
 export function getMonthGrid(selectedDate: string) {
   const selected = parseIsoDate(selectedDate);
   const monthStart = new Date(selected.getFullYear(), selected.getMonth(), 1);

@@ -13,7 +13,7 @@ import {
   type DashboardState
 } from "@/components/dashboard/dashboard-data";
 import { entryProgress, isEntryComplete, isScheduledOn } from "@/components/dashboard/habit-model";
-import { addDaysIso, getWeekStartIso } from "@/lib/date";
+import { addDaysIso, getWeekStartIso, VI_WEEKDAY_LABELS } from "@/lib/date";
 
 /**
  * What one square says.
@@ -71,7 +71,11 @@ export type WeekGrid = {
   total: { done: number; scheduled: number };
 };
 
-export const WEEKDAY_LABELS: readonly string[] = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+/**
+ * Re-exported, not redefined: the hero's seven dots and this grid must label
+ * the same week the same way, so both read one array in `@/lib/date`.
+ */
+export const WEEKDAY_LABELS: readonly string[] = VI_WEEKDAY_LABELS;
 
 export function buildWeekGrid(
   state: DashboardState,

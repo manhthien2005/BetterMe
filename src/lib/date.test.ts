@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { addDaysIso, getDayLabel, getWeekEndIso, getWeekStartIso } from "@/lib/date";
+import {
+  addDaysIso,
+  getDayLabel,
+  getWeekEndIso,
+  getWeekStartIso,
+  VI_WEEKDAY_LABELS,
+  viWeekdayLabel
+} from "@/lib/date";
 
 /**
  * Anchors for every case below. 2026-07-27 is a Monday, so 2026-07-26 is the
@@ -95,6 +102,35 @@ describe("getDayLabel", () => {
     for (let offset = 0; offset < 7; offset += 1) {
       expect(getDayLabel(addDaysIso(MONDAY, offset))).toBeTruthy();
     }
+  });
+});
+
+describe("viWeekdayLabel", () => {
+  it("labels the week the way the app writes it: T2 through CN", () => {
+    const labels = Array.from({ length: 7 }, (_, offset) =>
+      viWeekdayLabel(addDaysIso(MONDAY, offset))
+    );
+
+    expect(labels).toEqual(["T2", "T3", "T4", "T5", "T6", "T7", "CN"]);
+    // The array and the function must agree — the hero reads the function per
+    // date while the week grid indexes the array by column.
+    expect(labels).toEqual([...VI_WEEKDAY_LABELS]);
+  });
+
+  it("gives Sunday 'CN', not 'T1'", () => {
+    // Sunday is day 0, so any labelling built on getDay() as an index either
+    // wraps to the front of the week or falls off the end.
+    expect(viWeekdayLabel(SUNDAY_BEFORE)).toBe("CN");
+    expect(viWeekdayLabel("2026-08-02")).toBe("CN");
+  });
+
+  it("keeps its labels aligned with the Monday-first week start", () => {
+    // The column header and the date under it come from two different helpers;
+    // if they disagree the grid silently shifts by a day.
+    const start = getWeekStartIso("2026-08-01");
+
+    expect(viWeekdayLabel(start)).toBe(VI_WEEKDAY_LABELS[0]);
+    expect(viWeekdayLabel(getWeekEndIso("2026-08-01"))).toBe(VI_WEEKDAY_LABELS[6]);
   });
 });
 
