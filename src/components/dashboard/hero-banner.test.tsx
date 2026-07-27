@@ -84,6 +84,54 @@ describe("HeroBanner", () => {
     days.forEach((day) => expect(day.getAttribute("aria-label")).toBeTruthy());
   });
 
+  it("labels the dots T2→CN, so the row means the same thing every day", () => {
+    // Spec §4.1: a calendar week, not a rolling window. The weekday belongs in
+    // the accessible name — "Ngày 27" alone does not say which column it is.
+    render(<HeroBanner celebrate={false} hour={8} viewModel={viewModel()} weather={NO_WEATHER} />);
+
+    const labels = screen.getAllByRole("listitem").map((day) => day.getAttribute("aria-label")!);
+
+    expect(labels[0]).toMatch(/^T2\b/);
+    expect(labels[6]).toMatch(/^CN\b/);
+    expect(screen.getByRole("list", { name: /tuần này/i })).toBeTruthy();
+  });
+
+  it("says a day that has not arrived is still to come, not a miss", () => {
+    // The no-guilt invariant reaches the dots too: Thursday's dot on a Tuesday
+    // must not read as an absence the user has to answer for.
+    const model = viewModel();
+    const future = model.streak.chain.filter((day) => day.isFuture);
+
+    render(<HeroBanner celebrate={false} hour={8} viewModel={model} weather={NO_WEATHER} />);
+
+    future.forEach((day) => {
+      const dot = screen.getByLabelText(new RegExp(`^${day.label} .*chưa tới$`));
+
+      expect(dot).toBeTruthy();
+    });
+
+    const labels = screen.getAllByRole("listitem").map((day) => day.getAttribute("aria-label")!);
+
+    ["kém", "thua", "tệ", "thất bại", "bỏ lỡ"].forEach((word) => {
+      labels.forEach((label) => expect(label.toLowerCase()).not.toContain(word));
+    });
+  });
+
+  it("rings today and only today", () => {
+    const model = viewModel();
+
+    render(<HeroBanner celebrate={false} hour={8} viewModel={model} weather={NO_WEATHER} />);
+
+    const ringed = screen
+      .getAllByRole("listitem")
+      .filter((day) => day.className.includes("ring-action"));
+
+    expect(ringed).toHaveLength(1);
+    expect(ringed[0].getAttribute("aria-label")).toContain(
+      model.streak.chain.find((day) => day.isToday)!.label
+    );
+  });
+
   it("says nothing about the weather until it has some", () => {
     // A hero rendering "· undefined°" while loading looks broken.
     render(<HeroBanner celebrate={false} hour={8} viewModel={viewModel()} weather={NO_WEATHER} />);

@@ -111,24 +111,38 @@ function StreakBlock({ inkSoft, viewModel }: { inkSoft: string; viewModel: Dashb
   );
 }
 
-/** The last seven days, one dot each. Today wears a ring so it stands out. */
+/**
+ * The calendar week, T2→CN, one dot each (spec §4.1) — the same week the "Tuần
+ * này" grid draws, so the two never disagree about which days count.
+ *
+ * A day later this week says nothing about the user, so it reads "chưa tới" and
+ * is drawn faint rather than as an empty dot: an unmarked circle among ticked
+ * ones looks like a miss, and Thursday cannot be a miss on a Tuesday.
+ */
 function DayChain({ inkSoft, viewModel }: { inkSoft: string; viewModel: DashboardViewModel }) {
-  const todayIso = viewModel.date.iso;
-
   return (
-    <ul aria-label="Nhịp 7 ngày gần nhất" className={cn("flex items-center gap-2", inkSoft)}>
-      {viewModel.streak.chain.map((day) => (
-        <li
-          aria-label={`Ngày ${day.label}: ${STATUS_LABELS[day.status]}`}
-          className={cn(
-            "h-3.5 w-3.5 rounded-full border-2 transition",
-            day.completed ? "border-success bg-success" : "border-current bg-transparent",
-            day.date === todayIso && "ring-2 ring-action ring-offset-1 ring-offset-transparent"
-          )}
-          key={day.date}
-          title={`Ngày ${day.label}: ${STATUS_LABELS[day.status]}`}
-        />
-      ))}
+    <ul
+      aria-label="Nhịp tuần này, T2 đến CN"
+      className={cn("flex items-center gap-2", inkSoft)}
+    >
+      {viewModel.streak.chain.map((day) => {
+        const meaning = day.isFuture ? "chưa tới" : STATUS_LABELS[day.status];
+        const label = `${day.label} ${day.dayNumber}: ${meaning}`;
+
+        return (
+          <li
+            aria-label={label}
+            className={cn(
+              "h-3.5 w-3.5 rounded-full border-2 transition",
+              day.completed ? "border-success bg-success" : "border-current bg-transparent",
+              day.isFuture && "border-dashed opacity-50",
+              day.isToday && "ring-2 ring-action ring-offset-1 ring-offset-transparent"
+            )}
+            key={day.date}
+            title={label}
+          />
+        );
+      })}
     </ul>
   );
 }

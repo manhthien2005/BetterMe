@@ -18,9 +18,11 @@ import { DEFAULT_HABITS, habitIcon } from "@/lib/defaults";
 import {
   addDaysIso,
   getMonthGrid,
+  getWeekStartIso,
   minIsoDate,
   parseIsoDate,
-  todayIso
+  todayIso,
+  viWeekdayLabel
 } from "@/lib/date";
 import { clamp } from "@/lib/utils";
 
@@ -274,10 +276,17 @@ export type DashboardViewModel = {
     current: number;
     best: number;
     rhythm: number;
+    /** The calendar week containing today, T2→CN (spec §4.1). */
     chain: Array<{
       date: string;
+      /** The weekday, T2…CN — the column this dot sits under. */
       label: string;
+      /** Day of the month, for the tooltip that names the actual date. */
+      dayNumber: string;
       completed: boolean;
+      isToday: boolean;
+      /** Later this week. Says nothing about the user — render it faint. */
+      isFuture: boolean;
       status: DashboardStatus;
     }>;
     protectionMessage: string;
@@ -1735,19 +1744,33 @@ function calculateBestStreak(state: DashboardState) {
   return best;
 }
 
+/**
+ * The hero's seven dots (spec §4.1): the CALENDAR week containing `today`,
+ * T2→CN — the same week the "Tuần này" grid draws, so the two surfaces can
+ * never disagree about which days count.
+ *
+ * A rolling last-seven-days window was the earlier shape; it put a different
+ * weekday under each dot every day, so the row never meant the same thing
+ * twice. Days later in the week are marked `isFuture` and are never `completed`
+ * — a day that has not arrived is not an absence the user has to answer for.
+ */
 function buildStreakChain(state: DashboardState, today: string) {
-  return Array.from({ length: 7 }, (_, index) => addDaysIso(today, index - 6)).map(
-    (date) => {
-      const score = scoreDate(state, date);
+  const weekStart = getWeekStartIso(today);
 
-      return {
-        date,
-        label: formatVietnameseDayNumber(date),
-        completed: score.status === "Good",
-        status: score.status
-      };
-    }
-  );
+  return Array.from({ length: 7 }, (_, index) => addDaysIso(weekStart, index)).map((date) => {
+    const score = scoreDate(state, date);
+    const isFuture = date > today;
+
+    return {
+      date,
+      label: viWeekdayLabel(date),
+      dayNumber: formatVietnameseDayNumber(date),
+      completed: !isFuture && score.status === "Good",
+      isToday: date === today,
+      isFuture,
+      status: score.status
+    };
+  });
 }
 
 function buildAnalytics(state: DashboardState, today: string) {

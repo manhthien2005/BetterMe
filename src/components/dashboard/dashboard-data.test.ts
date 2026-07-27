@@ -1084,3 +1084,56 @@ describe("habit lifecycle", () => {
     expect(activeHabits(base, "2026-07-28").some((habit) => habit.id === id)).toBe(false);
   });
 });
+
+describe("the hero's seven dots are a calendar week", () => {
+  // 2026-07-29 is a Wednesday; its week runs Mon 27 Jul → Sun 2 Aug.
+  const WEDNESDAY = "2026-07-29";
+
+  it("runs Monday to Sunday, not the last seven days", () => {
+    // Spec §4.1 asks for a T2→CN column. A rolling window would put a
+    // different weekday under each dot every day, so the shape of the row
+    // would never mean the same thing twice.
+    const model = buildDashboardViewModel(createInitialDashboardState(WEDNESDAY), WEDNESDAY);
+
+    expect(model.streak.chain).toHaveLength(7);
+    expect(model.streak.chain[0].date).toBe("2026-07-27");
+    expect(model.streak.chain[6].date).toBe("2026-08-02");
+    expect(model.streak.chain.map((day) => day.label)).toEqual([
+      "T2",
+      "T3",
+      "T4",
+      "T5",
+      "T6",
+      "T7",
+      "CN"
+    ]);
+  });
+
+  it("keeps Sunday in the week it closes", () => {
+    // Sunday is getDay() === 0, the day a Monday-first week is easiest to get
+    // wrong: read as the start of the next week, the whole row shifts.
+    const model = buildDashboardViewModel(
+      createInitialDashboardState("2026-08-02"),
+      "2026-08-02"
+    );
+
+    expect(model.streak.chain[0].date).toBe("2026-07-27");
+    expect(model.streak.chain[6].date).toBe("2026-08-02");
+  });
+
+  it("marks exactly one dot as today, and the rest of the week as still to come", () => {
+    const model = buildDashboardViewModel(createInitialDashboardState(WEDNESDAY), WEDNESDAY);
+
+    expect(model.streak.chain.filter((day) => day.isToday)).toHaveLength(1);
+    expect(model.streak.chain.find((day) => day.isToday)?.date).toBe(WEDNESDAY);
+    // Thu→Sun have not happened; a day that has not arrived is never an
+    // absence the user has to answer for.
+    expect(model.streak.chain.filter((day) => day.isFuture).map((day) => day.date)).toEqual([
+      "2026-07-30",
+      "2026-07-31",
+      "2026-08-01",
+      "2026-08-02"
+    ]);
+    expect(model.streak.chain.every((day) => !(day.isFuture && day.completed))).toBe(true);
+  });
+});
