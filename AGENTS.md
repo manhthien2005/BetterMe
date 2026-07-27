@@ -34,12 +34,13 @@ Breaking either is a failure, not a tradeoff. If a request seems to require it, 
 - In shell calls, use PowerShell-safe commands — no `head`/`grep`/`|` unix pipes. Prefer the
   dedicated read/search tools over shell for reading and searching.
 
-Current state: 505 tests green. Social Garden Phases 0–3 are all committed; auth is live
+Current state: 574 tests green. Social Garden Phases 0–3 are all committed; auth is live
 email+password with a signup OTP (see `docs/auth-email-config.md`). UI overhaul: **U0** (design
 tokens, fonts, `ui/` primitives, four-space shell), **U1a** (habit model v3 + v2→v3 migration),
 **U1b** (habit editor, day view grouped by part of the day, archive screen) and **U1c** (the sync
-contract speaks v3) are all merged into `main`; **U2a** (sky hero, `ProgressRing`, `TabSwitch`,
-weather lifted into the provider) is on branch `u2-hero-and-week`.
+contract speaks v3) and **U2a** (sky hero, `ProgressRing`, `TabSwitch`, weather lifted into the
+provider) are all merged into `main`; **U2b** (the Hôm nay/Tuần này switch, the T2→CN week grid,
+and the hero's dots turned into that same week) is on branch `u2b-day-week-tabs`.
 
 ⚠️ **U1c needs `supabase/schema.sql` applied to Supabase BEFORE the app deploys.** Reversing the
 order loses no data (the client classes `PGRST202` as retryable, so the queue re-pushes), but sync
@@ -148,6 +149,32 @@ lucide-react · Remotion 4 · Vitest + Testing Library (jsdom). Node ≥ 20.9, p
   breakpoint, or it is announced twice.
 - **Weather lives in `StateProvider`** — one fetch for the whole app, exposed as `app.weather`.
   The hero and the weather card read the same object, so they can never show two different numbers.
+- **A week cell tells `off`, `future`, `empty` and `missed` apart** (`week-model.ts`). They all look
+  like "not done" and mean four different things: a weekday the habit was never scheduled for, a day
+  that has not arrived, TODAY with nothing on it yet (still the user's to spend), and a day that
+  fully passed empty. Collapsing them is the fastest way to turn a grid into a scoreboard of blame.
+  `total.scheduled` counts only cells that were **scheduled AND have arrived** — counting future days
+  makes every Monday open with eleven failures that have not happened.
+- **All week arithmetic is pure and takes `today` as a parameter** (`week-model.ts`); `week-grid.tsx`
+  only draws. Sunday is the trap — `getDay()` returns 0, so a naive `1 - day` jumps *forward* a week
+  and shifts the whole grid. `getWeekStartIso` handles it and `src/lib/date.test.ts` guards it.
+- **`VI_WEEKDAY_LABELS` / `viWeekdayLabel` in `@/lib/date` are the only source of "T2"**. The hero's
+  seven dots and the week grid label the SAME calendar week, so they read one array; `week-model.ts`
+  re-exports it rather than redefining it. `dashboard-data.ts` cannot import `week-model.ts` (that
+  is the cycle), which is why the labels live in `lib/date` and not in either.
+- **The hero's dots are a calendar week, not a rolling window** (spec §4.1). A last-seven-days row
+  puts a different weekday under each dot every day, so the shape never means the same thing twice.
+  A dot later in the week is `isFuture`: drawn faint, named "chưa tới", and never `completed`.
+- **A week square carries meaning in text, not only in fill** — its `aria-label` names the habit, the
+  date and the state ("Uống nước, T2 20 tháng 7: 4/8 ly"), so the view survives colour blindness
+  (WCAG 1.4.1). Today's column also carries `aria-current="date"`, not just an accent colour.
+- **`habitStreaks` is keyed on EVERY habit, not just today's.** The week grid shows a row for a habit
+  that repeats on Tuesday only, and that row needs its 🔥 on a Monday too; keyed on today's habits,
+  it would silently read 0. The day list looks habits up by id, so the extra keys cost it nothing.
+- **`TabSwitch` requires `idPrefix`** — tab `${idPrefix}-tab-${value}` sets `aria-controls` to panel
+  `${idPrefix}-panel-${value}`, and the consumer puts that id plus `role="tabpanel"` +
+  `aria-labelledby` on its panel. Only the selected panel is mounted: a panel hidden by a media
+  query or CSS is still in the accessibility tree for a screen reader to wander into.
 - Never assume a library is available — check `package.json` and existing imports first.
 - Pure logic is unit-tested; components get interaction + accessibility tests. Tests are colocated `*.test.{ts,tsx}`.
 

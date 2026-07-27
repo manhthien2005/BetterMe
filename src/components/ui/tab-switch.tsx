@@ -12,12 +12,20 @@ import { cn } from "@/lib/utils";
  */
 export function TabSwitch<T extends string>({
   className,
+  idPrefix,
   label,
   onChange,
   options,
   value
 }: {
   className?: string;
+  /**
+   * Shared stem for the tab and panel ids: tab `${idPrefix}-tab-${value}`
+   * controls panel `${idPrefix}-panel-${value}`. Required rather than
+   * defaulted — two switches on one page with the same stem would quietly
+   * duplicate ids, and the caller is the only one who can tell them apart.
+   */
+  idPrefix: string;
   /** Accessible name for the group, e.g. "Chế độ xem". */
   label: string;
   onChange: (value: T) => void;
@@ -47,6 +55,7 @@ export function TabSwitch<T extends string>({
 
         return (
           <button
+            aria-controls={`${idPrefix}-panel-${option.value}`}
             aria-selected={selected}
             className={cn(
               "squishy min-h-[44px] rounded-pill px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
@@ -54,6 +63,7 @@ export function TabSwitch<T extends string>({
                 ? "bg-action text-action-ink shadow-action"
                 : "text-ink-mid hover:bg-surface-warm"
             )}
+            id={`${idPrefix}-tab-${option.value}`}
             key={option.value}
             onClick={() => onChange(option.value)}
             onKeyDown={(event) => {

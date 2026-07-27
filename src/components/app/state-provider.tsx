@@ -56,6 +56,11 @@ import {
 } from "@/components/dashboard/dashboard-data";
 import { getPetLine, type PetEvent } from "@/components/dashboard/pet-voice";
 import {
+  buildWeekGrid,
+  countPreviousWeekDone,
+  type WeekGrid
+} from "@/components/dashboard/week-model";
+import {
   loadSyncOptIn,
   saveSyncOptIn,
   shouldAskSyncOptIn,
@@ -164,6 +169,13 @@ export type AppState = {
   allHabits: DashboardHabit[];
   /** Per-habit streak, keyed by habit id, for the day list's 🔥 chips. */
   habitStreaks: Record<string, number>;
+  /** This week, T2→CN — rows are habits, columns are days (spec §4.2). */
+  weekGrid: WeekGrid;
+  /**
+   * Cells finished in the week BEFORE this one. The week view compares against
+   * this and nothing else — the user's only yardstick is their own last week.
+   */
+  lastWeekDone: number;
   /** null = the sheet is closed; "" = creating; an id = editing that habit. */
   editingHabitId: string | null;
   openHabitEditor: (habitId: string | null) => void;
@@ -253,17 +265,25 @@ export function StateProvider({
   const viewModel = useMemo(() => buildDashboardViewModel(state, today), [state, today]);
   const activePet = viewModel.companion.activePet;
   const todaysHabits = useMemo(() => activeHabits(state, today), [state, today]);
+  // Keyed on EVERY habit, not just today's: the week grid shows a row for a
+  // habit that repeats on Tuesday only, and that row needs its 🔥 on a Monday
+  // too. The day list looks its habits up by id, so the extra keys cost it
+  // nothing.
   const habitStreaks = useMemo(
     () =>
       Object.fromEntries(
-        todaysHabits.map((habit) => [habit.id, calculateHabitStreak(state, habit.id, today)])
+        state.habits.map((habit) => [habit.id, calculateHabitStreak(state, habit.id, today)])
       ),
-    [state, today, todaysHabits]
+    [state, today]
   );
   const habitDetail = useMemo(
     () => (detailHabitId ? buildHabitDetail(state, detailHabitId, today) : null),
     [detailHabitId, state, today]
   );
+  const weekGrid = useMemo(() => buildWeekGrid(state, today), [state, today]);
+  // Recomputed from state rather than cached: a late edit to last week (an
+  // untick on Sunday, say) must move the comparison, not leave it stale.
+  const lastWeekDone = useMemo(() => countPreviousWeekDone(state, today), [state, today]);
 
   useEffect(() => {
     stateRef.current = state;
@@ -1004,6 +1024,8 @@ export function StateProvider({
     todayRecord: state.records[today],
     allHabits: state.habits,
     habitStreaks,
+    weekGrid,
+    lastWeekDone,
     editingHabitId,
     openHabitEditor: setEditingHabitId,
     closeHabitEditor: () => setEditingHabitId(null),
