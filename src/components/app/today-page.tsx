@@ -4,10 +4,10 @@ import { useState } from "react";
 
 import { useAppState } from "@/components/app/state-provider";
 import { HeroBanner } from "@/components/dashboard/hero-banner";
-import { SpotifyCard } from "@/components/dashboard/spotify-card";
 import { HabitDayList } from "@/components/dashboard/habit-day-list";
-import { WeatherCard } from "@/components/dashboard/weather-card";
+import { NepMiniCard } from "@/components/dashboard/nep-mini-card";
 import { WeekGridCard } from "@/components/dashboard/week-grid";
+import { WidgetChips } from "@/components/dashboard/widget-chips";
 import { TabSwitch } from "@/components/ui/tab-switch";
 
 type TodayView = "day" | "week";
@@ -68,10 +68,24 @@ export function TodayPage() {
             />
           )}
         </div>
+
+        {/* Weather and music sit under the check-in, inside the main column
+            (spec §4.3): they are things you glance at, not things you came for,
+            and on a phone there is no second column for them to live in. */}
+        <WidgetChips />
       </div>
-      <aside aria-label="Thời tiết và nhạc tập trung" className="grid gap-5 xl:sticky xl:top-5">
-        <WeatherCard />
-        <SpotifyCard />
+
+      {/* The backyard — desktop only, by design (spec §4.4). Nếp does not
+          vanish on a phone: `/nep` is its real home, and this is the shortcut
+          a wide screen has room for. */}
+      <aside aria-label="Sân sau" className="hidden gap-5 xl:sticky xl:top-5 xl:grid">
+        <NepMiniCard
+          bubble={app.bubble}
+          food={app.viewModel.companion.food}
+          onFeed={app.feedPet}
+          onPet={app.petThePet}
+          pet={app.viewModel.companion.activePet}
+        />
       </aside>
     </div>
   );

@@ -37,13 +37,17 @@ describe("the four spaces", () => {
     vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new Error("offline"))));
   });
 
-  it("Hôm nay keeps the greeting, the habit list and both widgets", () => {
+  it("Hôm nay keeps the greeting, the habit list and both widget chips", () => {
     renderSpace("/dashboard", <TodayPage />);
 
     expect(screen.getByRole("heading", { name: /chào buổi .*sếp ơi/i })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Thói quen hôm nay" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Sài Gòn" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Nhạc tập trung" })).toBeTruthy();
+    // Since U2c the two widgets are chips, not cards (spec §4.3), so what the
+    // space owes you here is the pair of triggers — the detail lives a click away
+    // in each popover, which is `widget-chips.test.tsx`'s business.
+    expect(screen.getByRole("button", { name: /^Thời tiết:/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Nhạc tập trung/ })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Sài Gòn" })).toBeNull();
     // The pet moved out of the hero and into its own space (spec §3).
     expect(screen.queryByLabelText("Chọn trứng Cún con")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Lịch tháng" })).toBeNull();

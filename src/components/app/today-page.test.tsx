@@ -98,3 +98,49 @@ describe("TodayPage — the Ngày/Tuần switch", () => {
     });
   });
 });
+
+describe("TodayPage — chips and the backyard", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new Error("offline"))));
+  });
+
+  it("puts the widget chips in the main column, not off in the aside", () => {
+    // Spec §4.3: weather and music are a row under the day's work, not a
+    // sidebar of their own. Living inside the aside would put them back in the
+    // column this task exists to dismantle.
+    renderPage();
+
+    const chip = screen.getByRole("button", { name: /^Thời tiết:/ });
+    const backyard = screen.getByRole("complementary", { name: "Sân sau" });
+
+    expect(backyard.contains(chip)).toBe(false);
+    expect(screen.getByRole("button", { name: /^Nhạc tập trung/ })).toBeTruthy();
+  });
+
+  it("gives the backyard to Nếp and nothing else", () => {
+    renderPage();
+
+    const backyard = screen.getByRole("complementary", { name: "Sân sau" });
+
+    // The weather detail belongs to the chip's popover now. If a heading for it
+    // is sitting in the aside, the old column survived the move.
+    expect(within(backyard).queryByRole("heading", { name: "Sài Gòn" })).toBeNull();
+    expect(within(backyard).queryByTitle("Playlist Spotify của Sếp")).toBeNull();
+    expect(within(backyard).getByRole("link", { name: /Ghé nhà/ }).getAttribute("href")).toBe(
+      "/nep"
+    );
+  });
+
+  it("keeps the backyard to desktop, where there is room beside the day", () => {
+    // Spec §4.4 makes this a desktop affordance. On a phone the pet is not
+    // gone — /nep is its home; this is the shortcut that has nowhere to sit.
+    renderPage();
+
+    const backyard = screen.getByRole("complementary", { name: "Sân sau" });
+
+    expect(backyard.className).toContain("hidden");
+    expect(backyard.className).toContain("xl:grid");
+    expect(backyard.className).toContain("xl:sticky");
+  });
+});
