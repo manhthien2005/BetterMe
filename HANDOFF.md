@@ -1,7 +1,7 @@
 # HANDOFF — Nếp's Garden / Vườn Có Bạn
 
-> **Ngày cập nhật:** 2026-07-27 · **Trạng thái tree:** sạch, 4 gates xanh (**505/505 test, 51 file**)
-> **Nhánh:** `u2-hero-and-week` (U0 + U1a + U1b + U1c đã merge vào `main`) · File này là điểm vào duy nhất cho người nhận bàn giao.
+> **Ngày cập nhật:** 2026-07-27 · **Trạng thái tree:** sạch, 4 gates xanh (**574/574 test, 55 file**)
+> **Nhánh:** `u2b-day-week-tabs` (U0 + U1a + U1b + U1c đã merge vào `main`; U2a ở `u2-hero-and-week`) · File này là điểm vào duy nhất cho người nhận bàn giao.
 > ⚠️ **U1c cần owner apply `supabase/schema.sql` lên Supabase TRƯỚC khi deploy app** — xem §2. Việc này CHƯA làm.
 > Quy ước cho agent: đọc `AGENTS.md`. Spec hành vi: `docs/superpowers/specs/`.
 
@@ -26,6 +26,7 @@ App: **Nếp's Garden** — habit tracker tiếng Việt, cozy, có pet nuôi đ
 
 | Commit | Nội dung |
 |---|---|
+| `u2b-day-week-tabs` (11 commit, chưa merge) | **U2b tab Ngày/Tuần + lưới tuần**: `week-model.ts` thuần (ô phân biệt `off`/`future`/`empty`/`missed`, `total.scheduled` chỉ đếm ngày có lịch và đã tới) · `WeekGridCard` là `<table>` thật, nghĩa nằm trong `aria-label` từng ô, cột hôm nay `aria-current="date"` · `TabSwitch` thêm `idPrefix` để nối tab ↔ panel · `habitStreaks` đổi khoá sang mọi habit · 7 chấm hero thành tuần dương lịch T2→CN · nhãn thứ gom về `@/lib/date` |
 | `u2-hero-and-week` (7 commit, chưa merge) | **U2a hero bầu trời**: token 3 buổi (`--sky-{morning,afternoon,evening}-*`) với ink riêng từng buổi vì tối là nền tối · `sky.ts` chọn buổi theo giờ · hero mới: chào theo buổi, dòng ngày gộp thời tiết, 🔥 chuỗi + kỷ lục, 7 chấm, vòng tiến độ · `ProgressRing` + `TabSwitch` (nợ từ U0) · thời tiết chuyển về `StateProvider` — một fetch cho cả app |
 | `36d2ac0` (PR #4) | **U1c sync nói được v3**: `habit_logs` thêm `value`/`completed_at`, `habits` thêm 12 cột định nghĩa v3; `apply_habit_log` + `upsert_habit` nới chữ ký (kèm `drop function` chữ ký cũ + grant lại); merge/parse/importer/provider đi trọn hai chiều. **Vá 2 lỗ mất dữ liệu**: tiến độ dở dang không bao giờ được đẩy lên, và tạm dừng/lưu trữ/đổi thứ tự không sync gì cả. ⚠️ **Owner phải apply `supabase/schema.sql` trước khi deploy** (idempotent, chạy lại an toàn) |
 | `6c474a0` (PR #3) | **U1b editor + day view**: sheet tạo/sửa habit (5 mẫu 1 chạm, gợi ý emoji theo tên, 4 kiểu theo dõi, lặp theo thứ, nhiều buổi, giờ dự kiến, 6 màu thẻ, ghi chú động lực) · day view nhóm theo buổi với điều khiển riêng từng kiểu · tạm dừng/lưu trữ/sắp xếp · màn `/nep/archive` xoá vĩnh viễn 2 bước |
@@ -53,7 +54,7 @@ Chi tiết kỹ thuật từng phase (contract RPC, luật merge, quyết địn
 pnpm install
 pnpm typecheck   # tsc --noEmit
 pnpm lint        # eslint .
-pnpm vitest run  # 221 tests / 21 files
+pnpm vitest run  # 574 tests / 55 files
 pnpm build       # next build
 pnpm dev         # next dev
 ```
@@ -107,8 +108,15 @@ pnpm dev         # next dev
   3. **Class Tailwind phải xuất hiện nguyên văn trong source** — `SKY_STYLES` viết đủ chuỗi thay vì ghép template; class Tailwind không "nhìn thấy" được là class nó không sinh ra. Cũng đã kiểm khoá `sky` không đụng palette `sky` mặc định của Tailwind (`rg "sky-[0-9]"` → sạch).
   4. **`ProgressRing` giờ là nơi duy nhất có vòng tiến độ** — `habit-entry-control.tsx` trước đó tự viết conic-gradient riêng, nay dùng chung.
 
-  **Chưa đúng spec, có chủ đích:** 7 chấm ở hero đang là **7 ngày gần nhất** (`viewModel.streak.chain`), chưa phải cột T2→CN như §4.1 viết, và chưa có trạng thái 🍃 nghỉ chủ đích (🍃 lá chắn thuộc U3). Lưới T2→CN đúng nghĩa làm ở U2b cùng week grid — làm hai lần thì phải sửa hai lần.
-- **U2b — kế tiếp**: tab Ngày/Tuần (nối `TabSwitch` đã có vào `today-page`), lưới tuần T2→CN (hàng=habit, cột=thứ, ô ✓/◕/trống/mờ, cột hôm nay viền cam), dòng tổng kết so với **chính mình** tuần trước.
+  **Khoảng trống của U2a, đã đóng ở U2b:** 7 chấm hero từng là "7 ngày gần nhất"; nay là tuần dương lịch T2→CN.
+- **U2b — XONG** (nhánh `u2b-day-week-tabs`, 11 commit, 574 test xanh). Plan: `docs/superpowers/plans/2026-07-27-u2b-day-week-tabs.md`. Nội dung: tab **Hôm nay / Tuần này** ở `today-page`, lưới tuần T2→CN, và 7 chấm hero đổi sang cùng tuần đó. Năm điều đáng nhớ:
+  1. **Một ô "chưa xong" có bốn nghĩa khác nhau** (`week-model.ts`): `off` (không có trên lịch hôm đó, hoặc đã tạm dừng/lưu trữ) · `future` (chưa tới) · `empty` (**hôm nay**, còn nguyên cơ hội) · `missed` (ngày đã qua hẳn mà trống). Gộp bất kỳ cặp nào là biến lưới thành bảng điểm trách móc — hôm nay chưa hết thì chưa thể là ngày thất bại. `total.scheduled` chỉ đếm ô **có lịch VÀ đã tới**; đếm cả tương lai thì mỗi Thứ Hai mở ra 11 thất bại chưa xảy ra.
+  2. **Lưới là `<table>` thật, và nghĩa nằm trong tên truy cập** — `aria-label` mỗi ô ghi đủ "Uống nước, T2 20 tháng 7: 4/8 ly", cột hôm nay có `aria-current="date"` chứ không chỉ đổi màu. Màu không bao giờ là tín hiệu duy nhất (WCAG 1.4.1), nên test đọc *tên* chứ không đọc class.
+  3. **Nhãn thứ gom về `@/lib/date`** (`VI_WEEKDAY_LABELS` + `viWeekdayLabel`). Hero và lưới phải gọi cùng một tuần bằng cùng một tên; `dashboard-data.ts` **không thể** import `week-model.ts` (vòng tròn) nên nhãn không thể sống ở một trong hai.
+  4. **`habitStreaks` đổi khoá sang MỌI habit**, không chỉ habit của hôm nay — lưới hiện hàng cho habit chỉ lặp Thứ Ba, và hàng đó cần 🔥 của nó vào một ngày Thứ Hai. Trước đó nó âm thầm đọc ra 0. Day view tra theo id nên thêm khoá không tốn gì.
+  5. **`TabSwitch` giờ đòi `idPrefix`** để nối `aria-controls` ↔ `id` panel. Chỉ panel đang chọn được mount: một panel ẩn bằng CSS vẫn nằm trong cây accessibility cho screen reader đi lạc vào.
+
+  **Chưa làm, có chủ đích:** trạng thái 🍃 **nghỉ chủ đích** chưa có — 🍃 lá chắn là tính năng của **U3**; U2b chỉ có `off` (không có trên lịch). Khi U3 làm lá chắn, `WeekCellState` cần thêm một nhánh. Lưới là bề mặt **chỉ đọc**: U2b không mở đường sửa dữ liệu quá khứ.
 - **U2c — sau đó**: thời tiết + Spotify co thành 2 chip 1 dòng (§4.3), sân sau desktop cột phải sticky (§4.4).
 
 ⚠️ **Rollback U1a rất rẻ:** v2 vẫn nằm nguyên trong localStorage, không bị ghi đè. Muốn quay lại chỉ cần xoá khoá `betterme.dashboard.v3` trong DevTools → Application → Local Storage. Vẫn nên export JSON để backup trước khi dùng dữ liệu thật lâu dài.
@@ -138,11 +146,12 @@ Owner dùng sync đa thiết bị 1 tuần, xem log lỗi, RỒI mới mở soci
 | Schema + toàn bộ RPC | `supabase/schema.sql` (idempotent; banner: gốc / Phase 0 / 1 / 2 / 3 / hardening) |
 | State thuần (pure functions, kinh tế pet) | `src/components/dashboard/dashboard-data.ts` (+ test) |
 | Habit model v3 (thuần) | `src/components/dashboard/habit-model.ts` (vị từ hoàn thành/lịch) · `habit-migration.ts` (v2→v3, idempotent) (+ test) |
+| Lưới tuần (thuần) | `src/components/dashboard/week-model.ts` (mọi phép tính tuần, `today` là tham số) (+ test) · nhãn thứ T2→CN ở `src/lib/date.ts` (`VI_WEEKDAY_LABELS` / `viWeekdayLabel`) |
 | Sync engine | `src/lib/sync/{types,time,storage,queue,shadow,merge,importer,engine}.ts` (+ tests) |
 | Server actions | `src/lib/server/{sync-actions,social-actions,auth-actions,actions}.ts` |
 | Shell + state toàn app | `src/components/app/{state-provider,app-shell,nav-items,sync-status-dot,today-page,calendar-page,nep-page,friends-page}.tsx` |
-| Primitive design system | `src/components/ui/{button,card,chip,icon,nav-rail,bottom-tab-bar}.tsx` + token trong `src/app/globals.css` `:root` |
-| Panel UI | `src/components/dashboard/{hero-banner,todays-habits,calendar-panel,companion-panel,celebration-overlay,weather-card,analytics-panel,profile-menu,site-footer,friends-card,garden-fair,garden-visit-overlay,sync-onboarding,pet,nep}.tsx` |
+| Primitive design system | `src/components/ui/{button,card,chip,icon,nav-rail,bottom-tab-bar,progress-ring,tab-switch}.tsx` + token trong `src/app/globals.css` `:root` |
+| Panel UI | `src/components/dashboard/{hero-banner,habit-day-list,habit-entry-control,habit-editor-sheet,week-grid,calendar-panel,companion-panel,celebration-overlay,weather-card,analytics-panel,profile-menu,site-footer,friends-card,garden-fair,garden-visit-overlay,sync-onboarding,pet,nep}.tsx` |
 | Voice + invariant tests | `src/components/dashboard/pet-voice.ts` + `pet-voice.test.ts` |
 
 ---
