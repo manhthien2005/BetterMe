@@ -34,14 +34,19 @@ Breaking either is a failure, not a tradeoff. If a request seems to require it, 
 - In shell calls, use PowerShell-safe commands — no `head`/`grep`/`|` unix pipes. Prefer the
   dedicated read/search tools over shell for reading and searching.
 
-Current state: 467 tests green. Social Garden Phases 0–3 are all committed; auth is live
+Current state: 505 tests green. Social Garden Phases 0–3 are all committed; auth is live
 email+password with a signup OTP (see `docs/auth-email-config.md`). UI overhaul: **U0** (design
-tokens, fonts, `ui/` primitives, four-space shell), **U1a** (habit model v3 + v2→v3 migration) and
-**U1b** (habit editor, day view grouped by part of the day, archive screen) are all merged into
-`main`; **U1c** (the sync contract speaks v3) is on branch `u1c-sync-v3` and needs
-`supabase/schema.sql` applied to Supabase BEFORE the app deploys. See
-`docs/superpowers/specs/2026-07-26-uiux-overhaul-design.md` §10 for what is left and `HANDOFF.md`
-for progress and next steps.
+tokens, fonts, `ui/` primitives, four-space shell), **U1a** (habit model v3 + v2→v3 migration),
+**U1b** (habit editor, day view grouped by part of the day, archive screen) and **U1c** (the sync
+contract speaks v3) are all merged into `main`; **U2a** (sky hero, `ProgressRing`, `TabSwitch`,
+weather lifted into the provider) is on branch `u2-hero-and-week`.
+
+⚠️ **U1c needs `supabase/schema.sql` applied to Supabase BEFORE the app deploys.** Reversing the
+order loses no data (the client classes `PGRST202` as retryable, so the queue re-pushes), but sync
+stalls until the SQL lands. As of this writing the owner has not confirmed the apply.
+
+See `docs/superpowers/specs/2026-07-26-uiux-overhaul-design.md` §10 for what is left and
+`HANDOFF.md` for progress and next steps.
 
 ## Stack
 Next.js 15.5 (App Router) · React 19 · TypeScript 5.9 **strict** · Supabase (`@supabase/ssr`) ·
@@ -57,10 +62,12 @@ lucide-react · Remotion 4 · Vitest + Testing Library (jsdom). Node ≥ 20.9, p
   `nav-items.ts`, and one file per space (`today-page.tsx`, `calendar-page.tsx`, `nep-page.tsx`,
   `friends-page.tsx`).
 - `src/components/ui/**` — design-token primitives: `button.tsx` (3 tiers), `card.tsx`, `chip.tsx`,
-  `icon.tsx`, `nav-rail.tsx`, `bottom-tab-bar.tsx`.
+  `icon.tsx`, `nav-rail.tsx`, `bottom-tab-bar.tsx`, `progress-ring.tsx`, `tab-switch.tsx`.
 - `src/components/dashboard/**` — the panels each space renders: `dashboard-data.ts` (pure state +
-  pet economy), `todays-habits.tsx`, `calendar-panel.tsx`, `pet.tsx` / `pet-voice.ts` (companion +
-  VN voice), `friends-card.tsx`, `garden-visit-overlay.tsx`, `sync-onboarding.tsx`.
+  pet economy), `habit-day-list.tsx` + `habit-entry-control.tsx` + `habit-editor-sheet.tsx` (the
+  day view and the create/edit sheet), `hero-banner.tsx` + `sky.ts` (the sky hero),
+  `calendar-panel.tsx`, `pet.tsx` / `pet-voice.ts` (companion + VN voice), `friends-card.tsx`,
+  `garden-visit-overlay.tsx`, `sync-onboarding.tsx`.
 - `src/lib/sync/**` — local-first sync engine (queue, shadow LWW, merge laws, importer, engine,
   and `payloads.ts` — the only place local state becomes a wire payload).
 - `tests/schema-contract.test.ts` — reads `supabase/schema.sql` as text; the only gate on SQL,
@@ -127,6 +134,20 @@ lucide-react · Remotion 4 · Vitest + Testing Library (jsdom). Node ≥ 20.9, p
   CSS identifier sequences — one bad name silently voids the whole utility.
   `src/app/design-tokens.test.ts` gates presence + AA contrast. The v2 palette
   (rice/matcha/sakura) is still in the config and retires surface by surface across U1–U4.
+- **The sky is three token SETS, not three classes** (`sky.ts` + `--sky-{phase}-{from,to,ink,ink-soft}`).
+  Evening is a dark ground, so its ink flips light — which is why ink belongs to each phase instead
+  of sharing one `--ink`. `design-tokens.test.ts` checks each ink against BOTH ends of its
+  gradient; checking one end only would be self-deception, since a gradient shows both.
+- **A Tailwind class must appear verbatim in source.** `SKY_STYLES` spells out whole strings rather
+  than composing them from a template — a class Tailwind cannot see is a class it does not generate.
+  This is the same failure mode as the `Baloo 2` font fallback found in U0: silent, and invisible
+  to every test that does not read computed styles.
+- **There is exactly one progress ring**: `src/components/ui/progress-ring.tsx`. Do not hand-roll
+  another conic-gradient. It renders `role="img"` with a text label, so a screen reader gets "6/7"
+  rather than silence — and the visible number must therefore be rendered ONCE, not duplicated per
+  breakpoint, or it is announced twice.
+- **Weather lives in `StateProvider`** — one fetch for the whole app, exposed as `app.weather`.
+  The hero and the weather card read the same object, so they can never show two different numbers.
 - Never assume a library is available — check `package.json` and existing imports first.
 - Pure logic is unit-tested; components get interaction + accessibility tests. Tests are colocated `*.test.{ts,tsx}`.
 

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { StateProvider } from "@/components/app/state-provider";
 import { WeatherCard } from "@/components/dashboard/weather-card";
 import { describeWeatherCode, forecastUrl, parseForecast } from "@/components/dashboard/weather-data";
 
@@ -15,6 +16,19 @@ const FORECAST = {
   },
   daily: { uv_index_max: [7.5], precipitation_probability_max: [12] }
 };
+
+/**
+ * The card reads its snapshot from StateProvider (U2a) — one fetch for the
+ * whole app, so the hero and this card can never show two temperatures. That
+ * makes the provider part of the unit under test.
+ */
+function renderCard() {
+  return render(
+    <StateProvider userEmail="thien@example.com">
+      <WeatherCard />
+    </StateProvider>
+  );
+}
 
 function okResponse(payload: unknown) {
   return { ok: true, json: async () => payload };
@@ -62,7 +76,7 @@ describe("WeatherCard", () => {
   it("renders live values for the default place", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => okResponse(FORECAST)));
 
-    render(<WeatherCard />);
+    renderCard();
 
     expect(screen.getByRole("heading", { name: "Sài Gòn" })).toBeTruthy();
     expect(await screen.findByText("31°C")).toBeTruthy();
@@ -78,7 +92,7 @@ describe("WeatherCard", () => {
   it("keeps the shell with gentle placeholders when the network fails", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new Error("offline"))));
 
-    render(<WeatherCard />);
+    renderCard();
 
     expect(await screen.findByText("Chưa lấy được thời tiết")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Thử lại nhé" })).toBeTruthy();
@@ -102,7 +116,7 @@ describe("WeatherCard", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<WeatherCard />);
+    renderCard();
 
     fireEvent.click(screen.getByRole("button", { name: "Đổi nơi xem thời tiết" }));
     fireEvent.change(screen.getByLabelText("Tên thành phố"), {

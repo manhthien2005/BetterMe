@@ -67,6 +67,13 @@ import {
   getPendingGardenVisits,
   refreshMySummary
 } from "@/lib/server/social-actions";
+import { fetchWeather, type WeatherSnapshot } from "@/components/dashboard/weather-data";
+import {
+  DEFAULT_WEATHER_PLACE,
+  loadWidgetSettings,
+  saveWidgetSettings,
+  type WeatherPlace
+} from "@/components/dashboard/widget-settings";
 import { fetchSyncSnapshot, pushMutations } from "@/lib/server/sync-actions";
 import { loadMailboxSeen, saveMailboxSeen, type MailboxSeen } from "@/lib/social/mailbox-seen";
 import { createClient } from "@/lib/supabase/client";
@@ -105,10 +112,26 @@ async function hasSupabaseSession(): Promise<boolean> {
   }
 }
 
+export type WeatherStatus = "loading" | "ready" | "error";
+
+/**
+ * The one weather reading in the app. The hero's date line and the weather
+ * card both read this, so they can never disagree about the temperature.
+ */
+export type AppWeather = {
+  status: WeatherStatus;
+  snapshot: WeatherSnapshot | null;
+  place: WeatherPlace;
+};
+
 export type AppState = {
   today: string;
   userEmail: string;
   hydrated: boolean;
+  weather: AppWeather;
+  setWeatherPlace: (place: WeatherPlace) => void;
+  /** The card's manual retry — refetches the current place. */
+  refreshWeather: () => void;
   viewModel: DashboardViewModel;
   habitDetail: HabitDetail | null;
   syncStatus: SyncStatus;
@@ -211,6 +234,14 @@ export function StateProvider({
   const [newSocialCount, setNewSocialCount] = useState(0);
   // null = closed · "" = creating a new habit · an id = editing that habit.
   const [editingHabitId, setEditingHabitId] = useState<string | null>(null);
+  // Weather lives here so there is exactly ONE fetch for the whole app: the
+  // hero's date line (spec §4.1) and the weather card read the same state, so
+  // they can never show two different temperatures. `refreshKey` is the card's
+  // manual retry button.
+  const [weatherPlace, setWeatherPlaceState] = useState<WeatherPlace>(DEFAULT_WEATHER_PLACE);
+  const [weatherSnapshot, setWeatherSnapshot] = useState<WeatherSnapshot | null>(null);
+  const [weatherStatus, setWeatherStatus] = useState<WeatherStatus>("loading");
+  const [weatherRefreshKey, setWeatherRefreshKey] = useState(0);
   // The engine reads state through this ref so merges/flushes always see the
   // latest value synchronously — even mid-flush, before React re-renders.
   const stateRef = useRef(state);
@@ -439,6 +470,40 @@ export function StateProvider({
 
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [hydrated, state]);
+
+  useEffect(() => {
+    const stored = loadWidgetSettings().weather;
+
+    if (stored) setWeatherPlaceState(stored);
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    setWeatherStatus("loading");
+
+    fetchWeather(weatherPlace, controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted) return;
+
+        setWeatherSnapshot(result);
+        setWeatherStatus(result ? "ready" : "error");
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setWeatherStatus("error");
+      });
+
+    return () => controller.abort();
+  }, [weatherPlace, weatherRefreshKey]);
+
+  const setWeatherPlace = useCallback((next: WeatherPlace) => {
+    saveWidgetSettings({ ...loadWidgetSettings(), weather: next });
+    setWeatherPlaceState(next);
+  }, []);
+
+  const refreshWeather = useCallback(() => {
+    setWeatherRefreshKey((key) => key + 1);
+  }, []);
 
   // Sync bootstrap (spec §2.1/§2.5): render never waits for this. With a
   // session + prior opt-in the engine hydrates in the background; with a
@@ -919,6 +984,9 @@ export function StateProvider({
     today,
     userEmail,
     hydrated,
+    weather: { status: weatherStatus, snapshot: weatherSnapshot, place: weatherPlace },
+    setWeatherPlace,
+    refreshWeather,
     viewModel,
     habitDetail,
     syncStatus,
