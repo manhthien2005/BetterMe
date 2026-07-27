@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildWeekGrid,
   compareWeekTotals,
+  countPreviousWeekDone,
   type WeekCellState
 } from "@/components/dashboard/week-model";
 import {
@@ -273,5 +274,50 @@ describe("compareWeekTotals — measured against your own last week", () => {
 
   it("says nothing about last week when there is no last week", () => {
     expect(compareWeekTotals(4, 0)).toBe("tuần đầu tiên của nhịp này");
+  });
+});
+
+describe("countPreviousWeekDone — last week counted as a finished week", () => {
+  it("counts last week's finished cells, not this week's", () => {
+    const lastMonday = "2026-07-13";
+    const state = stateWith([habit({ id: "english" })], {
+      [lastMonday]: {
+        date: lastMonday,
+        entries: { english: { value: 1 } },
+        completions: { english: true }
+      },
+      "2026-07-15": {
+        date: "2026-07-15",
+        entries: { english: { value: 1 } },
+        completions: { english: true }
+      },
+      // This week — must NOT be counted.
+      [MONDAY]: {
+        date: MONDAY,
+        entries: { english: { value: 1 } },
+        completions: { english: true }
+      }
+    });
+
+    expect(countPreviousWeekDone(state, THURSDAY)).toBe(2);
+  });
+
+  it("counts last week's Sunday too — the week is over, every day arrived", () => {
+    const lastSunday = "2026-07-19";
+    const state = stateWith([habit({ id: "english" })], {
+      [lastSunday]: {
+        date: lastSunday,
+        entries: { english: { value: 1 } },
+        completions: { english: true }
+      }
+    });
+
+    // Counted from THIS week's Thursday: last Sunday is in the past, so a
+    // naive "is it future?" check against the wrong reference date would drop it.
+    expect(countPreviousWeekDone(state, THURSDAY)).toBe(1);
+  });
+
+  it("is zero when there was no last week", () => {
+    expect(countPreviousWeekDone(stateWith([habit({ id: "english" })]), THURSDAY)).toBe(0);
   });
 });
