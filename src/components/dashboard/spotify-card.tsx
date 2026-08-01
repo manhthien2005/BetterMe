@@ -15,6 +15,14 @@ import {
 /**
  * Nhạc tập trung — playlist Spotify do người dùng tự chọn (dán link bất kỳ),
  * lưu local trong betterme.widgets.v1; mặc định là Deep Focus.
+ *
+ * Từ U2c thẻ này nằm trong popover của chip 🎧 (spec §4.3), không còn chiếm một
+ * cột riêng.
+ *
+ * Xanh `#1db954` và nền tối là **màu thương hiệu Spotify**, cố ý đứng ngoài luật
+ * "màu là vai trò": vùng này là một khối nhúng của bên thứ ba, và đổi nó sang
+ * `--action` sẽ làm nó trông như một control của app trong khi nó không phải.
+ * Phần bóng và bán kính thì dùng token của repo (`shadow-card`, `rounded-card`).
  */
 export function SpotifyCard() {
   const [playlistId, setPlaylistId] = useState<string>(
@@ -49,7 +57,7 @@ export function SpotifyCard() {
   }
 
   return (
-    <section className="card-lift overflow-hidden rounded-lg bg-[#15171A] p-4 text-white shadow-mochi ring-1 ring-white/10 sm:p-5">
+    <div className="overflow-hidden rounded-card bg-[#15171A] p-4 text-white shadow-card ring-1 ring-white/10">
       <div className="grid gap-4">
         <div className="flex flex-col gap-4">
           <div>
@@ -130,6 +138,6 @@ export function SpotifyCard() {
           />
         </div>
       </div>
-    </section>
+    </div>
   );
 }

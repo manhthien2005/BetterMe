@@ -1,7 +1,7 @@
 # HANDOFF — Nếp's Garden / Vườn Có Bạn
 
-> **Ngày cập nhật:** 2026-07-27 · **Trạng thái tree:** sạch, 4 gates xanh (**574/574 test, 55 file**)
-> **Nhánh:** `u2b-day-week-tabs`, dựng trên `main` (U0 + U1a + U1b + U1c + U2a đã merge vào `main` — U2a là PR #5, squash `b67f321`) · File này là điểm vào duy nhất cho người nhận bàn giao.
+> **Ngày cập nhật:** 2026-07-27 · **Trạng thái tree:** sạch, 4 gates xanh (**595/595 test, 58 file**)
+> **Nhánh:** `u2c-widget-chips-and-backyard`, dựng trên `main` (U0 + U1a + U1b + U1c + U2a + U2b đã merge vào `main` — U2b là PR #6, squash `ffd7eae`) · File này là điểm vào duy nhất cho người nhận bàn giao.
 > ⚠️ **U1c cần owner apply `supabase/schema.sql` lên Supabase TRƯỚC khi deploy app** — xem §2. Việc này CHƯA làm.
 > Quy ước cho agent: đọc `AGENTS.md`. Spec hành vi: `docs/superpowers/specs/`.
 
@@ -26,7 +26,8 @@ App: **Nếp's Garden** — habit tracker tiếng Việt, cozy, có pet nuôi đ
 
 | Commit | Nội dung |
 |---|---|
-| `u2b-day-week-tabs` (11 commit, chưa merge) | **U2b tab Ngày/Tuần + lưới tuần**: `week-model.ts` thuần (ô phân biệt `off`/`future`/`empty`/`missed`, `total.scheduled` chỉ đếm ngày có lịch và đã tới) · `WeekGridCard` là `<table>` thật, nghĩa nằm trong `aria-label` từng ô, cột hôm nay `aria-current="date"` · `TabSwitch` thêm `idPrefix` để nối tab ↔ panel · `habitStreaks` đổi khoá sang mọi habit · 7 chấm hero thành tuần dương lịch T2→CN · nhãn thứ gom về `@/lib/date` |
+| `u2c-widget-chips-and-backyard` (4 commit, chưa merge) | **U2c chip widget + sân sau**: `ui/popover.tsx` (Radix — popover duy nhất của app; `forceMount` phải chuyền tới cả `Portal` lẫn `Content`) · thời tiết + Spotify co thành **2 chip 1 dòng** dưới danh sách habit, mỗi chip mở popover chứa thẻ chi tiết cũ (§4.3) · popover nhạc **force-mount** nên đóng chip không tắt nhạc · `WeatherCard`/`SpotifyCard` dọn hết palette v2 sang token · `NepMiniCard` nhận props (không đọc provider) trong `<aside aria-label="Sân sau">` sticky, **chỉ desktop** (§4.4) |
+| `ffd7eae` (PR #6) | **U2b tab Ngày/Tuần + lưới tuần**: `week-model.ts` thuần (ô phân biệt `off`/`future`/`empty`/`missed`, `total.scheduled` chỉ đếm ngày có lịch và đã tới) · `WeekGridCard` là `<table>` thật, nghĩa nằm trong `aria-label` từng ô, cột hôm nay `aria-current="date"` · `TabSwitch` thêm `idPrefix` để nối tab ↔ panel · `habitStreaks` đổi khoá sang mọi habit · 7 chấm hero thành tuần dương lịch T2→CN · nhãn thứ gom về `@/lib/date` |
 | `b67f321` (PR #5) | **U2a hero bầu trời**: token 3 buổi (`--sky-{morning,afternoon,evening}-*`) với ink riêng từng buổi vì tối là nền tối · `sky.ts` chọn buổi theo giờ · hero mới: chào theo buổi, dòng ngày gộp thời tiết, 🔥 chuỗi + kỷ lục, 7 chấm, vòng tiến độ · `ProgressRing` + `TabSwitch` (nợ từ U0) · thời tiết chuyển về `StateProvider` — một fetch cho cả app |
 | `36d2ac0` (PR #4) | **U1c sync nói được v3**: `habit_logs` thêm `value`/`completed_at`, `habits` thêm 12 cột định nghĩa v3; `apply_habit_log` + `upsert_habit` nới chữ ký (kèm `drop function` chữ ký cũ + grant lại); merge/parse/importer/provider đi trọn hai chiều. **Vá 2 lỗ mất dữ liệu**: tiến độ dở dang không bao giờ được đẩy lên, và tạm dừng/lưu trữ/đổi thứ tự không sync gì cả. ⚠️ **Owner phải apply `supabase/schema.sql` trước khi deploy** (idempotent, chạy lại an toàn) |
 | `6c474a0` (PR #3) | **U1b editor + day view**: sheet tạo/sửa habit (5 mẫu 1 chạm, gợi ý emoji theo tên, 4 kiểu theo dõi, lặp theo thứ, nhiều buổi, giờ dự kiến, 6 màu thẻ, ghi chú động lực) · day view nhóm theo buổi với điều khiển riêng từng kiểu · tạm dừng/lưu trữ/sắp xếp · màn `/nep/archive` xoá vĩnh viễn 2 bước |
@@ -54,7 +55,7 @@ Chi tiết kỹ thuật từng phase (contract RPC, luật merge, quyết địn
 pnpm install
 pnpm typecheck   # tsc --noEmit
 pnpm lint        # eslint .
-pnpm vitest run  # 574 tests / 55 files
+pnpm vitest run  # 595 tests / 58 files
 pnpm build       # next build
 pnpm dev         # next dev
 ```
@@ -88,7 +89,7 @@ pnpm dev         # next dev
 2. Tách `--success` (nền/hình, 3.2:1) khỏi `--success-ink` (chữ, 4.75:1) vì `#16A34A` làm chữ trượt AA. Không có token "chữ mờ": `#A8A29E` chỉ 2.5:1.
 3. `TabSwitch` + `ProgressRing` **hoãn sang U2** — U0 không có màn nào dùng.
 
-**Hệ quả có chủ đích:** bong bóng thoại của Nếp hiện chỉ xuất hiện ở `/nep` (nó sống trong `CompanionPanel`). U2 dựng hero bầu trời có câu nói của Nếp, U4.4 thêm thẻ Nếp thu gọn ở cột phải desktop.
+**Hệ quả có chủ đích:** bong bóng thoại của Nếp hiện chỉ xuất hiện ở `/nep` (nó sống trong `CompanionPanel`). U2a dựng hero bầu trời có câu nói của Nếp; **U2c đã thêm thẻ Nếp thu gọn ở cột phải desktop** (spec §4.4).
 
 **U1 được tách làm 3 plan** (Scope Check: 3 hệ con độc lập, mỗi cái tự chạy và test được):
 
@@ -109,7 +110,7 @@ pnpm dev         # next dev
   4. **`ProgressRing` giờ là nơi duy nhất có vòng tiến độ** — `habit-entry-control.tsx` trước đó tự viết conic-gradient riêng, nay dùng chung.
 
   **Khoảng trống của U2a, đã đóng ở U2b:** 7 chấm hero từng là "7 ngày gần nhất"; nay là tuần dương lịch T2→CN.
-- **U2b — XONG** (nhánh `u2b-day-week-tabs`, 11 commit, 574 test xanh). Plan: `docs/superpowers/plans/2026-07-27-u2b-day-week-tabs.md`. Nội dung: tab **Hôm nay / Tuần này** ở `today-page`, lưới tuần T2→CN, và 7 chấm hero đổi sang cùng tuần đó. Năm điều đáng nhớ:
+- **U2b — XONG, đã merge** (PR #6 → `ffd7eae` trên `main`; 11 commit, 574 test xanh). Plan: `docs/superpowers/plans/2026-07-27-u2b-day-week-tabs.md`. Nội dung: tab **Hôm nay / Tuần này** ở `today-page`, lưới tuần T2→CN, và 7 chấm hero đổi sang cùng tuần đó. Năm điều đáng nhớ:
   1. **Một ô "chưa xong" có bốn nghĩa khác nhau** (`week-model.ts`): `off` (không có trên lịch hôm đó, hoặc đã tạm dừng/lưu trữ) · `future` (chưa tới) · `empty` (**hôm nay**, còn nguyên cơ hội) · `missed` (ngày đã qua hẳn mà trống). Gộp bất kỳ cặp nào là biến lưới thành bảng điểm trách móc — hôm nay chưa hết thì chưa thể là ngày thất bại. `total.scheduled` chỉ đếm ô **có lịch VÀ đã tới**; đếm cả tương lai thì mỗi Thứ Hai mở ra 11 thất bại chưa xảy ra.
   2. **Lưới là `<table>` thật, và nghĩa nằm trong tên truy cập** — `aria-label` mỗi ô ghi đủ "Uống nước, T2 20 tháng 7: 4/8 ly", cột hôm nay có `aria-current="date"` chứ không chỉ đổi màu. Màu không bao giờ là tín hiệu duy nhất (WCAG 1.4.1), nên test đọc *tên* chứ không đọc class.
   3. **Nhãn thứ gom về `@/lib/date`** (`VI_WEEKDAY_LABELS` + `viWeekdayLabel`). Hero và lưới phải gọi cùng một tuần bằng cùng một tên; `dashboard-data.ts` **không thể** import `week-model.ts` (vòng tròn) nên nhãn không thể sống ở một trong hai.
@@ -117,7 +118,17 @@ pnpm dev         # next dev
   5. **`TabSwitch` giờ đòi `idPrefix`** để nối `aria-controls` ↔ `id` panel. Chỉ panel đang chọn được mount: một panel ẩn bằng CSS vẫn nằm trong cây accessibility cho screen reader đi lạc vào.
 
   **Chưa làm, có chủ đích:** trạng thái 🍃 **nghỉ chủ đích** chưa có — 🍃 lá chắn là tính năng của **U3**; U2b chỉ có `off` (không có trên lịch). Khi U3 làm lá chắn, `WeekCellState` cần thêm một nhánh. Lưới là bề mặt **chỉ đọc**: U2b không mở đường sửa dữ liệu quá khứ.
-- **U2c — sau đó**: thời tiết + Spotify co thành 2 chip 1 dòng (§4.3), sân sau desktop cột phải sticky (§4.4).
+- **U2c — XONG** (nhánh `u2c-widget-chips-and-backyard`, 4 commit, 595 test xanh). Plan: `docs/superpowers/plans/2026-07-27-u2c-widget-chips-and-backyard.md`. Nội dung: thời tiết + Spotify co thành **2 chip 1 dòng** dưới danh sách habit (§4.3), và **sân sau** sticky cột phải desktop chứa thẻ Nếp thu gọn (§4.4). Năm điều đáng nhớ:
+  1. **Popover đi mượn Radix, không tự viết** — `src/components/ui/popover.tsx` là popover DUY NHẤT của app (cùng hình dáng với `tooltip.tsx`). Bốn thứ một popover tự viết luôn làm sai: bẫy focus, Escape, click ra ngoài, và định vị theo viewport — mà cả bốn đều vô hình cho tới khi có người dùng bàn phím.
+  2. **`forceMount` phải chuyền tới CẢ `Portal` lẫn `Content`.** Portal unmount cả cây con của nó, nên một `Content` force-mount nằm trong Portal mặc định vẫn biến mất — đúng cái điều duy nhất mà caller xin `forceMount` để tránh. Đây là lý do popover nhạc **giữ `<iframe>` trong DOM khi đóng** (owner chốt 2026-07-27): đóng chip thì nhạc vẫn chạy.
+  3. **Radix chỉ cho panel force-mount cái `data-state`** — ẩn nó (`hidden` + `aria-hidden`) là việc của caller, nên popover nhạc phải là **controlled** (`useState`) để caller biết nó đang đóng. Test bám **cùng một node iframe** (`panel.contains(frame)` + `frame.isConnected`), không chỉ "có một iframe": một embed remount là playlist chạy lại từ đầu.
+  4. **Radix portal ra `document.body`** → test phải truy vấn qua `screen`, không bao giờ qua `container` của RTL. `container.querySelector` trả `null` và trông y như một bug thật.
+  5. **Thẻ Nếp sân sau nhận props, không đọc `useAppState()`** — nhờ vậy test được mọi trạng thái pet (kể cả `pet: null`) mà không phải lái provider tới đó. Nó hiện thân thiết bằng **thanh (bar), không phải ring**: ring duy nhất của app thuộc về tiến độ ngày, thêm ring thứ hai cạnh nó là hai điểm số cạnh tranh nhau. Khay hết đồ ăn chỉ **làm mờ** nút — một câu giải thích "Sếp chưa có đồ ăn" là guilt, mà invariant 1 cấm.
+
+  **Chưa làm, có chủ đích (3 khoảng trống của U2c):**
+  - **Thẻ "Vườn bạn bè" trong sân sau bị HOÃN.** Spec §4.4 muốn nó, nhưng provider chỉ có `newSocialCount` (một con số cho badge tin mới) — không có feed hoạt động của bạn để hiện. Dựng thẻ bằng con số đó là dựng một thẻ rỗng. Cần một nguồn feed thật trước; khi có thì `--alert` (hiện chưa dùng ở sân sau) là màu của badge đó.
+  - **`companion-panel.tsx` vẫn còn palette v2** — nó thuộc đợt `/nep`, không phải U2c. U2c chỉ dọn `weather-card.tsx` + `spotify-card.tsx`.
+  - **Xanh Spotify `#1db954` + nền tối là màu THƯƠNG HIỆU**, ngoại lệ có chủ đích của luật "màu là một vai" (shadow/radius vẫn dùng token repo). Đừng "sửa" thành `--action`.
 
 ⚠️ **Rollback U1a rất rẻ:** v2 vẫn nằm nguyên trong localStorage, không bị ghi đè. Muốn quay lại chỉ cần xoá khoá `betterme.dashboard.v3` trong DevTools → Application → Local Storage. Vẫn nên export JSON để backup trước khi dùng dữ liệu thật lâu dài.
 
@@ -150,8 +161,8 @@ Owner dùng sync đa thiết bị 1 tuần, xem log lỗi, RỒI mới mở soci
 | Sync engine | `src/lib/sync/{types,time,storage,queue,shadow,merge,importer,engine}.ts` (+ tests) |
 | Server actions | `src/lib/server/{sync-actions,social-actions,auth-actions,actions}.ts` |
 | Shell + state toàn app | `src/components/app/{state-provider,app-shell,nav-items,sync-status-dot,today-page,calendar-page,nep-page,friends-page}.tsx` |
-| Primitive design system | `src/components/ui/{button,card,chip,icon,nav-rail,bottom-tab-bar,progress-ring,tab-switch}.tsx` + token trong `src/app/globals.css` `:root` |
-| Panel UI | `src/components/dashboard/{hero-banner,habit-day-list,habit-entry-control,habit-editor-sheet,week-grid,calendar-panel,companion-panel,celebration-overlay,weather-card,analytics-panel,profile-menu,site-footer,friends-card,garden-fair,garden-visit-overlay,sync-onboarding,pet,nep}.tsx` |
+| Primitive design system | `src/components/ui/{button,card,chip,icon,nav-rail,bottom-tab-bar,popover,progress-ring,tab-switch}.tsx` + token trong `src/app/globals.css` `:root` |
+| Panel UI | `src/components/dashboard/{hero-banner,habit-day-list,habit-entry-control,habit-editor-sheet,week-grid,calendar-panel,companion-panel,celebration-overlay,widget-chips,weather-card,spotify-card,nep-mini-card,analytics-panel,profile-menu,site-footer,friends-card,garden-fair,garden-visit-overlay,sync-onboarding,pet,nep}.tsx` |
 | Voice + invariant tests | `src/components/dashboard/pet-voice.ts` + `pet-voice.test.ts` |
 
 ---
@@ -163,4 +174,5 @@ Owner dùng sync đa thiết bị 1 tuần, xem log lỗi, RỒI mới mở soci
 - **Ledger imprecision có trần**: 2 replica lệch >30 ngày có thể đếm đôi net của 1 ngày đã prune (clamp bởi FOOD_CAP=21; spend không bao giờ mất).
 - **`CompanionState.food` là derived cache** — mọi code đụng ledger phải gọi lại `deriveFoodBalance`; KHÔNG BAO GIỜ merge field này.
 - **`bestStreakFloor` (=26) và `events` là seed fiction** — không bao giờ upload; records `date <= seedCutoverDate` không bao giờ rời máy.
-- **WeatherCard là dữ liệu tĩnh có chủ đích** (spec 2026-07-05) — chưa có live API; đừng coi là bug, nhưng là ứng viên xem xét trong đợt đại tu UI.
+- **Thời tiết fetch một lần cho cả app trong `StateProvider`** (từ U2a) — hero, chip và thẻ chi tiết đọc cùng `app.weather`, nên không thể hiện hai con số khác nhau. Trạng thái lỗi degrade thành "Chưa lấy được" trên chip, không phải thông báo lỗi.
+- **Sân sau chỉ có desktop** (`hidden xl:grid`) và **chỉ chứa thẻ Nếp** — không phải bug, xem 3 khoảng trống của U2c ở §4-A.
