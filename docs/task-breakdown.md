@@ -1,5 +1,8 @@
 # BetterMe Phase 1 Task Breakdown
 
+> **Historical task list:** These tasks describe an earlier plan, not the current repository or
+> an approved backlog. Check current code before using any item.
+
 ## Global Constraints
 
 Runtime floor: Node.js 20.9 or newer.

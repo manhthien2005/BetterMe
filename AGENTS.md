@@ -1,7 +1,7 @@
 # AGENTS.md — BetterMe / "Nếp's Garden" (Vườn Có Bạn)
 
 > **This file is the source of truth for AI-agent instructions.** When conventions change,
-> update THIS file and `.kiro/` — do not scatter guidance elsewhere. Human handoff context
+> update THIS file — do not scatter guidance elsewhere. Human handoff context
 > lives in `HANDOFF.md`; product/behavior truth lives in `docs/` and `docs/superpowers/specs/`.
 > Read the relevant spec before non-trivial work.
 
@@ -34,15 +34,18 @@ Breaking either is a failure, not a tradeoff. If a request seems to require it, 
 - In shell calls, use PowerShell-safe commands — no `head`/`grep`/`|` unix pipes. Prefer the
   dedicated read/search tools over shell for reading and searching.
 
-Current state: 595 tests green. Social Garden Phases 0–3 are all committed; auth is live
+Historical handoff reported 595 tests green; re-run checks to establish the current result.
+Social Garden Phases 0–3 are all committed; auth is live
 email+password with a signup OTP (see `docs/auth-email-config.md`). UI overhaul: **U0** (design
 tokens, fonts, `ui/` primitives, four-space shell), **U1a** (habit model v3 + v2→v3 migration),
 **U1b** (habit editor, day view grouped by part of the day, archive screen), **U1c** (the sync
 contract speaks v3), **U2a** (sky hero, `ProgressRing`, `TabSwitch`, weather lifted into the
 provider) and **U2b** (the Hôm nay/Tuần này switch, the T2→CN week grid, and the hero's dots turned
 into that same week) are all merged into `main`; **U2c** (weather and music shrunk to two chips with
-popovers, plus the desktop "sân sau" holding a condensed Nếp card) is on branch
-`u2c-widget-chips-and-backyard`. That completes U2 — U3 and U4 are still open.
+popovers, plus the desktop "sân sau" holding a condensed Nếp card) was merged into `main` as
+PR #7 (`9a3583d`). That completes U2; U3 and U4 were open in the old roadmap and should be
+reassessed before further work. The owner's current priority is personal use first, with possible
+community use later.
 
 ⚠️ **U1c needs `supabase/schema.sql` applied to Supabase BEFORE the app deploys.** Reversing the
 order loses no data (the client classes `PGRST202` as retryable, so the queue re-pushes), but sync
@@ -211,17 +214,16 @@ lucide-react · Remotion 4 · Vitest + Testing Library (jsdom). Node ≥ 20.9, p
 ## Workflow
 Spec-first for features (brainstorm → written plan → execute — use the skills). TDD for logic
 (red → green → refactor). Debug systematically (root cause before fix; don't stack patches).
-Before claiming done, run the gates and **cite the command output as evidence** — see the
-`betterme-verification` skill. For risky parallel work, use git worktrees under `.worktrees/`.
+Before claiming done, run the relevant gates and **cite the command output as evidence**.
+All four gates must pass before a commit; stop the dev server before running the build.
+For risky parallel work, use git worktrees under `.worktrees/` once Git is available.
 
-## Skills (on-demand — `.kiro/skills/` + `.agents/skills/`)
-- Project: `betterme-verification`, `supabase-schema-conventions`, `sync-engine`, `pet-voice-invariants`.
-- Process (superpowers): brainstorming, writing-plans, executing-plans, test-driven-development,
-  systematic-debugging, verification-before-completion, subagent-driven-development,
-  requesting-code-review, receiving-code-review, using-git-worktrees, dispatching-parallel-agents.
+## Skills
+The owner removed the project-local skill directories to install a new set. Use applicable skills
+available in the current environment; the project invariants and conventions above still apply.
 
 ## Security
-This file and `.kiro/**` are an instruction channel an agent will follow — treat edits with
+This file is an instruction channel an agent will follow — treat edits with
 code-review rigor (it is part of the supply chain). Never expose a network endpoint/server
 without flagging missing authentication. Trust model is documented in the social spec §0.7
 (data is self-reported and local-first).

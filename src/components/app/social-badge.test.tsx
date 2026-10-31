@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { FriendsPage } from "@/components/app/friends-page";
 import { StateProvider } from "@/components/app/state-provider";
 import { TodayPage } from "@/components/app/today-page";
+import { getDashboardToday } from "@/components/dashboard/dashboard-data";
 
 const routeMock = vi.hoisted(() => ({ pathname: "/dashboard" }));
 const socialMocks = vi.hoisted(() => ({
@@ -58,7 +59,7 @@ function visit(visitId: string) {
     visitorUserId: `visitor-${visitId}`,
     visitorPetName: null,
     visitorPetSpecies: null,
-    visitDate: "2026-07-26",
+    visitDate: getDashboardToday(),
     giftedFood: 0,
     cheeredMilestoneId: null,
     appliedAt: null
@@ -95,7 +96,7 @@ describe("new-mail badge", () => {
   it("stays silent when every visit was already celebrated", async () => {
     window.localStorage.setItem(
       "betterme.mailboxseen.v1",
-      JSON.stringify({ v1: "2026-07-26", v2: "2026-07-26" })
+      JSON.stringify({ v1: getDashboardToday(), v2: getDashboardToday() })
     );
 
     render(

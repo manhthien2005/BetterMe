@@ -1,5 +1,14 @@
 # HANDOFF — Nếp's Garden / Vườn Có Bạn
 
+> **Cập nhật 2026-10-31:** U2c đã merge vào `main` qua PR #7 (squash `9a3583d`).
+> Phần bàn giao bên dưới là ảnh chụp ngày 2026-07-27: mô tả U2c chưa merge, tên nhánh
+> và kết quả kiểm thử là thông tin lịch sử. Ưu tiên hiện nay là sử dụng cá nhân trước;
+> khả năng mở rộng cho cộng đồng được xem xét sau. Việc áp dụng schema U1c lên Supabase
+> vẫn chưa được xác nhận.
+> **Cập nhật tiếp:** Chủ sở hữu đã xóa `.agents/`, `.claude/` và `.kiro/` để cài lại skill.
+> `.git` cũ đã mất; kho Git đã được khởi tạo lại và kết nối với `main` trên GitHub.
+> Hai worktree cũ còn trên đĩa nhưng chưa được kết nối lại với kho Git mới.
+
 > **Ngày cập nhật:** 2026-07-27 · **Trạng thái tree:** sạch, 4 gates xanh (**595/595 test, 58 file**)
 > **Nhánh:** `u2c-widget-chips-and-backyard`, dựng trên `main` (U0 + U1a + U1b + U1c + U2a + U2b đã merge vào `main` — U2b là PR #6, squash `ffd7eae`) · File này là điểm vào duy nhất cho người nhận bàn giao.
 > ⚠️ **U1c cần owner apply `supabase/schema.sql` lên Supabase TRƯỚC khi deploy app** — xem §2. Việc này CHƯA làm.

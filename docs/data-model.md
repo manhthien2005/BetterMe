@@ -1,5 +1,9 @@
 # BetterMe Phase 1 Data Model
 
+> **Historical model:** The contracts below describe an earlier plan and are not the current
+> application model. The claimed `src/types/index.ts` contract is not current. Consult the habit
+> model, sync contracts and `AGENTS.md` for current behavior.
+
 ## Canonical TypeScript contracts
 
 The following block is the normative model and is duplicated exactly in `src/types/index.ts`. Field names are camelCase in TypeScript; legacy snake_case mappings are documented after the block.

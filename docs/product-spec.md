@@ -1,5 +1,9 @@
 # BetterMe Phase 1 Product Specification
 
+> **Historical product plan:** This describes an earlier Phase 1, not all current behavior.
+> The owner currently intends personal use first, with possible community use later; the detailed
+> direction for the next phase has not yet been set.
+
 ## Product intent
 
 BetterMe is a private, single-user self-improvement companion for planning a week, completing daily habits, reflecting honestly, and seeing progress without turning life into a spreadsheet. The dashboard direction is the approved Playful Soft-Bento Productivity Dashboard: warm, personal, modern, focused, lightly playful, spacious, and premium but friendly. It should be quick enough for a thirty-second check-in, useful enough for a weekly review, and expressive without becoming noisy.

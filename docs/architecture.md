@@ -1,5 +1,9 @@
 # BetterMe Phase 1 Architecture
 
+> **Historical planning document:** This does not describe the current architecture. It predates
+> habit v3, synchronization and the four-space shell. Compare against current code and `AGENTS.md`;
+> do not use this old target as an implementation mandate.
+
 > **Status (updated 2026-07-06): ROADMAP, not current code.** The "canonical Phase 1" scaffold described below (pure-domain `src/lib/scoring`, `src/lib/storage`, `src/store`, `src/features/*`, `src/charts`, `src/themes`, `src/styles/**`, canonical `src/types`, etc.) was **removed** in the 2026-07-06 repo cleanup because every module was an unwired `throw new Error("not implemented")` stub. The application that actually ships today is **Supabase auth + a localStorage-backed dashboard**: `src/app/**` routes, `src/components/dashboard/{dashboard-client,dashboard-data}.tsx` (renders from `localStorage`, key `betterme.dashboard.v1`), and the Supabase backend under `src/lib/{server,supabase,tracker,types,defaults,date,utils}.ts` (implemented; only `ensureUserBootstrap` is wired — the CRUD actions await a future dashboard-to-Supabase wiring task). Treat the sections below as the intended target architecture to build toward, not a description of the present tree. See `docs/superpowers/specs/2026-07-06-repo-cleanup-rearchitecture-design.md`.
 
 ## Architecture outcome

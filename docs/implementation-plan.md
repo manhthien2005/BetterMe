@@ -1,5 +1,8 @@
 # BetterMe Phase 1 Implementation Plan
 
+> **Historical plan:** This predates the current application and is not the active roadmap.
+> Its assumptions about the repository, authentication and synchronization are stale.
+
 ## Goal
 
 Deliver a local-first, themeable BetterMe web app that preserves legacy score/streak behavior while replacing spreadsheet mechanics with pure domain modules, an accessible Playful Soft-Bento Productivity Dashboard, and a replaceable persistence adapter.
