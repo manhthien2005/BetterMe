@@ -1,5 +1,13 @@
 # HANDOFF — Nếp's Garden / Vườn Có Bạn
 
+> **Agent setup 2026-10-31:** `.agents/skills/` now carries Ponytail (instructions
+> only), pinned Web Interface Guidelines, and Playwright adapted to Windows/pnpm.
+> Supabase, Vercel, Superpowers and full Impeccable remain host-managed; see
+> `docs/agent-skills.md` for setup, provenance and limitations. Use `pnpm browser`,
+> `pnpm test:sync` and `pnpm verify` for the documented repeatable checks.
+> The owner requires single-agent execution unless they explicitly request
+> delegation. Next.js remains 15.5.20; a framework upgrade is a separate task.
+
 > **Cập nhật 2026-10-31:** U2c đã merge vào `main` qua PR #7 (squash `9a3583d`).
 > Phần bàn giao bên dưới là ảnh chụp ngày 2026-07-27: mô tả U2c chưa merge, tên nhánh
 > và kết quả kiểm thử là thông tin lịch sử. Ưu tiên hiện nay là sử dụng cá nhân trước;

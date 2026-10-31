@@ -1,0 +1,20 @@
+This skill includes material derived from the Microsoft playwright-cli repository.
+
+Source:
+- Repository: microsoft/playwright-cli
+- Path: skills/playwright-cli/SKILL.md
+
+Copyright (c) Microsoft Corporation.
+
+Licensed under the Apache License, Version 2.0.
+See LICENSE.txt in this directory.
+
+Modifications:
+- Adapted for the Codex skill collection.
+- Added a wrapper script and local reference guides.
+
+BetterMe modifications (2026-10-31):
+- Replaced the Bash/npx wrapper with the lockfile-pinned pnpm browser command.
+- Adapted instructions and references for PowerShell and CLI 0.1.22.
+- Added isolated-session cleanup and project-specific QA boundaries.
+- Updated the skill picker prompt; retained the original license and assets.

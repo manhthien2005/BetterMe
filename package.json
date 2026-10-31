@@ -14,7 +14,10 @@
     "remotion:render": "remotion render src/remotion/index.ts BetterMeLogo out/betterme-logo.mp4",
     "remotion:still": "remotion still src/remotion/index.ts BetterMeLogo out/betterme-logo.png --frame=45",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify": "pnpm typecheck && pnpm lint && pnpm vitest run && pnpm build",
+    "test:sync": "vitest run src/lib/sync src/components/app/state-provider-sync.test.tsx src/lib/server/sync-actions.test.ts tests/schema-contract.test.ts",
+    "browser": "playwright-cli -s=betterme-qa"
   },
   "dependencies": {
     "@radix-ui/react-popover": "1.1.15",
@@ -37,6 +40,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.5",
+    "@playwright/cli": "0.1.22",
     "@remotion/eslint-plugin": "4.0.484",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",

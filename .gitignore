@@ -4,8 +4,7 @@ out
 coverage
 playwright-report
 test-results
-.env
-.env*.local
+.env*
 *.tsbuildinfo
 vercel-debug.log
 .claude/settings.local.json
@@ -18,3 +17,8 @@ pnpm-workspace.yaml.*
 
 # Superpowers brainstorm sessions (mockups da duyet duoc copy vao docs/)
 .superpowers/
+
+# Browser QA sessions can contain storage, screenshots, and authentication data.
+.playwright/
+.playwright-cli/
+output/playwright/
