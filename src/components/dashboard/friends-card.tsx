@@ -166,6 +166,8 @@ export function FriendsCard({
 
   // Fetched AFTER mount — the dashboard's first paint never waits on this.
   useEffect(() => {
+    // The refresh callback applies state only after awaiting the server action.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
   }, [refresh]);
 

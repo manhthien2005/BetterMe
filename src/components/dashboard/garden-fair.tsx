@@ -80,6 +80,8 @@ export function GardenFairCard({ onOwnLantern }: { onOwnLantern?: () => void } =
   }, [today]);
 
   useEffect(() => {
+    // Populate from awaited server actions after mount, keeping the first paint local.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
   }, [refresh]);
 

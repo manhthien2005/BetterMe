@@ -55,9 +55,12 @@ See `docs/superpowers/specs/2026-07-26-uiux-overhaul-design.md` §10 for what is
 `HANDOFF.md` for progress and next steps.
 
 ## Stack
-Next.js 15.5 (App Router) · React 19 · TypeScript 5.9 **strict** · Supabase (`@supabase/ssr`) ·
+Next.js 16.4.3 stable (App Router, Turbopack) · React 19.2.7 · TypeScript 5.9 **strict** · Supabase (`@supabase/ssr`) ·
 TanStack Query · Tailwind 3.4 + Radix + `class-variance-authority` · sonner (toasts) ·
 lucide-react · Remotion 4 · Vitest + Testing Library (jsdom). Node ≥ 20.9, pnpm 11.7.
+Read the relevant version-matched Next.js reference under `node_modules/next/dist/docs/`
+before applying framework APIs. Session refresh lives in `src/proxy.ts` (Node runtime);
+authorization remains in the app layout/server actions, not in the proxy alone.
 
 ## Project map
 - `src/app/**` — App Router routes. The four spaces live in the `(app)` route group

@@ -469,6 +469,8 @@ export function StateProvider({
     if (loaded) {
       const welcomed = checkComebackGift(loaded, today);
 
+      // Browser persistence is restored after SSR so the initial markup stays consistent.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       commitState(welcomed);
 
       const species = welcomed.companion.activeSpecies;
@@ -494,12 +496,16 @@ export function StateProvider({
   useEffect(() => {
     const stored = loadWidgetSettings().weather;
 
+    // Hydrate a browser-only preference after the server-compatible first render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored) setWeatherPlaceState(stored);
   }, []);
 
   useEffect(() => {
     const controller = new AbortController();
 
+    // Synchronize the status with this external request, including place changes/retries.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setWeatherStatus("loading");
 
     fetchWeather(weatherPlace, controller.signal)
@@ -966,6 +972,8 @@ export function StateProvider({
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
+    // A full navigation discards account-scoped provider state after signing out.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.assign("/login");
   }
 

@@ -34,7 +34,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html className={`${displayFont.variable} ${bodyFont.variable}`} lang="vi">
+    <html className={`${displayFont.variable} ${bodyFont.variable}`} data-scroll-behavior="smooth" lang="vi">
       <body className="min-h-screen">
         <QueryProvider>
           <TooltipProvider delayDuration={160}>

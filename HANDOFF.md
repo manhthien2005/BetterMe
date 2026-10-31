@@ -1,12 +1,22 @@
 # HANDOFF — Nếp's Garden / Vườn Có Bạn
 
+> **Framework update 2026-10-31:** Upgraded directly to stable Next.js **16.4.3**
+> with matching eslint-config-next, native flat ESLint config and default Turbopack.
+> Session refresh is now `src/proxy.ts`; authorization still lives in the app
+> layout/server actions. React stays on the compatible 19.2.7 version.
+> All four gates pass: **600 tests / 59 files**, including five new proxy regressions.
+> Local production guest redirects and dev-mode habit persistence, partial progress,
+> four-space navigation, widgets and mobile/desktop rendering were verified.
+> See `docs/superpowers/plans/2026-10-31-next16-upgrade.md` for exact evidence and
+> limits. No backup or extra worktree was created; no subagents were used.
+
 > **Agent setup 2026-10-31:** `.agents/skills/` now carries Ponytail (instructions
 > only), pinned Web Interface Guidelines, and Playwright adapted to Windows/pnpm.
 > Supabase, Vercel, Superpowers and full Impeccable remain host-managed; see
 > `docs/agent-skills.md` for setup, provenance and limitations. Use `pnpm browser`,
 > `pnpm test:sync` and `pnpm verify` for the documented repeatable checks.
 > The owner requires single-agent execution unless they explicitly request
-> delegation. Next.js remains 15.5.20; a framework upgrade is a separate task.
+> delegation. The subsequent framework upgrade is recorded above.
 
 > **Cập nhật 2026-10-31:** U2c đã merge vào `main` qua PR #7 (squash `9a3583d`).
 > Phần bàn giao bên dưới là ảnh chụp ngày 2026-07-27: mô tả U2c chưa merge, tên nhánh

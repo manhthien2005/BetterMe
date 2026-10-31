@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import type { Database } from "@/lib/types";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request
   });
@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
     await supabase.auth.getUser();
   } catch {
     // Supabase unreachable (network down / project paused or deleted) must
-    // never take the whole app down — the middleware's only job is refreshing
+    // never take the whole app down — the proxy's only job is refreshing
     // session cookies. Page-level auth decides what to do without a session.
   }
 

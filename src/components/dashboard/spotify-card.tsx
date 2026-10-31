@@ -36,6 +36,8 @@ export function SpotifyCard() {
     const stored = loadWidgetSettings().spotifyPlaylistUrl;
     const storedId = stored ? parseSpotifyPlaylistId(stored) : null;
 
+    // Restore browser-only settings after the server-compatible initial render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (storedId) setPlaylistId(storedId);
   }, []);
 

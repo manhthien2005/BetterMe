@@ -142,6 +142,8 @@ export function Pet({
     const hour = new Date().getHours();
 
     if (hour >= 5 && hour < 9) {
+      // Clock-dependent mood is intentionally applied after hydration to avoid SSR drift.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDayPhase("morning");
       setStretching(true);
       const timer = window.setTimeout(() => setStretching(false), 950);

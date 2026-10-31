@@ -139,9 +139,9 @@ Use single-agent scenario review unless the owner explicitly authorizes subagent
 
 Taste Skill and Graphify are intentionally deferred under the approved plan.
 Karpathy-inspired scope/simplicity/verification principles live in AGENTS.md rather
-than a fourth overlapping coding-behavior skill. A Next.js upgrade is separate:
-match guidance to the currently installed version; do not silently apply Next 16
-APIs to this Next 15 app.
+than a fourth overlapping coding-behavior skill. Next.js was subsequently upgraded
+directly to stable 16.4.3 at the owner's request. Match framework guidance to
+`node_modules/next/dist/docs/`; the original skill-install evidence below is historical.
 
 ## Installation evidence and limitations
 

@@ -19,7 +19,7 @@ export async function createClient() {
             cookieStore.set(name, value, options);
           });
         } catch {
-          // Server Components cannot always write cookies; middleware and actions can.
+          // Server Components cannot always write cookies; proxy and actions can.
         }
       }
     }
