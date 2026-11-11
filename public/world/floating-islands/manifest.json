@@ -1,0 +1,262 @@
+{
+  "reference": "../floating-island-v1/glb/floating-island.glb",
+  "referenceMainFootprint": [
+    33,
+    24
+  ],
+  "sourceBlendSha256": "d46f0448ba851e6e5b8bece7b3bfc008538e08b237b6defee8a686adff91e299",
+  "models": [
+    {
+      "id": "thien-vien",
+      "name": "Thiên Viên",
+      "description": "Vườn cổ rộng, hàng cột cong và dòng thác dưới tán đại thụ.",
+      "size": "large",
+      "glb": "glb/thien-vien.glb",
+      "blend": "source/thien-vien.blend",
+      "boundsBlender": [
+        [
+          -39.19182586669922,
+          -23.304555892944336,
+          -29.0
+        ],
+        [
+          39.181087493896484,
+          19.74353790283203,
+          17.082359313964844
+        ]
+      ],
+      "mainBoundsBlender": [
+        [
+          -28.335187911987305,
+          -21.185874938964844,
+          -29.0
+        ],
+        [
+          29.13102912902832,
+          19.386018753051758,
+          2.2753407955169678
+        ]
+      ],
+      "landSpan": 57.466217041015625,
+      "rimRelief": 1.9773188032588305,
+      "landformCount": 3,
+      "trees": 5,
+      "grassBlades": 30529,
+      "revision": "reference-polish",
+      "vineStrands": 124,
+      "placedTriangles": 423628,
+      "bytes": 20124236,
+      "sha256": "55fafbe300b93a58c3c90c3e4835397c52067ccfb910efb118ec8d96f8c58ff6"
+    },
+    {
+      "id": "thac-tang",
+      "name": "Thác Tầng",
+      "description": "Ba tầng đá lệch nhau, hồ nối thác và những cụm cây trên cao.",
+      "size": "large",
+      "glb": "glb/thac-tang.glb",
+      "blend": "source/thac-tang.blend",
+      "boundsBlender": [
+        [
+          -29.723024368286133,
+          -30.446199417114258,
+          -27.0
+        ],
+        [
+          25.09983253479004,
+          25.18085289001465,
+          22.190032958984375
+        ]
+      ],
+      "mainBoundsBlender": [
+        [
+          -25.10374641418457,
+          -28.588665008544922,
+          -27.0
+        ],
+        [
+          24.84097671508789,
+          23.12259292602539,
+          11.604148864746094
+        ]
+      ],
+      "landSpan": 51.71125793457031,
+      "rimRelief": 1.956984988930187,
+      "landformCount": 3,
+      "trees": 5,
+      "grassBlades": 31032,
+      "revision": "reference-polish",
+      "vineStrands": 152,
+      "placedTriangles": 442438,
+      "bytes": 20369732,
+      "sha256": "5f90e01d90e56bc9035737b3a6f45b14d0e77ccf6d5f4b30dee820b7fde07c88"
+    },
+    {
+      "id": "nguyet-ho",
+      "name": "Nguyệt Hồ",
+      "description": "Bờ cỏ khuyết ôm hồ xanh, cổng đá vỡ soi bóng trên nước.",
+      "size": "medium",
+      "glb": "glb/nguyet-ho.glb",
+      "blend": "source/nguyet-ho.blend",
+      "boundsBlender": [
+        [
+          -23.434917449951172,
+          -12.435227394104004,
+          -22.0
+        ],
+        [
+          23.60415267944336,
+          15.37497615814209,
+          10.623525619506836
+        ]
+      ],
+      "mainBoundsBlender": [
+        [
+          -19.476163864135742,
+          -10.895244598388672,
+          -22.0
+        ],
+        [
+          19.3832950592041,
+          13.44537353515625,
+          1.6254944801330566
+        ]
+      ],
+      "landSpan": 38.859458923339844,
+      "rimRelief": 2.4344909378185435,
+      "landformCount": 1,
+      "trees": 3,
+      "grassBlades": 13724,
+      "revision": "reference-polish",
+      "vineStrands": 55,
+      "placedTriangles": 179411,
+      "bytes": 11657576,
+      "sha256": "d2230eb3209a124d46c0a59653bad538761ea73cfa8569d291dc33a5f870ab5f"
+    },
+    {
+      "id": "song-dinh",
+      "name": "Song Đỉnh",
+      "description": "Hai mỏm đá tách rời, nối bằng cầu cong qua khe trời.",
+      "size": "medium",
+      "glb": "glb/song-dinh.glb",
+      "blend": "source/song-dinh.blend",
+      "boundsBlender": [
+        [
+          -22.04476547241211,
+          -13.608633995056152,
+          -22.0
+        ],
+        [
+          19.764774322509766,
+          14.445876121520996,
+          11.483909606933594
+        ]
+      ],
+      "mainBoundsBlender": [
+        [
+          -19.607864379882812,
+          -12.04207706451416,
+          -22.0
+        ],
+        [
+          19.764774322509766,
+          12.083901405334473,
+          3.2657737731933594
+        ]
+      ],
+      "landSpan": 39.37263870239258,
+      "rimRelief": 2.2593063963153392,
+      "landformCount": 2,
+      "trees": 2,
+      "grassBlades": 13126,
+      "revision": "reference-polish",
+      "vineStrands": 56,
+      "placedTriangles": 205829,
+      "bytes": 12595152,
+      "sha256": "c17445f3d88f4f96c31396a8ccb82a990dadf88ec357b0eaf2c3fd365244f408"
+    },
+    {
+      "id": "tan-may",
+      "name": "Tán Mây",
+      "description": "Một tán cây nghiêng che bãi cỏ nhỏ và mạch nước ven đá.",
+      "size": "small",
+      "glb": "glb/tan-may.glb",
+      "blend": "source/tan-may.blend",
+      "boundsBlender": [
+        [
+          -11.114143371582031,
+          -8.733407974243164,
+          -15.0
+        ],
+        [
+          11.819547653198242,
+          10.232172966003418,
+          9.512306213378906
+        ]
+      ],
+      "mainBoundsBlender": [
+        [
+          -8.942469596862793,
+          -7.030791282653809,
+          -15.0
+        ],
+        [
+          10.253782272338867,
+          7.048939228057861,
+          1.1526552438735962
+        ]
+      ],
+      "landSpan": 19.19625186920166,
+      "rimRelief": 2.2496672143876406,
+      "landformCount": 1,
+      "trees": 1,
+      "grassBlades": 4562,
+      "revision": "reference-polish",
+      "vineStrands": 25,
+      "placedTriangles": 87539,
+      "bytes": 8303364,
+      "sha256": "373ac70a582be7a74c5dbb8bba2e298d292556707ab74d80cc93a8c328819a67"
+    },
+    {
+      "id": "phong-dang",
+      "name": "Phong Đăng",
+      "description": "Mỏm đá cao thanh, đình đèn nhỏ và hàng cây đón gió.",
+      "size": "small",
+      "glb": "glb/phong-dang.glb",
+      "blend": "source/phong-dang.blend",
+      "boundsBlender": [
+        [
+          -7.7091240882873535,
+          -7.317024230957031,
+          -22.0
+        ],
+        [
+          10.096598625183105,
+          8.166211128234863,
+          8.531442642211914
+        ]
+      ],
+      "mainBoundsBlender": [
+        [
+          -7.461355209350586,
+          -5.645413398742676,
+          -22.0
+        ],
+        [
+          8.485132217407227,
+          5.70920467376709,
+          2.1628012657165527
+        ]
+      ],
+      "landSpan": 15.946487426757812,
+      "rimRelief": 2.4074451344865464,
+      "landformCount": 1,
+      "trees": 2,
+      "grassBlades": 3196,
+      "revision": "reference-polish",
+      "vineStrands": 18,
+      "placedTriangles": 98401,
+      "bytes": 8113908,
+      "sha256": "8dbe86663005594c712f7485373ac2337588cc2a12b2e03b72065117b725d720"
+    }
+  ]
+}

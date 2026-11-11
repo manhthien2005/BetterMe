@@ -1,0 +1,131 @@
+{
+  "source": "mountain-collection-v1",
+  "models": [
+    {
+      "id": "son-tru",
+      "band": "near",
+      "sourceSha256": "e282d5da6bf40d0c048417654b709908eb976159e8e73979bbcaadc1f503c81b",
+      "sha256": "5549184b17c49b82c12f785645dec2033521e5e69b401f972cae900a7b36ca37",
+      "triangles": 34964,
+      "bytes": 3161720,
+      "bounds": [
+        [
+          -55.09883499145508,
+          -1.4488804340362549,
+          -45.738975524902344
+        ],
+        [
+          57.587520599365234,
+          65.34925079345703,
+          40.80621337890625
+        ]
+      ],
+      "authoringGlbSha256": "57c943c66df90978eda9b255fca1592197e18bf5c64742f7d8da58627c8f760e"
+    },
+    {
+      "id": "thach-linh",
+      "band": "near",
+      "sourceSha256": "b61a1758cc177bc62ff48426b6a24b0cf58fd855d97ab45ede0d27cbe9b9d92b",
+      "sha256": "8f7b73ae76378bfdc9fdf59d89ece60592e23bbe547f6efa3797c1e71b6ec011",
+      "triangles": 38322,
+      "bytes": 3173800,
+      "bounds": [
+        [
+          -64.84024047851562,
+          -0.8993629813194275,
+          -44.033267974853516
+        ],
+        [
+          66.52192687988281,
+          49.262474060058594,
+          46.681976318359375
+        ]
+      ],
+      "authoringGlbSha256": "d1de7cd0b1c4c2532fb6054b9189933c63558b936393098fc6fe65620d440cf2"
+    },
+    {
+      "id": "van-son",
+      "band": "middle",
+      "sourceSha256": "9212dff3e4a9baa49e65cae6d8944e399f3578cee4e11d90c17d99119112623a",
+      "sha256": "90933c3d43fe9e062a11e396d3f2c0c2d47013423aef3d2beb6d89c564a44409",
+      "triangles": 19308,
+      "bytes": 2203592,
+      "bounds": [
+        [
+          -95.51953887939453,
+          -1.2676982879638672,
+          -53.1236572265625
+        ],
+        [
+          91.44600677490234,
+          85.91853332519531,
+          60.32649230957031
+        ]
+      ],
+      "authoringGlbSha256": "3f5af6815feded32f48869a4e7c5e00dc1478be8ca3c40e562dae5c1740908a0"
+    },
+    {
+      "id": "thien-mach",
+      "band": "middle",
+      "sourceSha256": "7a34b8758ffb60db3bbf6902ce5b79d6081f994e8dd2abaa804d043bcad2979d",
+      "sha256": "7d169dedd153f6ea3fb316a12db569b8cf20f6aa25bba251491e61cb599d4c8d",
+      "triangles": 18774,
+      "bytes": 2182536,
+      "bounds": [
+        [
+          -120.30372619628906,
+          -0.42335084080696106,
+          -56.17237854003906
+        ],
+        [
+          117.35465240478516,
+          79.78001403808594,
+          62.31563949584961
+        ]
+      ],
+      "authoringGlbSha256": "78831f5b5d425517d8fdccfd030d1d6701099efd12d6fcf1c76202a27de72a4d"
+    },
+    {
+      "id": "thanh-son",
+      "band": "far",
+      "sourceSha256": "6c5f7ea6e34bee94636663f1622396516ee8b62be849138cf42f0267daf63b62",
+      "sha256": "b38e291ca3ad7c0f82f415d6d3dd195d754a0ac6ee811f6ed122292803270b3d",
+      "triangles": 6468,
+      "bytes": 1648924,
+      "bounds": [
+        [
+          -143.0194854736328,
+          -3.5388007164001465,
+          -66.22138214111328
+        ],
+        [
+          137.392822265625,
+          58.22944641113281,
+          64.52738952636719
+        ]
+      ],
+      "authoringGlbSha256": "2d424bbe31ec87d8888c3c2b1364dc053070e68dffd69ccb6a8bce4298a30621"
+    },
+    {
+      "id": "vien-phong",
+      "band": "far",
+      "sourceSha256": "3080798fe2a4ffc9dc68f1cca9c4b9a27d65aac9a1136fe65ea19f8e4976bcce",
+      "sha256": "16af8fe0a89152e6428c41b588f1f473011b5c1758e0df4c97c9cc93b8dfae7f",
+      "triangles": 6950,
+      "bytes": 1679372,
+      "bounds": [
+        [
+          -188.72019958496094,
+          -1.0409799814224243,
+          -71.37299346923828
+        ],
+        [
+          178.86863708496094,
+          93.72115325927734,
+          71.14131164550781
+        ]
+      ],
+      "authoringGlbSha256": "98c2c1e82151fddcb9c6e3b22cfe1f87207eac96e9149f61a5940216aa895634"
+    }
+  ]
+}

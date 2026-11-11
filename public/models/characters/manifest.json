@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "defaultCharacterId": "scholar-vrm1",
+  "characters": [
+    {
+      "id": "scholar-vrm1",
+      "name": "Học viên Nếp (VRoid Sample Avatar)",
+      "url": "/models/characters/scholar-vrm1.vrm",
+      "format": "VRM-1.0",
+      "sourceName": "VRM1_Constraint_Twist_Sample",
+      "sourceRepository": "https://github.com/vrm-c/vrm-specification/tree/master/samples/VRM1_Constraint_Twist_Sample",
+      "author": "pixiv Inc.",
+      "copyright": "(c) 2022 pixiv Inc.",
+      "licenseName": "VRM Public License 1.0",
+      "licenseUrl": "https://vrm.dev/licenses/1.0/",
+      "permissions": {
+        "avatarPermission": "everyone",
+        "commercialUsage": "corporation",
+        "allowRedistribution": true,
+        "modification": "allowModificationRedistribution",
+        "creditNotation": "unnecessary"
+      },
+      "metrics": {
+        "fileSizeBytes": 10776032,
+        "sha256": "12c2b97e95e700783a6a550dc0eee2d7880aeedccef9ae67bc4c5a2f0f2631a2",
+        "meshCount": 3,
+        "primitiveCount": 13,
+        "materialCount": 13,
+        "triangleCount": 36470,
+        "humanoidBoneCount": 54,
+        "expressions": [
+          "aa",
+          "angry",
+          "blink",
+          "blinkLeft",
+          "blinkRight",
+          "ee",
+          "happy",
+          "ih",
+          "lookDown",
+          "lookLeft",
+          "lookRight",
+          "lookUp",
+          "neutral",
+          "oh",
+          "ou",
+          "relaxed",
+          "sad",
+          "surprised"
+        ]
+      }
+    }
+  ]
+}

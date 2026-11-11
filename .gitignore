@@ -22,3 +22,9 @@ pnpm-workspace.yaml.*
 .playwright/
 .playwright-cli/
 output/playwright/
+output/plaza-landscape-qa/
+output/plaza-source-cache/
+output/floating-islands-qa/
+output/plaza-archipelago-qa/
+output/plaza-atmosphere-fix/
+output/world-plaza-summit-2026-11-09/

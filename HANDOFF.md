@@ -1,5 +1,398 @@
 # HANDOFF — Nếp's Garden / Vườn Có Bạn
 
+## Checkpoint cảnh đã duyệt; tiếp theo bàn ý tưởng Plaza — 2026-11-11
+
+Chủ dự án đã xem bản sửa núi/sương/đảo phụ, đánh giá **8.5/10** và yêu cầu
+commit checkpoint Git trước khi làm phần sân Plaza. Checkpoint bao gồm toàn bộ
+runtime `/world`, nhân vật/camera, bầu trời, landscape, asset đảo/núi/thảm thực vật,
+tests và tài liệu đang dùng trên nhánh `codex/plaza-landscape-v1`.
+Ảnh/log/source-cache trong `output/` không thuộc checkpoint; các asset runtime
+đã nằm trong `public/`. Không push/merge/deploy trong bước này.
+
+**Yêu cầu tiếp theo của chủ dự án:** cùng brainstorm ý tưởng Plaza trước, rồi
+mới lập kế hoạch thực thi. Chưa duyệt thiết kế mới, chưa bắt đầu dựng asset hay
+thay đổi sân. Spec cũ là bối cảnh để trao đổi, không thay thế lần chốt ý tưởng này.
+Kiểm tra trước checkpoint: `pnpm verify` **exit 0**, typecheck đạt, lint
+**0 lỗi / 26 cảnh báo QA cũ**, **753 tests / 83 files**, build **11/11 trang**.
+Đã dừng đúng cây dev wrapper28124 và xác nhận port3004 đóng trước build.
+`git diff --cached --check` đạt; đã rà 186 staged files, đủ 78 runtime assets,
+không thiếu buffer/texture GLTF, không có output/cache/secrets trong index.
+Log: `output/plaza-atmosphere-fix/checkpoint-final-verify.log` (local, ignored).
+Commit message: `chore(world): checkpoint approved mountain and island landscape`.
+
+---
+
+## Sửa lỗi núi, sương dày và đảo phụ — 2026-11-11, hiện hành
+
+Tiếp tục yêu cầu cuối của chat `01a1c8f5-0c9d-7243-9276-920ed706899e`
+(chat đó bị 413 trước khi xử lý ảnh phản hồi). Làm trong worktree
+`.worktrees/plaza-landscape-v1`, không delegation/commit/push/deploy.
+
+- Nguyên nhân mảng vuông trên núi: loader ép cả đá và lá alpha-mask thành
+  transparent + depthWrite rồi nhân alpha theo độ cao. Probe cùng góc nhìn
+  xác nhận. Đã dùng opaque depth pass, giữ alphaTest lá, haze pha bằng màu.
+- Haze pha **sau tone mapping / trước colorspace**, vì sky không tone-map;
+  sửa thêm viền chân núi lệch màu. Chân núi xuống thêm 22 đơn vị, tăng scale Y
+  tương ứng để đỉnh giữ nguyên cao độ; tan ở -48..-18, lộ thêm sườn đá.
+- Sương ban ngày bốn lớp còn **.52/.28/.22/.20**; giữ vị trí gần vách và
+  độ dốc thung lũng. Núi xa lấy sắc xanh từ sky-mid, vẫn có relief/texture.
+- 12 đảo phụ dùng gờ đá/cỏ bất quy tắc, cụm tán cây, material nhận ánh sáng
+  và haze theo khoảng cách; vẫn một batch, không thêm texture/GLB. Bảy đảo
+  chính/nguồn asset/tọa độ giữ nguyên; 31 núi vẫn 466,984 triangles/30 batch.
+- Test vật liệu có RED→GREEN; focused **13/13**. `pnpm verify` **exit 0**:
+  typecheck đạt; lint **0 lỗi / 26 warning script QA cũ**; **753 tests / 83 files**;
+  build **11/11 trang**. Đã dừng đúng cây dev wrapper37044 trước build.
+- Đã xem spawn/eye/rim/west/rear, trưa/chiều/đêm/mưa, 390×844. Shader lỗi=0;
+  reduced-motion đạt. Ba vòng public/personal: **249 geometry/155 texture** và
+  **93/29** ổn định sau cùng sweep. Một GLB lỗi còn 5 mẫu; tải muộn không
+  thêm tài nguyên vào personal; quay lại đủ 6 mẫu. Không JS exception.
+- Tự rà riêng diff/ownership/geometry/shader/hình ảnh; detector `[]`.
+  Bằng chứng ở `output/plaza-atmosphere-fix/`: `before-after.jpg`, `after-*`,
+  `material-red.log`, `focused.log`, `lifecycle.log`, `final-check.log`,
+  `verify.log`. Plan: `docs/superpowers/plans/2026-11-11-plaza-atmosphere-fix.md`.
+- Preview khởi động lại **http://127.0.0.1:3004/world**, loopback với dev-auth
+  bypass (không authentication), PID trong `output/plaza-atmosphere-fix/dev.pid`.
+  Wrapper PID **28124**. Sau restart: `HORIZON_RESTART_PASS` và
+  `ATMOSPHERE_FINAL_PASS` (thời tiết thực có mưa, opacity .60/.36/.30/.28),
+  đủ 6/7/12, shader lỗi=0, reduced-motion đạt. Đã đóng browser QA,
+  `git diff --check` đạt, index trống. Chưa benchmark điện thoại thật.
+
+---
+
+## Núi thật và chỏm tuyết đã ghép vào Plaza — 2026-11-11, bản trước
+
+Chủ dự án đã cho phép ghép thật, xem và chỉnh visual tổng thể. Đã thay 31 cụm
+núi procedural bằng sáu mẫu núi đã duyệt, vẫn **5/9/17 lớp gần/giữa/xa**.
+Giữ nguyên bảy đảo chính, 12 đảo phụ, vách summit và cả bốn lớp sương.
+
+- `public/world/mountains/`: sáu GLB runtime giảm chi tiết từ nguồn đã duyệt,
+  **14,049,944 byte**, tổng **466,984 tam giác đặt / 30 instance batch**.
+  Nguồn `.blend`/GLB và gallery 8769 giữ nguyên. Manifest ghi hash và bounds.
+- `plaza-mountains.ts` giữ placement, shader tuyết/sương, batching và tải/hủy;
+  `public-plaza-mountains.tsx` nối lifecycle/ánh sáng. Xóa hình học/material và
+  helper núi procedural không còn dùng khỏi backdrop, không thay mist/đảo.
+- **6 cụm có tuyết** ở lớp giữa/xa; mép loang theo độ cao/độ dốc, vách đá lộ ra.
+  Haze tăng theo khoảng xa/mưa; màu tuyết nhận ánh sáng cùng cảnh. Giới hạn
+  kéo cao để dãy xa không thành tường nhọn. Chân núi fade dưới sương, alpha gần
+  0 bị discard. Không thêm shadow/reflection camera; giữ public far 1500.
+- Asset buffer/UV/normal/pivot và SHA kiểm tra đạt. Focused **17 test / 5 file**;
+  riêng núi **6/6**, có RED→GREEN cho cleanup nguồn lỗi và palette đêm đầu tải.
+  `pnpm verify` **exit 0**: typecheck, lint không lỗi, **751 test / 83 file**,
+  production build **11/11**. Lint vẫn có 26 cảnh báo ở script QA cũ.
+- Visual đã xem spawn/eye/rim/west/rear, trưa/chiều/đêm/mưa, 390×844; probe
+  bật/tắt tuyết tại mép tây. `badPrograms: 0`. Ảnh/log ở
+  `output/plaza-archipelago-qa/snow-*`, gồm `snow-final-states.jpg`,
+  `snow-final-landscape.jpg`, `snow-visual-final.log`, `snow-verify.log`.
+- `SNOW_MOUNTAIN_LIFECYCLE_PASS`: ba vòng public/personal sau cùng sweep360
+  ổn định **248 geometry / 162 texture** và **104 / 29**. GPU upload lazy theo
+  frustum nên không so số đếm ở các hướng chưa được render như nhau.
+  Thiếu một GLB còn 5 mẫu; nguồn về muộn không làm tăng GPU ở personal;
+  quay lại tải đủ sáu. Không JS error trong run đó.
+- Đã dừng đúng cây dev wrapper 5392, xác nhận port3004 đóng trước build;
+  preview được khởi động lại loopback/dev-auth bypass, PID trong
+  `output/plaza-archipelago-qa/snow-dev.pid`. Không chứng minh auth/sync live.
+- Kiểm tra sau restart **SNOW_RESTART_PASS**: đủ 6 mẫu / 31 vị trí / 6 cụm
+  tuyết, 4 lớp sương, 7 đảo chính, không shader lỗi; wrapper PID **37044**.
+  Đã đóng phiên browser QA, preview **http://127.0.0.1:3004/world** sẵn sàng.
+- Tự rà riêng geometry/material/ownership và hình ảnh; không delegation,
+  commit, push, SQL hay deploy. Chưa benchmark điện thoại thật.
+
+---
+
+## Bộ asset núi để duyệt riêng — 2026-11-11, mới nhất
+
+Sau khi duyệt bố cục nhiều lớp núi, chủ dự án yêu cầu dựng asset núi để xem.
+Đã hoàn thành bộ riêng tại `D:/Dev/Tools/Blender/assets/mountain-collection-v1`:
+**Sơn Trụ, Thạch Lĩnh, Vân Sơn, Thiên Mạch, Thanh Sơn, Viễn Phong**. Mỗi mẫu
+có GLB Y-up và `.blend` Z-up đóng gói texture; tổng GLB **40.56 MB**. Đá/rêu/cỏ
+và cây dùng nguồn Mạch Nguồn đã duyệt, chỉ đọc; hash nguồn và GLB gốc giữ nguyên.
+
+- Gallery **http://127.0.0.1:8769/**, Python PID **43024**, loopback/read-only,
+  không authentication. Có chọn 6 mẫu, xoay/zoom, mặt sau/cận cảnh, sáng ngày/
+  chiều, sương, so cùng tỷ lệ và tải GLB. Server đọc Three từ worktree này.
+- `python -m unittest -v test_terrain test_server`: **6/6 đạt**;
+  `python verify.py`: **MOUNTAIN_ASSET_PASS**; Blender `verify_source.py`:
+  **MOUNTAIN_SOURCE_PASS**, toàn bộ **112 chân cây** nằm trên bề mặt thật,
+  không cạnh hở, mặt trên đảo ngược hay UV bị co về một đường.
+- Browser **MOUNTAIN_BROWSER_PASS**: 18 góc mẫu, sương/ánh sáng, keyboard,
+  390×844, lỗi tải/thử lại, response trễ, 3 vòng đổi mẫu. Mỗi mẫu **5 geometry /
+  9 texture** ổn định; so 6 mẫu **30 geometry / 39 texture**; không lỗi bất ngờ.
+  2 lỗi console là request bị hủy chủ động trong phép thử recovery.
+- Đã tự rà ảnh thực từ Three: sửa viền đen chân núi (double-sided + UV đáy
+  co thành đường) và ô lưới sát viền bị lật (tăng chiều sâu radial của lưới,
+  chọn đường chéo theo diện tích có dấu). Đã xác nhận RED → GREEN.
+  Lỗi Blender xóa color attribute được tái hiện: RNA reference cũ trỏ sang
+  `position`; nay lookup lại từng tên. Không nới test hay bỏ qua lỗi.
+- Bằng chứng trong thư mục asset: `verification.json`, `source-verification.json`,
+  `renders/browser-qa-final.log`, `renders/source-verification-final.log`,
+  `renders/review-{reset,back,detail}.jpg`, `renders/mist-day-review.jpg`.
+- Đây là **bộ mẫu để chủ dự án duyệt, chưa tích hợp vào Plaza**. Preview Plaza
+  vẫn ở 3004 và gallery đảo vẫn ở 8768. Không thay app source trong bước asset;
+  không rerun app build. Chưa chứng minh hiệu năng điện thoại thật hoặc khi
+  nhân nhiều núi trong Plaza. Không commit/push/deploy, không delegation.
+
+---
+
+## Nhiều lớp núi đến chân trời và đảo phụ xa — 2026-11-11, mới nhất
+
+Chủ dự án muốn nhiều núi hơn, xa và rất xa, cùng đảo bay rải ngẫu nhiên để
+đường chân trời đa dạng. **Mục này thay thế target 8 cụm núi và range 420 ở
+các mục lịch sử bên dưới.** Tiếp tục trong `.worktrees/plaza-landscape-v1`.
+
+- **31 cụm núi, ba lớp 5/9/17** ở khoảng 220–300 / 400–540 / 660–850 đơn vị.
+  Dáng thấp/rộng, đỉnh cao thấp không đều, lớp xa nhạt hơn. Vertex alpha cho
+  chân núi tan vào sương, tránh vệt cắt ngang của mặt phẳng sương.
+- **12 đảo phụ** ở 370–690, cao độ 26–100, có thân đá/cỏ/tán cây và mảnh đá nhỏ.
+  Scatter ổn định giữa các lần vào; không random lại mỗi frame. Dùng geometry
+  nhẹ, cả núi + đảo phụ **19.200 tam giác / 4 batch**, không thêm texture/GLB
+  hoặc camera phản chiếu. Bảy GLB/tọa độ đảo chính đã duyệt giữ nguyên.
+- `plaza-horizon.ts` giữ layout/hình học đảo phụ và range dùng chung. Public
+  far **1500**, sky **11×**, reflection **3000**; cá nhân vẫn **140**.
+  Ba lớp sương gần/vách summit giữ nguyên; màn sương xa vươn tới outreach 980.
+  Bỏ phụ kiện của cụm núi cũ cùng geometry đã thay, tránh chi tiết treo lơ lửng.
+- Focused **13 test / 5 file đạt**, typecheck đạt. Browser
+  `HORIZON_COMPOSITION_PASS`: ngày/chiều/đêm/mưa, spawn/eye/rim/rear,
+  viewport 390×844, bốn lớp sương, 31 núi + 12 đảo phụ, không lỗi JS.
+  `HORIZON_LIFECYCLE_PASS`: ba vòng chuyển bản đồ, public **222 geometry /
+  119 texture**, cá nhân **93 / 29**, ổn định trong cùng góc kiểm tra;
+  range **1500 → 140 → 1500**. `DEPTH_WALK_PASS` tới mép bắc thật.
+- Đã tự rà riêng geometry/alpha/ownership/range và ảnh; Impeccable detector
+  `[]`. `pnpm verify` cuối **exit 0**: typecheck đạt, lint **0 lỗi / 26 cảnh báo
+  ở script QA tạm**, **745 test / 82 file đạt**, build **11/11 trang**.
+  Đã dừng đúng cây dev **524 → 33568 → 20708** và xác nhận port 3004 đóng
+  trước build. Bằng chứng ở `output/plaza-archipelago-qa/`:
+  `horizon-current.log`, `horizon-lifecycle.log`, `horizon-walk.log`,
+  `horizon-final-review.jpg`, `horizon-states-review.jpg`, `horizon-verify.log`.
+- Đã sửa nguồn timeout lặp trong hai test pavilion/gate: Vitest 4.1.9 vẫn so
+  sánh sâu buffer lớn khi dùng `.not.toBe`. Hai assertion identity nay so
+  boolean trước; giữ nguyên kiểm tra mọi phần tử và timeout 5s. Chạy riêng
+  **35/35 đạt**, thời gian hai case giảm **1784/1650ms → 108/94ms**.
+  Log `horizon-timeout-diagnostic.log` và `horizon-timeout-fixed.log`.
+- Chưa commit/push/deploy; không delegation. Chưa thử trên điện thoại thật.
+- Đã khởi động lại preview **http://127.0.0.1:3004/world**, wrapper PID 5392,
+  chỉ bind loopback với dev-auth bypass; không chứng minh auth/sync live.
+  `HORIZON_RESTART_PASS`: đủ 31 núi, 12 đảo phụ, bảy đảo chính, bốn lớp sương;
+  đã đóng browser QA. `git diff --check` đạt, index trống. Không còn bước dang dở.
+
+---
+
+## Khôi phục biển sương và núi xa thưa — 2026-11-11, bản trước
+
+Chủ dự án đã đồng ý bố cục đảo gần–giữa–xa, nhưng yêu cầu giữ sương và núi:
+**Plaza ở trên đỉnh núi, nhìn xuống biển sương, có các đỉnh núi xa nhấp nhô và
+đảo bay rải rác.** Không chỉnh lại tọa độ bảy đảo hoặc GLB đã duyệt.
+
+- Lỗi trước là hạ chung nhóm núi và sương 32 đơn vị. Đã tách hai nhóm trong
+  `public-plaza-backdrop.tsx`: sương/vách summit giữ transform Y=0; núi riêng
+  ở `[0,-22,0]`, scale `[2.4,3,2.4]`. Đáy che sâu vẫn ở offset Y=-76.
+- Giảm 23 cụm núi còn **8 (2/3/3)**, đặt xa và thưa. Gỡ hai vệt thác trang trí
+  thuộc cụm núi đã bỏ; giữ hai vệt ở khối núi trung tâm còn lại.
+- Ba lớp sương bắt đầu gần chân vách ở Y=-1.38/-2.08/-2.88, hạ dần 26 đơn vị
+  vào thung lũng; lớp màn xa ở Y=-26.5. Biển sương vươn 230–270 đơn vị ngoài
+  chân vách, giữ mép alpha mềm và không che bậc thấp của Thác Tầng.
+- Test hình học mới đã RED→GREEN; bộ tập trung **10 test / 4 file đạt**.
+  Browser `SUMMIT_MIST_PASS`: bảy đảo đúng tọa độ, bốn lớp sương có texture/
+  opacity, transform núi/vách đúng, không lỗi JS; ngày/chiều/đêm/mưa và viewport
+  390×844 đã xem. `DEPTH_WALK_PASS`: đi thật tới mép bắc và xoay về Thác Tầng.
+- Tự rà riêng: hình học/UV, dispose, tầm nhìn, phụ kiện của núi còn giữ và ảnh
+  thực tế. Không subagent. `pnpm verify` sau lần gỡ thác thừa **exit 0**:
+  typecheck đạt, lint **0 lỗi / 25 cảnh báo ở script QA tạm**, **742 test /
+  81 file đạt**, build thành công **11/11 trang**. Đã dừng đúng cây tiến trình
+  dev và xác nhận port đóng trước build.
+- Bằng chứng: `output/plaza-archipelago-qa/mist-current.log`, `mist-walk.log`,
+  `mist-final-review.jpg`, `mist-walk-review.jpg`, `mist-verify.log`.
+  Các mục hạ chung thung lũng 32 bên dưới là lịch sử, đã bị thay thế.
+- Preview đã mở lại ở **http://127.0.0.1:3004/world** sau build, chỉ bind loopback
+  với dev-auth bypass. `mist-restart.log`: `ARCHIPELAGO_RESTART_PASS`, bảy đảo
+  đúng tọa độ đã lưu; `SUMMIT_MIST_PASS` lại sau restart. Đã xem ảnh mới, đóng
+  browser QA và chạy `git diff --check` đạt. Không chứng minh auth/sync/Supabase live.
+  Không commit/push/deploy; chưa đo hiệu năng trên điện thoại thật.
+
+---
+
+## Bố cục gần–giữa–xa theo phản hồi chủ dự án — 2026-11-11
+
+Chủ dự án yêu cầu sửa cảm giác "đảo bao quanh sân" thành thế giới có chiều sâu:
+**Thác Tầng lớn ở giữa và thấp; Thiên Viên lớn ở xa; Nguyệt Hồ trung ở gần;
+Song Đỉnh trung ở xa; hai đảo nhỏ ở gần.** Mạch Nguồn là đảo trung bổ sung bên
+trái. Bố cục mới đã lưu ở `plaza-floating-islands.ts`, trong cùng worktree.
+
+- Khoảng cách từ spawn: hai đảo nhỏ **49/53**, trung gần **85**, Thác Tầng
+  **113**, hai đảo xa **223/237**. Thác Tầng ở Y=-16, Thiên Viên Y=20; mặt
+  tầng cao nhất của Thác Tầng vẫn thấp hơn sân để nhìn xuống được.
+- Hạ phông núi/thung lũng 32 và đáy cảnh 76 để không che đảo thấp; giữ vách
+  sát sân. Tầm nhìn Plaza 420, cá nhân 140; nền trời 3× và phản chiếu 840.
+  Các thay đổi này phục vụ bố cục, không đổi GLB, điều khiển hay gameplay.
+- Browser đạt `DEPTH_COMPOSITION_PASS` và `DEPTH_WALK_PASS`; đã xem ngày/
+  chiều/đêm/mưa, mobile viewport, đi thật tới mép bắc và xoay về Thác Tầng.
+  Map swap giữ đúng tầm nhìn 420 → 140 → 420. 8 test tập trung đã đạt.
+- Bằng chứng hiện hành: `output/plaza-archipelago-qa/depth-current.log`,
+  `depth-walk.log`, `depth-final-walk-rim.jpg`, `depth-final-terraces.jpg`.
+  Tọa độ và kiểm chứng chi tiết ở mục đầu `docs/plaza-assets.md`.
+- `pnpm verify` **exit 0**: typecheck đạt, lint **0 lỗi / 24 cảnh báo ở script
+  QA tạm**, **740 test / 80 file đạt**, build thành công **11/11 trang**.
+  Log: `output/plaza-archipelago-qa/depth-verify.log`. Dev đã dừng trước build,
+  mở lại preview ở **http://127.0.0.1:3004/world** sau đó.
+- Không commit/push/deploy. Các số đo/bố cục ở mục trước bên dưới là lịch sử.
+
+---
+
+## Bảy đảo quanh Plaza — hoàn tất tích hợp và QA, 2026-11-11
+
+**Trạng thái hiện hành:** sáu đảo đã duyệt cùng một Mạch Nguồn đã được đặt vào
+Plaza tại worktree `D:/Dev/Projects/BetterMe/.worktrees/plaza-landscape-v1`, nhánh
+`codex/plaza-landscape-v1`. Các mục "chưa tích hợp" bên dưới là lịch sử.
+Không dựng lại asset hoặc làm lại phần tích hợp khi tiếp nối.
+
+- Đã chốt bố cục gần–xa/cao–thấp; Thiên Viên `[-10,12,-87]`, Thác Tầng
+  `[36,7,-64]`. Bảy model dùng đúng một lần; SHA-256 khớp bản duyệt, toàn bộ
+  bounds ngoài Plaza và không giao nhau. Không đổi shader nước/camera/gameplay.
+- Browser đạt: bảy đảo, nước/chế độ giảm chuyển động, phản chiếu tối đa một đảo
+  mỗi frame và không lặp khi idle; ngày/chiều/đêm/mưa; NPC/nhảy/cổng/đi sát rìa;
+  ba vòng chuyển bản đồ; tải lỗi một/tất cả đảo, tải trễ sau unmount và phục hồi.
+  Đã xem ảnh desktop, orbit và viewport 390x844; không tràn ngang.
+- `pnpm verify` **exit 0**: typecheck đạt; lint **0 lỗi / 18 cảnh báo** ở script
+  QA tạm trong `output/`; **739 test / 80 file đạt**; build thành công, **11/11**
+  trang. Đã dừng đúng cây tiến trình dev của worktree trước khi build.
+- Đã tự rà riêng mã và ảnh; không gọi subagent/reviewer. Diff không lỗi khoảng
+  trắng, không stage/commit/push/SQL/deploy. Các thay đổi có sẵn được giữ nguyên.
+- Bằng chứng và giới hạn đầy đủ: `docs/plaza-assets.md` mục đầu;
+  `output/plaza-archipelago-qa/progress.md`, `verify-current.log`,
+  `integration-diagnostic.log`, `states-current.log`, `lifecycle-current.log`.
+  Ảnh bàn giao: `output/plaza-archipelago-qa/final-preview.jpg`.
+- Preview local: **http://127.0.0.1:3004/world**; dùng dev-auth bypass, chỉ bind
+  loopback, không có xác thực thật. Không chứng minh auth/sync/Supabase live.
+- Giới hạn: bảy GLB **95,895,292 byte / 1,743,420 tam giác**. Chưa có LOD hoặc
+  kiểm tra điện thoại thật; viewport hẹp chưa chứng minh điều khiển cảm ứng.
+  FPS desktop dev đã đo 105–111, trung bình 109.3; không phải benchmark mobile.
+
+**Tránh lặp lỗi tiếp nối:** các chat liên kết dừng với HTTP **413 Payload Too
+Large** từ dịch vụ nhận yêu cầu AI. Đọc mục này và plan/spec
+`2026-11-11-plaza-archipelago` để tiếp tục; chỉ lấy thông tin cần từ lịch sử,
+không nạp lại nguyên chuỗi output lồng nhau. Xem ảnh JPEG thu nhỏ thay vì gửi
+nhiều PNG gốc vào cùng ngữ cảnh. Đây là giảm kích thước yêu cầu, không phải thay
+đổi giới hạn upstream. Không sửa cấu hình agent trên máy. Phần tích hợp đã xong;
+việc tiếp theo là nhận đánh giá bố cục của chủ dự án, không tự mở scope mới.
+
+---
+
+## Sáu đảo — sửa theo chuẩn Mạch Nguồn, 2026-11-11
+
+**ĐÃ DUYỆT / HOÀN TẤT:** Chủ dự án xác nhận “Tốt rồi, rất đẹp” và yêu cầu lưu
+asset ngày 2026-11-11. Bản chốt riêng:
+`D:/Dev/Tools/Blender/assets/approved/six-floating-islands-2026-11-11/`.
+Đã đối chiếu SHA-256 cho 143 file; đủ 6 GLB + 6 Blender đóng gói, generator,
+shader/viewer, ảnh/clip và nguồn Mạch Nguồn. Index ở `README.md`, hash ở
+`SHA256SUMS.json` trong bản chốt. Không ghi đè bản chốt khi thử nghiệm tiếp.
+
+- Anh yêu cầu sửa thác ngược, đáy đá, tăng dây leo trung/lớn, bớt tàn tích/đá
+  lặp, và lấy Mạch Nguồn làm chuẩn viền cỏ/cây/tiểu tiết. Đã chỉnh cả sáu mẫu
+  tại `D:/Dev/Tools/Blender/assets/floating-island-collection-v1`.
+- Lỗi thác có thật: Blender UV `(u,t)` bị glTF đảo V; đổi thành `(u,1-t)` để
+  khớp shader đã có. Chín thác mới và hai thác chuẩn qua kiểm tra GPU: dịch
+  xuống 15 pixel trong 0,22 giây. Không sửa shader hoặc bản Mạch Nguồn.
+- Đáy đá theo lớp/khe phong hóa, viền cỏ nông bám đá, cỏ thấp/cao/mép và hoa
+  nguồn gốc từ mẫu chuẩn; dây leo thành cụm rõ hơn, tàn tích ghép đá có mạch
+  nối/cạnh mòn/rêu, đá vụn theo nhóm và 5–9 mảnh đá lơ lửng mỗi đảo.
+- Check mới: asset, UV, grounding (96.187 chân cây/cỏ), reference details,
+  6/6 HTTP test, browser và GPU flow đều PASS. Đã xem ảnh trước/sau/cận cảnh,
+  ảnh ghép, mobile; review là tự rà riêng, không có subagent.
+- Báo cáo hiện hành: `REFERENCE-POLISH-VERIFICATION.md` trong thư mục asset;
+  plan: `docs/superpowers/plans/2026-11-11-islands-reference-polish.md`.
+  Ảnh: `renders/six-islands-front.jpg`, `renders/*-before-after.jpg`.
+  Clip: `renders/waterfall-downward.mp4`. Bản trước ở
+  `revisions/before-reference-polish/`; không dựng lại từ snapshot đó.
+- Bộ xem vẫn ở **http://127.0.0.1:8768/**; refresh tab để nhận bản mới.
+  Sáu GLB 81,16 MB / 1.437.246 tam giác; vẫn chưa tối ưu LOD/đo điện thoại thật.
+  Hai GLB lớn 20,12/20,37 MB: trần kiểm tra tăng lên 21 MB để giữ chi tiết.
+- Không thay đổi mã app, không đưa sáu đảo vào Plaza, không commit/push/deploy.
+  Anh đã duyệt bản sửa; không còn việc dang dở trong task tạo asset này.
+  Các số đo 60 MB trong lịch sử bên dưới thuộc bản cũ.
+
+---
+
+## Sáu mẫu đảo bay bổ sung — 2026-11-11
+
+Anh đánh giá bản tích hợp đẹp, xác định **Mạch Nguồn là đảo trung** và yêu cầu
+tạo thêm **2 đảo lớn, 2 trung, 2 nhỏ**. Bộ mới đã tạo tại:
+`D:/Dev/Tools/Blender/assets/floating-island-collection-v1`.
+
+- Lớn: **Thiên Viên**, **Thác Tầng**. Trung: **Nguyệt Hồ**, **Song Đỉnh**.
+  Nhỏ: **Tán Mây**, **Phong Đăng**. Mỗi mẫu có GLB và nguồn Blender đóng gói riêng.
+- Xem mẫu: **http://127.0.0.1:8768/**. Có xem từng đảo, mặt sau/cận cảnh,
+  ngày/chiều, dừng nước, download và so cả bộ với mẫu cũ ở cùng tỉ lệ trực giao.
+  Server đọc allowlist, chỉ bind loopback, không có xác thực.
+- Kế hoạch: `docs/superpowers/plans/2026-11-11-six-floating-islands.md`.
+  Bằng chứng, số đo, nguồn và cách chạy lại nằm ở `README.md` và `VERIFICATION.md`
+  trong thư mục bộ mẫu. Ảnh ghép: `renders/six-islands-front.jpg`.
+- Kiểm chứng: `SIX_ISLANDS_ASSET_PASS`, `SIX_ISLANDS_GROUNDING_PASS`, 6/6 kiểm tra
+  HTTP, `SIX_ISLANDS_BROWSER_PASS`, 0 lỗi runtime trong kịch bản bình thường.
+  Ba vòng chuyển qua 7 mẫu giữ số geometry/texture ổn định. Đã kiểm tra reduced
+  motion, bàn phím, mobile 390x844, lỗi tải/retry và tải trễ. Đã tự rà riêng code
+  và ảnh. Không dùng reviewer hoặc subagent.
+- Tổng sáu GLB 60.07 MB, 755,874 tam giác sau đặt đối tượng. Chưa có LOD/collider,
+  chưa đo điện thoại thật. Nước cần shader trong viewer/runtime; GLB riêng tĩnh.
+- Mẫu Mạch Nguồn và bản Plaza ở cổng 3004 giữ nguyên. **Chưa đặt sáu mẫu mới vào
+  Plaza**: lượt này tạo bộ mẫu để anh xem/chọn bố cục. Không commit/push/deploy.
+  Repo chỉ bổ sung tài liệu; không thay đổi mã app, không cần chạy lại bốn app gate.
+- Việc tiếp theo: nhận xét của anh về từng mẫu hoặc yêu cầu đặt chúng quanh Plaza.
+  Không dựng lại bộ mẫu từ đầu khi tiếp tục chat. Server PID/log tại
+  `renders/server.pid` / `renders/server.log` trong thư mục bộ mẫu.
+- **Đã tiếp nối và bàn giao ngày 2026-11-11:** chat
+  `01a1c6b0-fa31-7db2-8cc8-0bacc10e0b82` lỗi API sau khi tạo xong bộ mẫu.
+  Lượt tiếp nối chạy lại asset/source/HTTP/browser đều đạt, chụp lại và xem
+  ảnh của cả sáu mẫu; log mới có hậu tố `-resume.log` trong `renders/`.
+  Đã đóng browser QA và mở gallery 8768 trong Codex. Không dựng lại model,
+  không sửa mã app hoặc viewer. Phần tạo sáu mẫu và bàn giao đã hoàn tất;
+  đang chờ anh đánh giá hình dáng, không còn bước kiểm chứng dở dang.
+
+---
+
+## Bàn giao Plaza / đảo nổi — 2026-11-11
+
+Phần này là bản compact của chuỗi chat Plaza, mới hơn các mốc lịch sử bên dưới.
+Làm tiếp tại **`D:/Dev/Projects/BetterMe/.worktrees/plaza-landscape-v1`**, nhánh
+`codex/plaza-landscape-v1`; không nhầm với checkout gốc hoặc nhánh sky/character.
+Nguồn quyết định: chat `01a1c67a-f6e9-7cf3-ba3f-ace4ccc61101`; hai chat tiếp nối
+`01a1c6a2-d903-7f80-89a9-e6cde742bd67` và `01a1c6ab-f659-7db2-a712-1cf072a4b70a`
+bị lỗi phiên trước khi bàn giao xong.
+
+- **Anh đã chốt:** giữ mức gồ ghề hiện tại của viền đảo; tích hợp hai đảo nổi
+  xung quanh Plaza, một gần và một xa để trải nghiệm góc nhìn. Đảo là cảnh quan.
+- **Đã có:** GLB nguyên bản đã duyệt, hai vị trí, batching/chia sẻ tài nguyên,
+  nước và thác chuyển động, giảm chuyển động, cleanup và lỗi tải cục bộ.
+  Tọa độ, hash, phạm vi, số đo và tự rà soát nằm trong
+  [docs/plaza-assets.md](docs/plaza-assets.md); kế hoạch nằm trong
+  [plan đảo nổi](docs/superpowers/plans/2026-11-11-plaza-floating-islands.md).
+- **Gate mới ngày 2026-11-11:** `pnpm verify` exit 0; typecheck, lint, Vitest và
+  build đều đạt. **736 test / 79 file**; lint có **0 lỗi / 11 cảnh báo** ở script
+  QA trong `output/`. Log: `output/floating-islands-qa/verify-handoff.log`.
+- **Đã kiểm tra qua trình duyệt:** nước/reduced motion, không capture cubemap
+  mỗi frame, ba vòng Plaza ↔ Cá nhân, ngày/hoàng hôn/đêm/mưa, NPC, nhảy, cổng,
+  lỗi tải GLB và phục hồi. Đã xem ảnh desktop, mobile và mép bắc. Đây là tự rà
+  soát riêng của tác giả, không phải review độc lập.
+  Lượt chạy lại sau restart đạt `ISLAND_INTEGRATION_PASS`, 0 lỗi trong kịch bản,
+  98–101 FPS trên máy này; log `output/floating-islands-qa/integration-handoff.log`.
+- **Bản local:** `http://127.0.0.1:3004/world`, chỉ bind `127.0.0.1`, bypass local
+  với `BETTERME_DEV_AUTH_BYPASS=true`. Dev log/PID ở
+  `output/floating-islands-qa/dev-handoff.*`. Nếu server đã dừng, chạy tại đúng
+  worktree: đặt biến môi trường trên thành chuỗi `true`, rồi
+  `pnpm dev --hostname 127.0.0.1 --port 3004`.
+- **Cách xem:** chọn “Xem thử môi trường” → “Trưa (12:15)” → “Trời quang”; đóng
+  bảng bằng Escape. Chuột phải + kéo lên nhẹ để hạ góc nhìn, nhìn hai phía cổng.
+  WASD di chuyển, Shift chạy, Space nhảy, con lăn zoom, R đặt lại camera.
+- **Việc tiếp theo:** anh trải nghiệm và nhận xét khoảng cách/độ cao của hai đảo.
+  Chưa có quyết định mới để tự thay đổi mẫu đảo hoặc mở rộng gameplay. Asset
+  hiện giữ nguyên chi tiết: thêm 14.73 MB và khoảng 612K tam giác cho hai bản;
+  cần tối ưu LOD/mesh/texture và đo điện thoại thật trước mục tiêu phát hành.
+  HUD mobile còn chiếm nhiều màn hình; chưa xác nhận điều khiển cảm ứng.
+- **Trạng thái Git:** nhiều thay đổi có sẵn, chưa commit/push/merge/deploy.
+  Lượt bàn giao này bổ sung tài liệu và chạy kiểm chứng; giữ nguyên mã tích hợp
+  (`next-env.d.ts` được Next tự cập nhật khi khởi động dev). Việc ghép sky/backdrop
+  và trạng thái Supabase thuộc phạm vi riêng.
+
+---
+
 > **Framework update 2026-10-31:** Upgraded directly to stable Next.js **16.4.3**
 > with matching eslint-config-next, native flat ESLint config and default Turbopack.
 > Session refresh is now `src/proxy.ts`; authorization still lives in the app
