@@ -8,8 +8,10 @@ verification, source-art location and recovery. Older sections below are history
 they do not override this checkpoint or the owner's current AGENTS.md.
 
 Source art: `D:/Dev/ArtSources/BetterMe`. Runtime and necessary test fixtures
-are tracked in Git. Main working location after transfer is
-`D:/Dev/Projects/BetterMe`. View-dependent asset streaming remains future work.
+are tracked in Git. The only working checkout is now
+`D:/Dev/Projects/BetterMe` (four linked worktrees and two orphans removed).
+Code checkpoint: `5e159ea`; remote and root both passed 967 tests/109 files
+and typecheck/lint/build. D free space measured 13.52 GiB after cleanup. View-dependent asset streaming remains future work.
 
 ---
 

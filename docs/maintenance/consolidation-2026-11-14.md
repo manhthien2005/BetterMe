@@ -1,7 +1,9 @@
 # Hợp nhất BetterMe — 14/11/2026
 
-Bản hợp nhất đã qua kiểm source, runtime và bốn gate; checkpoint và chuyển
-checkout được thực hiện theo kế hoạch đã được owner cho phép.
+Hoàn tất ngày 14/11/2026: còn một checkout tại `D:/Dev/Projects/BetterMe`.
+Code/runtime checkpoint `5e159ea73966715c67d621ab4190057d75ccda80` đã được
+lấy lại từ GitHub và kiểm độc lập trước khi dọn. Commit bàn giao tiếp theo
+chỉ cập nhật tài liệu; không đổi code hoặc asset.
 
 ## Nguồn và quyết định
 
@@ -124,3 +126,57 @@ JSON chỉ đổi CRLF/LF khi Git checkout nên đối chiếu thêm hash chuẩ
 GitHub nhận đủ model; hai file chi tiết 72.58/59.50 MiB có cảnh báo mức
 khuyến nghị 50 MiB, không vượt hard limit 100 MiB. Không tự chuyển sang LFS
 hoặc viết lại lịch sử trong round này.
+
+## Kết quả chuyển và dọn
+
+- Checkout duy nhất: `D:/Dev/Projects/BetterMe`, nhánh
+  `codex/consolidated-checkpoint-2026-11-14`. `main` vẫn ở `e0a9108`.
+- GitHub: https://github.com/manhthien2005/BetterMe/tree/codex/consolidated-checkpoint-2026-11-14
+- Cả 4 gate ở bản remote cuối: exit 0, 967 test/109 file (193.78s).
+  Ở root: exit 0, 967 test/109 file (186.11s), build 11/11.
+- Remote và root đều mở `/world` và `/world?plaza=study`: avatar ready,
+  7 đảo/10 núi, di chuyển được, không lỗi JS/shader. Có favicon 404 và
+  cảnh báo Three deprecated hiện hành; không ảnh hưởng kiểm scene.
+- Đã gỡ 4 worktree phụ và 2 orphan. Giữ các branch cũ. Không force-remove.
+  Một số index sau restore báo dirty dù hash blob giống HEAD: đã đối chiếu
+  từng blob và refresh index trước `git worktree remove` bình thường.
+- Root dirty/untracked trước chuyển đã giữ recovery; critique HUD lịch sử
+  chuyển sang `ART/archive-sources/root/.impeccable`. Config root giữ tại chỗ;
+  config riêng checkout phụ giữ bằng opaque move tại
+  `D:/Dev/ArtSources/BetterMe-private-config`, không đọc/hash nội dung.
+- `output/` chỉ còn `consolidation-2026-11-14` và `repository-audit-2026-11-14`.
+  Đã xóa 4,256 file output cũ (5,047,912,699 byte logic) sau kiểm recovery
+  và phân loại ART; nguồn art hiện hành không phụ thuộc các output đã bỏ.
+- Sau cleanup: runtime 101/101 hash đạt; binary khớp byte, hai JSON manifest
+  so LF-normalized; test NASA source/runtime 6/6 qua khi output cũ đã vắng.
+
+### Dung lượng tại 17:50, giờ Bangkok
+
+| Nơi | Trước thực hiện (xấp xỉ) | Sau dọn | Chênh lệch quan sát |
+|---|---:|---:|---:|
+| D trống | 7.15 GiB | 13.52 GiB | +6.37 GiB |
+| C trống | 29.38 GiB | 27.41 GiB | -1.97 GiB |
+| C + D trống | 36.53 GiB | 40.93 GiB | +4.40 GiB |
+
+Đây là số trống toàn volume, có thể chịu ảnh hưởng process hệ thống; không
+đồng nhất với tổng byte file đã xóa hoặc coi chuyển D→C là tiết kiệm.
+Root gồm dependency/build/evidence khoảng 2.82 GiB, Git khoảng 1.21 GiB.
+ART khoảng 1.89 GiB; recovery giữ khoảng 5.74 GiB qua lần owner review đầu.
+Git tự chạy auto-maintenance sau commit đầu; không xóa ref/object thủ công.
+
+Bản clone kiểm chứng trên C đã xóa hết file/cache; còn vỏ thư mục rỗng
+`C:/Users/MrThien/BetterMe-checkpoint-verify-2026-11-14` (0 file, 0 byte).
+Automatic approval review chặn xóa `.git` rỗng với lý do `blocked by policy`;
+không thử vòng qua bằng công cụ khác. Không phải checkout đang đăng ký.
+
+## Tiếp tục làm việc
+
+Từ root: `pnpm install --frozen-lockfile`; kiểm bằng `pnpm verify` khi dev
+đã dừng. Preview loopback: đặt biến process `BETTERME_DEV_AUTH_BYPASS=true`,
+chạy `pnpm dev --hostname 127.0.0.1 --port 3004`, rồi mở
+`http://127.0.0.1:3004/world?plaza=study` (hoặc `/world` cho cảnh mặc định).
+Bypass chỉ dùng local, không chứng minh auth/sync thật. Không build cùng dev.
+
+Dùng README trong ART để sửa/export Blender. Ưu tiên tiếp theo còn mở là
+view-dependent streaming và tối ưu chi phí NPC; round này không đánh dấu
+hai việc đó đã xong. Không sửa GPU hoặc deploy/database.
