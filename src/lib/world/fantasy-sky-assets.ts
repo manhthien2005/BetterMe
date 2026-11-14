@@ -251,12 +251,13 @@ export function createFantasyStars(seed = 0x4e455053): readonly FantasyStar[] {
   });
 }
 
+// Original authoring paths for archival assets; see local recovery manifest.
 const SOURCE_ROOT = "output/world-plaza-summit-2026-11-09/sky-refinement-v2/assets";
 
 /** Source paths are workspace files, never browser URLs. Null means not published. */
 export const FANTASY_SKY_SOURCE_ASSETS = {
   moon: {
-    sourcePath: `${SOURCE_ROOT}/moon-lroc-color-2k.jpg`,
+    sourcePath: "scripts/assets/moon-lroc-color-2k.jpg",
     runtimePath: "/world/plaza/sky/v3/moon-lroc-color-2k.jpg",
     bytes: 457_942,
     sha256: "f7130a1822681fa7512d7dcfd40db8c10b9ba4f06777910348698260ed7a2170",

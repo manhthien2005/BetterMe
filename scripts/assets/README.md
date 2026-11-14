@@ -13,3 +13,12 @@ frozen portrait via `scripts/refine-khoa-robe.mjs`. The approved portrait is the
 source, rather than regenerating the rejected earlier male face/hair recipe.
 Historical exploration sources stay in the local ignored research folder; the
 shipped generator needs none of those files.
+
+## Sky integrity fixture
+
+`moon-lroc-color-2k.jpg` is the unchanged NASA SVS source used to check the
+published moon texture. SHA-256:
+`f7130a1822681fa7512d7dcfd40db8c10b9ba4f06777910348698260ed7a2170`.
+Source: https://svs.gsfc.nasa.gov/4720/; credit: NASA SVS / Ernie Wright
+(USRA), LRO / LROC / LOLA. Keep this fixture in Git so a clean clone can
+verify source-to-runtime equality without the historical authoring output.

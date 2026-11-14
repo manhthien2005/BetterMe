@@ -36,7 +36,8 @@ lint/typecheck chỉ bỏ output sinh, vẫn kiểm mọi source/script/test c�
 ## Asset và phục hồi
 
 Runtime Git giữ 7 đảo chi tiết + 7 LOD/texture, 10 núi gồm Cổng Mây sửa, các
-model/clip/manifest/license cần thiết. Khoa portrait source giữ ngoài `public`
+model/clip/manifest/license cần thiết. Nguồn NASA moon (457,942 bytes) giữ ở `scripts/assets` để test đối chiếu
+source/runtime chạy được khi clone sạch. Khoa portrait source giữ ngoài `public`
 trong `scripts/assets` làm fixture test bảo toàn mặt/tóc/morph đã duyệt.
 
 Nguồn Blender: `D:/Dev/ArtSources/BetterMe` (~1.89 GiB ở lượt sao đầu);
@@ -108,3 +109,18 @@ Reviewer là chính agent theo yêu cầu owner làm đơn; không dùng subagen
 LOD hiện vẫn tải bảy file lúc vào Plaza. Culling water capture không phải
 view-dependent streaming. Thêm nhân vật VRM làm tăng tài nguyên; cleanup ổ đĩa
 không tự chứng minh tăng FPS. Không đổi GPU, schema, auth hoặc deploy trong round.
+
+## Kiểm chứng checkpoint từ GitHub
+
+Nhánh checkpoint: `codex/consolidated-checkpoint-2026-11-14`; không đổi `main`.
+Lượt tải lại đầu từ GitHub của `793ace3` không dùng local objects, output,
+config hoặc node_modules cũ: install/typecheck/lint qua; 966/967 test qua.
+Test còn lại phát hiện nguồn NASA moon chỉ có trong output cũ. Đã giữ nguyên
+file gốc trong fixture Git và cập nhật đường dẫn; test integrity 6/6 qua,
+không giảm assertion. Bốn gate và lượt lấy lại remote được chạy lại trước dọn.
+
+101 runtime file được kiểm SHA-256; model/texture khớp byte. Hai manifest
+JSON chỉ đổi CRLF/LF khi Git checkout nên đối chiếu thêm hash chuẩn hóa LF.
+GitHub nhận đủ model; hai file chi tiết 72.58/59.50 MiB có cảnh báo mức
+khuyến nghị 50 MiB, không vượt hard limit 100 MiB. Không tự chuyển sang LFS
+hoặc viết lại lịch sử trong round này.
