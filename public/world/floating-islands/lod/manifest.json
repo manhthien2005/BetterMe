@@ -1,0 +1,212 @@
+{
+  "name": "Plaza distant island LOD",
+  "revision": "distance-lod-01",
+  "models": [
+    {
+      "id": "vuon-gio",
+      "name": "Vườn Gió",
+      "version": "v18",
+      "size": "medium",
+      "triangles": 344147,
+      "bytes": 4887416,
+      "sha256": "6824c631f761709affe1368aaf56238f5e7417fdd381a7d057248c7fa4ce511a",
+      "boundsBlender": [
+        [
+          -28.388776779174805,
+          -19.680301666259766,
+          -18.3799991607666
+        ],
+        [
+          26.569316864013672,
+          13.0120210647583,
+          12.003423690795898
+        ]
+      ],
+      "groundTop": 1.16,
+      "status": "optimized-preview",
+      "sourceStatus": "approved",
+      "sourceApprovedOn": "2026-11-12",
+      "parentSha256": "dd9f43ba6dc4dc19220d6f77b4b14e1dabdf420638a05984c17a9dec3b44f779",
+      "revision": "distance-lod-01"
+    },
+    {
+      "id": "thien-vien",
+      "name": "Thiên Viên",
+      "version": "v2",
+      "size": "large",
+      "triangles": 382687,
+      "bytes": 7224708,
+      "sha256": "501902585428a39fbabb26013bf173995c3df3d16b745e7a1722360daf360ab4",
+      "boundsBlender": [
+        [
+          -39.45733642578125,
+          -23.922069549560547,
+          -30.3799991607666
+        ],
+        [
+          39.28326416015625,
+          21.281835556030273,
+          16.905235290527344
+        ]
+      ],
+      "groundTop": 2.030242443084717,
+      "status": "optimized-preview",
+      "sourceStatus": "approved",
+      "sourceApprovedOn": "2026-11-12",
+      "parentSha256": "4a74a76c5edf424542109a71dab68a30d0ecd4f2d2085c33cf165e87f6084deb",
+      "revision": "distance-lod-01"
+    },
+    {
+      "id": "thac-tang",
+      "name": "Thác Tầng",
+      "version": "v2",
+      "size": "large",
+      "triangles": 393228,
+      "bytes": 7998700,
+      "sha256": "c014b6a3ac675da5073da35fbc2bf2dd8742e52bf8aa720ad11e2ecb58c510d3",
+      "boundsBlender": [
+        [
+          -26.121519088745117,
+          -30.09287452697754,
+          -27.979999542236328
+        ],
+        [
+          24.975439071655273,
+          24.894001007080078,
+          21.208166122436523
+        ]
+      ],
+      "groundTop": 10.988675117492676,
+      "status": "optimized-preview",
+      "sourceStatus": "approved",
+      "sourceApprovedOn": "2026-11-12",
+      "parentSha256": "7bfeff350bcdadc99cf9f74b550150a6f03da8b86171fd46db484d520b03f6cb",
+      "revision": "distance-lod-01"
+    },
+    {
+      "id": "nguyet-ho",
+      "name": "Nguyệt Hồ",
+      "version": "v2",
+      "size": "medium",
+      "triangles": 174035,
+      "bytes": 4292180,
+      "sha256": "3685032aacdcd1350b9ed08860d33cb80a039d2604e7b85786bc60030a3108c8",
+      "boundsBlender": [
+        [
+          -20.083703994750977,
+          -13.572774887084961,
+          -22.979999542236328
+        ],
+        [
+          21.802370071411133,
+          16.017770767211914,
+          11.751738548278809
+        ]
+      ],
+      "groundTop": 0.9278454780578613,
+      "status": "optimized-preview",
+      "sourceStatus": "approved",
+      "sourceApprovedOn": "2026-11-12",
+      "parentSha256": "cc06d3771a399b5503f020194d8f23c0c9980380cae99299f84f060e47be00c7",
+      "revision": "distance-lod-01"
+    },
+    {
+      "id": "song-dinh",
+      "name": "Song Đỉnh",
+      "version": "v2",
+      "size": "medium",
+      "triangles": 199026,
+      "bytes": 4433476,
+      "sha256": "fe1bee603761f339719fbcad0786be958a62ce6d5899392c1c53160136eaca07",
+      "boundsBlender": [
+        [
+          -21.51140594482422,
+          -13.425837516784668,
+          -23.080001831054688
+        ],
+        [
+          20.146406173706055,
+          14.49901294708252,
+          12.76153564453125
+        ]
+      ],
+      "groundTop": 2.9961013793945312,
+      "status": "optimized-preview",
+      "sourceStatus": "approved",
+      "sourceApprovedOn": "2026-11-12",
+      "parentSha256": "ef9d938ceaed7e3d63b6ba3420c95534c18278bb11d2ad5eca6345097c215bc0",
+      "revision": "distance-lod-01"
+    },
+    {
+      "id": "tan-may",
+      "name": "Tán Mây",
+      "version": "v2",
+      "size": "small",
+      "triangles": 81704,
+      "bytes": 1953508,
+      "sha256": "f403c0e789910cc10eb71d56d59bb72c3103ddc3c94d7bcaa8ae42c5a3d0a87c",
+      "boundsBlender": [
+        [
+          -9.871870994567871,
+          -8.333168983459473,
+          -15.630000114440918
+        ],
+        [
+          11.469281196594238,
+          9.320244789123535,
+          9.353652954101562
+        ]
+      ],
+      "groundTop": 1.0768992900848389,
+      "status": "optimized-preview",
+      "sourceStatus": "approved",
+      "sourceApprovedOn": "2026-11-12",
+      "parentSha256": "901fc1552ab7295290d72f3c06398e63b41ecefa374f5a6fdd2a8535eb949a11",
+      "revision": "distance-lod-01"
+    },
+    {
+      "id": "phong-dang",
+      "name": "Phong Đăng",
+      "version": "v2",
+      "size": "small",
+      "triangles": 86930,
+      "bytes": 2553064,
+      "sha256": "10f77034db9e9417ca01182586bf189b8556c5170daf4ba2c0d2b897794de690",
+      "boundsBlender": [
+        [
+          -7.911342144012451,
+          -7.21019983291626,
+          -23.029998779296875
+        ],
+        [
+          9.15873908996582,
+          7.039141654968262,
+          8.634719848632812
+        ]
+      ],
+      "groundTop": 2.1379945278167725,
+      "status": "optimized-preview",
+      "sourceStatus": "approved",
+      "sourceApprovedOn": "2026-11-12",
+      "parentSha256": "406260a9111d703861010ec96f64228fe63fd856cc2a2b3170deec8aeb09f101",
+      "revision": "distance-lod-01"
+    }
+  ],
+  "textures": [
+    {
+      "file": "textures/ce3f26d766de4ce4da6809e2c5e41bef17d32b47af90ece7a3c5e286dcced35b.png",
+      "bytes": 1660547,
+      "sha256": "ce3f26d766de4ce4da6809e2c5e41bef17d32b47af90ece7a3c5e286dcced35b"
+    },
+    {
+      "file": "textures/9b657fa8c545d41a1b85cbfa9b19950544533abb6212036a96feb2a9b5ea0900.png",
+      "bytes": 503132,
+      "sha256": "9b657fa8c545d41a1b85cbfa9b19950544533abb6212036a96feb2a9b5ea0900"
+    },
+    {
+      "file": "textures/9cc6c0774386abeea3a649c8b0ca0e676a11e52a60673b83cfbca30e3eab3add.png",
+      "bytes": 287580,
+      "sha256": "9cc6c0774386abeea3a649c8b0ca0e676a11e52a60673b83cfbca30e3eab3add"
+    }
+  ]
+}

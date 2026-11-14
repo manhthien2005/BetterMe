@@ -1,4 +1,515 @@
+# Current checkpoint — consolidation 2026-11-14
+
+Active branch: `codex/consolidated-checkpoint-2026-11-14`.
+The combined checkout keeps Plaza terrain/islands/LOD/water optimizations and
+imports the approved female player, An/Khoa/Minh and authored movement.
+Read `docs/maintenance/consolidation-2026-11-14.md` for source ownership,
+verification, source-art location and recovery. Older sections below are history;
+they do not override this checkpoint or the owner's current AGENTS.md.
+
+Source art: `D:/Dev/ArtSources/BetterMe`. Runtime and necessary test fixtures
+are tracked in Git. Main working location after transfer is
+`D:/Dev/Projects/BetterMe`. View-dependent asset streaming remains future work.
+
+---
+
 # HANDOFF — Nếp's Garden / Vườn Có Bạn
+
+## Bỏ capture nước ngoài tầm nhìn — 2026-11-14
+
+Owner đã tự ép RTX và yêu cầu bỏ qua sửa card. Tiếp tục phần Plaza: mỗi hệ nước
+chỉ chụp phản chiếu/khúc xạ khi ít nhất một pool/stream/fall giao với frustum của
+camera hiện tại, còn visible và đúng layer. Lượt ngoài tầm nhìn được bỏ trống;
+giữ lịch round-robin 100ms, độ phân giải 512px, vật liệu/GLB/placement. PlayerRig
+chạy priority -2, overview -1, nước/effects 0, R3F tự render một lần cuối frame.
+
+[Spec](docs/superpowers/specs/2026-11-14-plaza-water-visibility-design.md),
+[plan](docs/superpowers/plans/2026-11-14-plaza-water-visibility.md),
+[QA](output/plaza-water-visibility/QA.md). Hai test RED trước sửa; focused 25/7 qua.
+Typecheck/lint/build exit0 (lint28warnings cũ, build11/11). Full test lần đầu có
+5 timeout5000ms khi chạy đồng thời browser/server; đóng QA và server rồi chạy
+`pnpm vitest run --maxWorkers=2`: **827/94 qua**, không nới timeout/sửa test.
+
+Desktop1440×1000/DPR1: overview ngắn135→141FPS, capture18→14lượt/giây;
+ẩn đảo18→0. Đi bộ/xoay/quay về132–165FPS trong mẫu hiện tại. Không dùng con số
+20FPS lịch sử để quy công cho sửa này vì cấu hình máy đã đổi. Kiểm tra ngày/đêm/
+mobile/đi bộ và `/world`,0lỗi page/shader;3vòng map ổn định (personal92/29,
+Plaza253/86 geometries/textures). Giới hạn: frustum không biết vật bị che; nước
+hiện lại chờ lượt cũ khoảng1giây; vẫn tải7LOD lúc vào map. Asset streaming và
+distance LOD chưa triển khai. Các mép sương ban đêm và cây che camera ở sân đã
+có trong bản trước, chưa thuộc bước này. Không sửa GPU, commit, push hay deploy.
+
+Preview khởi động lại tại http://127.0.0.1:3004/world?plaza=study để owner review.
+
+## Đưa bộ đảo nhẹ vào Plaza để review — 2026-11-13
+
+Owner đã yêu cầu gắn bộ tối ưu vào Plaza. Cả `/world` và `/world?plaza=study`
+dùng cố định bảy GLB trong `public/world/floating-islands/lod/`, giải nén bằng
+Meshopt decoder có sẵn của Three. Giữ vị trí, vật liệu, hiệu ứng, giới hạn hai
+lượt tải đồng thời và cơ chế thu hồi hiện có. Bảy GLB chi tiết/manifest gốc vẫn
+nguyên hash; chưa bật tải theo tầm nhìn, tự đổi LOD hoặc tối ưu capture nước.
+
+Preview: http://127.0.0.1:3004/world?plaza=study — Toàn cảnh / Đi bộ.
+[Plan](docs/superpowers/plans/2026-11-13-plaza-lod-integration.md),
+[QA tích hợp](output/plaza-lod-integration/QA.md). Các số đo trong phần asset
+bên dưới là lịch sử; xem QA tích hợp để biết kết quả tải thật và giới hạn hiện tại.
+Bốn gate đã qua: typecheck/lint/build exit 0; 824 tests / 94 files; lint có 28
+cảnh báo QA cũ. Browser xác nhận bảy LOD, không gọi GLB chi tiết, texture 200;
+ba vòng chuyển map thu hồi ổn định. Lần đo tích hợp thực tế median 52.5ms/P95
+93.5ms, chưa đạt 60FPS và không phải benchmark trước/sau có kiểm soát. Preview
+đã khởi động lại (session 16773), smoke lần cuối đủ 7 đảo/10 núi, không lỗi
+shader/page; QA browser đã đóng. Chưa commit/push/deploy.
+
+## Tối ưu bộ đảo xa, giữ bộ chi tiết — 2026-11-13
+
+Owner phản ánh lag, muốn LOD+tải theo tầm nhìn, sau đó chỉ định làm ASSET TRƯỚC.
+Đã tạo riêng `public/world/floating-islands/lod/`:7GLB nén Meshopt và texture dùng
+chung,35.794.311bytes/1.661.757triangles; giảm87.9%dung lượng,83.5%hình học.
+Cả7GLB chi tiết cũ và manifest gốc giữ nguyên. Ở bước asset này app còn dùng bộ
+chi tiết; bước tích hợp mới phía trên đã chuyển cả hai route sang bộ nhẹ.
+
+Nguồn tạo: `scripts/optimize-plaza-islands.mjs`.30water primitives, mọi node/anchor/
+material và pixel texture nguyên; giữ biên địa hình, tăng lại tán lá sau đối chiếu.
+5.475buffer views qua decoder thực tế; viewer tải đủ7file nén, đổi chi tiết/nhẹ đạt.
+Preview riêng: http://127.0.0.1:8786/compare.html và `/viewer.html`.
+Trong QA thay hình học cùng camera:median110.7→25.7ms, còn spike56.4ms từ nước;
+không cam kết60FPS hay thời gian mạng thật (QA dùng decoded twins).
+[Spec](docs/superpowers/specs/2026-11-13-plaza-performance-design.md),
+[plan](docs/superpowers/plans/2026-11-13-plaza-performance.md),
+[QA](output/plaza-performance/QA.md). Bốn gate exit0:824tests/94files, lint0errors/
+28warnings QA cũ, build11/11. QA browser đã đóng; normal preview loopback3004 bật
+lại, gallery8786(session64037) độc lập. Không commit/push/deploy.
+
+## Sửa dáng Cổng Mây và chụp tám hướng — 2026-11-13
+
+Owner chỉ ra hai thân đá trông như hình trụ sau sân giảng. Đã sửa phần đá trên
+Cổng Mây: thân thu dần, đỉnh nghiêng lệch, giữ vai và bậc đá rộng. Nâng chân từ
+-60 lên -50, scale5/yaw offset+.1; bearing176°/radius420m giữ nguyên. Cây, phế
+tích và bệ dưới giữ nguyên geometry/transform; dây leo và đá vụn trên đỉnh đi
+theo mặt đá. Chín model khác và toàn bộ nguồn V6 giữ nguyên hash.
+
+Cổng Mây vẫn41.880 triangles; tổng532.602 triangles/16vị trí, GLB10.741.224bytes.
+Đã xem ảnh trước/sau cùng camera, tám hướng tầm mắt + tám hướng toàn cảnh,
+ngày/hoàng hôn/đêm và viewport390×844. [Gallery](http://127.0.0.1:8785/overview.html),
+[so sánh](http://127.0.0.1:8785/compare.html), [QA](output/mountain-v6-silhouette/QA.md).
+Tự rà riêng; không agent phụ. Focused15/15; typecheck/lint/build exit0,
+823tests/94files. Lint còn28warnings QA cũ sau bỏ3biến thừa trong script mới.
+Preview loopback3004 đã bật lại (dev session26076); smoke đủ10mẫu/16vị trí,
+đúng hash Cổng Mây, không shader lỗi. QA browser đã đóng. Gallery loopback8785
+(session38727). Không commit/push/deploy; chưa đo lại FPS hay điện thoại thật.
+
+## Núi V6 đã thay bộ cũ trong Plaza — 2026-11-13
+
+Owner yêu cầu thay và bố trí bao quanh để preview. Cả `/world` và `/world?plaza=study`
+dùng 10 GLB V6 (ban đầu byte-identical, Cổng Mây được sửa theo mục trên),
+16 vị trí (4 gần/4 trung/8 xa), 532.602
+triangles đặt; tỉ lệ đều, có khe trời, giữ đảo/kiến trúc/camera. Thạch Linh đã dời
+để hộp bao cách Song Đỉnh và mọi đảo ít nhất 12m. Tuyết chỉ trên ba núi đá xa;
+lá giữ normal V6. Gỡ nhánh/asset runtime Vân Sơn 05 cũ, giữ nguồn lịch sử.
+
+Bốn gate đạt: typecheck, lint (28 warnings QA cũ), toàn suite 822/822 trong94 file,
+build11/11. Focused23/23.
+Kiểm visual ngày/chiều/đêm/mưa/mobile, bốn góc đi bộ/cận núi; ba vòng chuyển cảnh
+không tăng dần GPU resources; lỗi một model giữ chín mẫu khác, reload khôi phục đủ.
+Toàn cảnh vẫn ~115ms/frame do cảnh đảo chi tiết hiện có; chưa đạt 60FPS, chưa đo
+điện thoại thật. [QA](output/mountain-v6-integration/QA.md),
+[spec](docs/superpowers/specs/2026-11-13-plaza-mountains-v6-design.md),
+[plan](docs/superpowers/plans/2026-11-13-plaza-mountains-v6.md).
+Preview tại thời điểm tích hợp bằng bypass trên127.0.0.1:3004, smoke đạt
+10mẫu/16vị trí, không shader lỗi; QA browser đã đóng. Không commit/push/deploy.
+
+## Thử Vân Sơn 05 trong Plaza — lịch sử, đã được V6 thay thế
+
+Owner yêu cầu đặt thử mẫu núi 05 với kích thước/xa gần khác nhau. Study `/world?plaza=study` nay hiển thị 5 núi/3 lớp (~185–210 / 410–430 / 690m), giữ `/world` thường để đối chiếu bộ cũ. Ba GLB LOD riêng dưới `public/world/mountain-study/`, tổng 4,03MB / 183.555 triangles đặt, source 05 nguyên hash. Dùng chung loader/instancing/haze và ownership cũ; không thêm tuyết. Góc toàn cảnh mới rộng hơn; sửa sky-center khi quay lại từ đi bộ/map swap để không far-clip dome. [QA](output/van-son-plaza-trial/QA.md), [plan](docs/superpowers/plans/2026-11-12-van-son-plaza-trial.md). Chưa duyệt bố cục chính thức, không commit/push/deploy.
+
+## Bộ đảo bay mới đã thay trong Plaza — 2026-11-12
+
+Owner đã duyệt sáu V2 và yêu cầu thay/gỡ asset đảo cũ. Vườn Gió v18 thay Mạch Nguồn;
+sáu ID còn lại giữ nguyên, GLB runtime được thay bằng đúng bản đã duyệt. Gỡ GLB
+Mạch Nguồn cũ và runtime nước cũ. Adapter typed mới bảo toàn cỏ/lá, nước từng tầng,
+đèn/đom đóm/spray theo clock app. Giữ nguyên các sửa Plaza study đang có.
+
+Preview local: http://127.0.0.1:3004/world?plaza=study (ngày, toàn cảnh),
+http://127.0.0.1:3004/world (đi bộ). `BETTERME_DEV_AUTH_BYPASS=true` chỉ local.
+Nguồn mới: `D:/Dev/Projects/BetterMe/output/floating-islands-v2/`; snapshot/source
+lịch sử giữ làm dependency chỉ đọc. [QA và kết quả](output/island-v2-integration/QA.md),
+[spec](docs/superpowers/specs/2026-11-12-island-v2-integration-design.md),
+[plan](docs/superpowers/plans/2026-11-12-island-v2-integration.md).
+Không commit/push/deploy; chưa benchmark điện thoại thật hoặc tạo LOD.
+
+## Hoàn thiện lần lượt: mục 5 — hai hành lang quanh đình — 2026-11-12
+
+Chủ dự án cho tiếp tục sau lượt đại đình. Hoàn thiện riêng west/north-cloister:
+mái dài có sống ngang, shell kín16 cm, góc vút nhẹ, đường ngói/diềm; rui,
+giằng, đấu và khung đỡ mái; chân đá3 lớp, đai đồng, viền lát phẳng. Giữ tâm,
+sànY4,6 cột/dãy, ghế và tuyến đi. Dãy bắc cao4.8 m (tăng0.7 m) để mái giật
+ở góc tây-bắc; dãy tây4.1 m. Chân tây nam sát lối cong giữ0.6 m; còn lại0.74 m.
+
+- Mới: `src/components/world/plaza-study-cloister.ts` +10tests;
+  `src/lib/world/plaza-study-cloister.ts` dùng chung vị trí/size/collider.
+  Tích hợp west/north-only trong study architecture/config; chỉ đổi chiều
+  cao north ở layout. Hall/pergola/gate/observatory/terrain giữ nguyên.
+- Focused51/51 trong7file. Red trên bản thô; tự rà riêng bắt thêm dầm/gối
+  xuyên mái, có ray và vertex-envelope red→green trước sửa. Vỏ mái và
+  diềm đúng hướng;20 mẫu góc nối cách>280 mm, shell160 mm. Camera/đầu/ngưỡng
+  và tuyến cũ được kiểm. Không subagent/reviewer.
+- Tổng92,217 triangles/7batches;2hành lang<=16k, cap96k ghi rõ trong spec.
+  Không texture/dependency mới. Đi thật từ lối dốc vườn qua hành lang tây,
+  dãy bắc ra cầu, cửa bên từ đình, cột chặn, nhảy/đápY4. Xem mái/góc nối/
+  dưới mái/chân cột, ngày/chiều/đêm,1440×900 và390×844. Không overflow/
+  shader lỗi;3vòng lifecycle ổn định, cảnh gốc/live/near=.2 khôi phục.
+- Bốn gate exit0: typecheck; lint0errors/28warnings QA cũ; Vitest806tests/
+  90files với `--maxWorkers=4`; build11/11. Dừng đúng dev tree19776/35532/
+  44632/23448/19616, xác nhận port3004 đóng trước build. Preview đã bật lại
+  loopback3004, dev session45512. Smoke vào hành lang tâyY4 đạt;3vòng sau
+  restart giữ study179geometry/122texture, personal93/29, cảnh gốc/live/
+  near=.2 khôi phục, page exceptions0. QA đã đóng. Không commit/push/deploy;
+  next-env unstaged.
+
+Spec/plan: `docs/superpowers/{specs,plans}/2026-11-12-plaza-cloister-refinement.md`.
+Evidence: `output/playwright/plaza-cloisters/` (`cloister-hero.jpg`, `cloister-west.jpg`,
+`gates.log`, `focused-final.log`, `navigation.log`, `visual-final.log`). Lưu ý:
+second before capture bị HMR, đã đổi thành iteration1-*; baseline so sánh hợp
+lệ lấy pavilion-hero.jpg của lượt trước, cùng camera academy-court.jpg hiện tại.
+Preview http://127.0.0.1:3004/world?plaza=study. Chưa benchmark điện thoại thật,
+touch walking và lighting cuối. Hạng mục gợi ý tiếp: đài thiên văn, từng cái một.
+
+## Hoàn thiện lần lượt: mục 4 — đại đình đọc sách — 2026-11-12
+
+Chủ dự án thích cầu cong và cho phép tiếp tục từng hạng mục. Lượt này chỉ
+hoàn thiện grand-pavilion trên sân Y4: mái hai tầng cong/góc vút nhẹ, vỏ mái
+kín dày18 cm, đường ngói/sống mái, diềm đồng mảnh, rui gỗ, khung đỡ mái,
+đấu/công-xôn chồng lớp, giằng chéo, chân đá nhiều lớp và đai cột. Giữ tâm,
+footprint, bốn vị trí cột, đường đi, ghế/bàn, các công trình còn lại.
+
+- Mới: `src/components/world/plaza-study-pavilion.ts` và test; module
+  `src/lib/world/plaza-study-pavilion.ts` chia sẻ cột/chân/collider. Tích hợp
+  grand-only trong study geometry/config, lake/cloister builder không đổi.
+- Ban đầu4 test thất bại trên blockout; tự rà riêng bắt thêm diềm mái ngược
+  mặt và thiếu gối đỡ nối khung lên mái, có red→green riêng.8 test pavilion;
+  focused41/41 trong6 file. Không subagent/reviewer.
+- Tổng80,257 triangles/7 batches, asset<=14k; cap study82k ghi rõ trong spec.
+  Đã giảm3,072 triangles bằng rui hộp nhỏ trước khi thêm đủ khung đỡ. Không
+  thêm texture/dependency, không sửa terrain, cây, nước hoặc ánh sáng.
+- Browser đi cả4 cửa, từ cầu thang xuyên đình ra cầu, chân cột chặn, nhảy/đáp
+  Y4. Tuyến QA cửa tây đầu tiên va ghế cũ; đổi tuyến qua trục z=-2, giữ ghế.
+  Xem roof/underside/foot, ngày/chiều/đêm, desktop1440×900/mobile390×844.
+  Shader lỗi0, không overflow; ba vòng chuyển cảnh ổn định, cảnh gốc/live/
+  near=.2 khôi phục, page exceptions0.
+- Bốn gate exit0: `pnpm typecheck`; `pnpm lint`0errors/28warnings QA cũ;
+  `pnpm vitest run --maxWorkers=4`796tests/89files; `pnpm build`11/11.
+  Dừng đúng cây dev pnpm37148/cmd12284/Next46308/server33372/worker27852
+  trước build; port3004 đóng. Bật lại preview local-only; dev session67336.
+  Smoke sau build đi từ sân lên đình, đạtY4. Ba vòng lifecycle mới sau restart
+  giữ study179geometry/122texture, personal93/29; page exceptions0, cảnh gốc
+  khôi phục. Console cuối0errors/4warnings Three trong lượt chuyển cảnh. QA browser đã đóng.
+
+Spec/plan: `docs/superpowers/{specs,plans}/2026-11-12-plaza-pavilion-refinement.md`.
+Evidence: `output/playwright/plaza-pavilion/` (`before-after.jpg`, `pavilion-hero.jpg`,
+`gates.log`, `navigation-final.log`, `visual-final.log`, `restart-smoke.log`).
+Preview http://127.0.0.1:3004/world?plaza=study. Chưa benchmark điện thoại thật,
+touch walking/lighting cuối chưa làm. Không commit/push/deploy; giữ mọi thay
+đổi trước và next-env.d.ts unstaged. Gợi ý hạng mục sau: hai hành lang nối đình,
+rồi đài thiên văn; tiếp tục từng cái một theo phản hồi chủ dự án.
+
+## Sửa dáng cầu — vồng nhẹ, 2026-11-11
+
+Chủ dự án thấy mặt cầu thẳng/dốc đều quá cứng, duyệt đề xuất vồng nhẹ rồi
+yêu cầu sửa. Đã đổi riêng sky-bridge sang profile cong chung trong
+`studyConnectorHeight`: easing hai đầu + vồng850 mm giữa nhịp, midpointY6.35,
+hai đầuY4/7 tiếp tuyến ngang, đỉnh nhẹ<7.06. Giữ nhịp13×4 m, vật liệu/hoa văn,
+vị trí và toàn bộ hạng mục khác. Không dời thêm cây hoặc sửa sân.
+
+- Mesh ván, lõi kín52 đoạn, tay vịn/dầm hông26 đoạn, trụ, sườn đỡ, physics,
+  camera và colliders đều theo cùng cao độ. Tay vịn dùng mesh liền kín để
+  không hở ở chỗ cong. Chân đá sâu thêm100 mm, dầm hông thu400 mm dưới chân
+  đá440 mm; ray bắt2 mặt chồng trước sửa →1 mặt sau sửa, hết sọc nhấp nháy.
+- Focused33/33;9 test bridge. Tự rà riêng, không subagent/reviewer. Tổng
+ 67,645 triangles/7 batches (+2,808 so bản thẳng), cap study68k được ghi trong
+  spec sửa dáng để chứa hình học cong; không thêm texture/dependency.
+- Đi thật3 làn hai chiều, nhảy/đáp mặt cong, rail chặn. Ba vòng lifecycle
+  giữ study179 geometry/122 texture, personal93/29; cảnh gốc/live/near=.2
+  khôi phục, page exceptions0. Đã xem cùng góc trước/sau, hai đầu, chi tiết,
+  ngày/chiều/đêm và mobile390×844; shader lỗi0, không overflow.
+- Bốn gate exit0: `pnpm typecheck`; `pnpm lint`0 errors/28 warnings QA cũ;
+  `pnpm vitest run --maxWorkers=4`788 tests/88 files; `pnpm build`11/11.
+  Dừng đúng pnpm30384/cmd16856/Next20584/server47552/worker39044 trước build.
+  Preview loopback3004 đã bật lại, dev session52393 còn chạy.
+- Smoke sau build: lênY7/xuốngY4, nhảyY7.383 và đáp, rail chặn đạt. Ảnh mới
+  đã kiểm tra; QA browser đóng. Console cuối0 errors/2 Three.js warnings cũ;
+  lần mở đầu vẫn có favicon404. Chưa benchmark điện thoại thật/touch walking.
+
+Spec: amendment đầu `docs/superpowers/specs/2026-11-11-plaza-bridge-refinement.md`.
+Plan: `docs/superpowers/plans/2026-11-11-plaza-bridge-curve-fix.md`.
+Evidence: `output/playwright/plaza-bridge-curve/` (`before-after.jpg`,
+`bridge-hero.jpg`, `bridge-side.jpg`, `gates.log`, `restart-smoke.log`). Preview
+http://127.0.0.1:3004/world?plaza=study. Không commit/push/deploy, giữ worktree
+và mọi thay đổi trước. Các kết quả bên dưới là lịch sử bản cầu thẳng.
+
+## Hoàn thiện lần lượt: mục 3 — cầu lên đài ngắm cảnh — 2026-11-11
+
+Chủ dự án thích cầu thang, cho phép tiếp tục từng hạng mục cùng cách làm.
+Lượt này hoàn thiện riêng sky-bridge:26 ván mép vát,10 trụ chân đá/chóp xanh
+xám, tay vịn liền và hoa văn hình thoi thoáng; hai sườn gỗ cong, giằng ngang,
+thanh đỡ đứng và gối đá ăn vào bờ. Giữ nhịp13 m, mặt đi4 m, Y4→7 và hai đầu.
+
+- Mới: `src/lib/world/plaza-study-bridge.ts` (frame/collider),
+  `src/components/world/plaza-study-bridge.ts` (mesh), test cùng tên,
+  `plaza-study-joinery.ts` tách nguyên hai helper của thang để dùng chung.
+  Tích hợp vào study geometry/config; cầu thang và `/world` gốc giữ nguyên.
+- Hai sửa khoảng hở cục bộ: cây khối1(-16.2,-11)→(-15.2,-8.8) để thân/tán
+  không xuyên rail; bỏ góc sân trời(-12,-17) vốn đè lên mép cầu tới0.798 m.
+  Không dời đích đến hay thay cao độ. Mạch lát đầu trên kế thừa cao22.6 mm
+  trong20 mm cuối, cho tolerance25 mm; phần deck còn lại<=2 cm.
+- Sáu test bridge dùng scene raycast/physics/camera; ray bắt lỗi cây/góc
+  sân, kiểm tra endpoint bắt collider thiếu phần chân trụ nhô240 mm trước
+  khi sửa. Focused30/30. Tự rà riêng, không giao reviewer/subagent.
+  Tổng64,837 triangles/7 batches (+2,895 so cầu thang).
+- Browser đã đi thật3 làn lên/xuống, nhảy/đáp trên cầu, dừng ở rail; kiểm
+  tra front/side/top/underside/detail, ngày/chiều/đêm, mobile390×844. Shader
+  lỗi0, không overflow. Ba vòng scene ổn định study179 geometry/122 texture,
+  personal93/29; `/world` gốc/live/near=.2 khôi phục; page exceptions0.
+- Bốn gate mới exit0: typecheck; lint0 errors/28 warnings trong QA cũ
+  (gồm restart-smoke của cầu thang); Vitest785 tests/88 files với4workers;
+  build11/11. `output/playwright/plaza-bridge/gates.log`. Dừng đúng dev tree
+  pnpm25016/cmd45704/Next25052/server31820/worker35292, xác nhận port đóng
+  trước build. Đã bật lại loopback3004; dev session3026 đang phục vụ preview.
+- Smoke sau build đi lại3 làn hai chiều đạt; nhảyY6.44 và đáp, rail chặn.
+  Ảnh mới đã kiểm tra; QA browser đóng. Console lần mở đầu có favicon404;
+  lần cuối có2 lỗi từ Open-Meteo CORS/network, không phải geometry/shader.
+  Ánh sáng preview cố định và các kiểm tra cầu vẫn hoạt động. Không sửa
+  dịch vụ thời tiết ngoài phạm vi. Chưa đo điện thoại thật/touch walking.
+
+Spec/plan: `docs/superpowers/{specs,plans}/2026-11-11-plaza-bridge-refinement.md`.
+Evidence: `output/playwright/plaza-bridge/`; ảnh chính `bridge-hero.jpg`,
+`bridge-front.jpg`, `bridge-detail.jpg`; `restart-navigation.log`,
+`restart-console.log`, `final-browser.log`, `visual.log`. Preview vẫn là
+http://127.0.0.1:3004/world?plaza=study. Không commit/push/deploy; giữ mọi thay
+đổi trước, `next-env.d.ts` unstaged. Công trình/nước/cây/ambience khác vẫn thô.
+
+## Hoàn thiện lần lượt: mục 2 — cầu thang học viện — 2026-11-11
+
+Chủ dự án duyệt hướng nghiên cứu và yêu cầu thực hiện để xem. Đã dựng riêng
+academy-stair: mép bậc vát18mm, mạch ghép thưa, tường hông/gờ đá liền,12 trụ
+có chân đế/nắp xanh xám, tay vịn gỗ và thanh đứng thoáng. Lan can nối đúng
+hai đầu chiếu nghỉ. Giữ7×12m/Y0→4 và các tuyến nối/cao độ đã chốt.
+
+- Files mới: `src/lib/world/plaza-study-stair.ts` (vị trí/va chạm),
+  `src/components/world/plaza-study-stair.ts` (mesh), test cùng tên.
+  Tích hợp vào study geometry/config; không đổi cảnh `/world` gốc.
+- Đường lát cũ cắt ngang lan can mới: thêm một control point(-22,23) để
+  vào miệng thang, giữ hai đầu và chiều rộng; thêm apron lát7×1.3m. Không
+  dời công trình/cây/địa hình. Tự rà riêng; sửa mặt gờ/tường chồng nhau bằng
+  regression raycast RED→GREEN. Focused24/24. Tổng61942 triangles/7 batches
+  (tăng3096 so baseline nền58846, gồm apron2 triangles).
+- Browser: front/side/detail/top, ngày/chiều/đêm/mobile390×844; shader lỗi0,
+  không overflow. Đi thật3 làn cả2 chiều; dừng ở railx=-21.95, nhảy/đáp
+  chiếu nghỉY2. Ba vòng public/personal ổn định179 geometry/122 texture và
+  93/29; cảnh gốc/live/near=.2 khôi phục, page exceptions0.
+- Bốn gate pass trong chuỗi mới exit0: typecheck, lint0 errors/27 warning
+  scriptQA (26 cũ+1 scriptresearch), Vitest779 tests/87 files với4workers,
+  build11/11. `output/playwright/plaza-stair/gates.log`; lỗi type ở test
+  trong lượt gate đầu đã sửa bằng `collectMapColliders`, log đầu giữ riêng.
+- Đã dừng đúng dev tree26332/12068/33008 cùng worker trước build; khởi động
+  lại loopback3004 với bypass local. Không commit/push/deploy, giữ các thay
+  đổi chưa commit từ các lượt trước; `next-env.d.ts` vẫn để unstaged.
+- Smoke sau build đi thật lênY2→4 và xuốngY0 đạt (`restart-smoke.log`). Dev
+  session2272 còn chạy cho chủ dự án xem; xác minh PID mới trước khi dừng.
+
+Spec/plan: `docs/superpowers/{specs,plans}/2026-11-11-plaza-stair-refinement.md`.
+Evidence: `output/playwright/plaza-stair/`. Mới hoàn thiện chiếc thang chính;
+lan can khu khác, đèn, cây/hoa, nước và ambience giữ trạng thái trước. Chưa
+đo hiệu năng trên điện thoại thật; điều khiển đi bộ cảm ứng chưa triển khai.
+
+## Nghiên cứu asset cầu thang — 2026-11-11
+
+Chủ dự án yêu cầu research thêm trước khi hoàn thiện cầu thang. Đã khảo sát
+trang và hình của các bộ temple/stair trên Fab, Kenney và kiến trúc Nikko;
+ghi nguồn, định dạng, giới hạn và đề xuất trong
+`docs/research/2026-11-11-plaza-stair-assets.md`. Bảng tham khảo local:
+`output/playwright/plaza-stair-research/board.html`.
+
+Đề xuất dựng riêng bộ thang đá kem–gỗ nâu–nắp kim loại xanh xám, ưu tiên
+mép vát, chân/đầu trụ và lan can nối đúng chiếu nghỉ. Giữ 7×12 m, Y0→4,
+chiếu nghỉ Y2; chỉ hoàn thiện academy-stair trước. **Đây là đề xuất chưa
+được duyệt, chưa triển khai**, không phải asset đã hoàn thành. Không mua,
+tải model hoặc sửa scene; không commit/push. Gate 774 tests bên dưới thuộc
+lượt nền trước, không phải bằng chứng cho thiết kế thang mới.
+
+## Hoàn thiện lần lượt: mục 1 — địa hình và nền sân — 2026-11-11
+
+Sau khi chốt bản thô03, chủ dự án yêu cầu thực hiện từng hạng mục một.
+Lượt này tập trung nền/foundation; giữ quần thể và bốn cao độ, chưa làm asset
+kiến trúc/cây/nước. Vẫn dùng worktree `plaza-landscape-v1` và preview
+**http://127.0.0.1:3004/world?plaza=study**. Không commit/push/deploy.
+
+- Khối nền dốc/cầu thang liền kín, top đúng sampler; cầu chéo vẫn là nhịp cầu.
+  Khép mép đá với sàn thấp và mặt dưới đảo. Tường đỡ xuống đúng tầng dưới,
+  phần cửa nối không còn nắp dày lấn bậc cuối. Đường lát cắt theo cùng cao độ,
+  không kéo dải xuống vách hoặc nổi lên trên dốc.
+- Mặt lát đá, mạch xây và lớp đá nền dùng shader riêng cho study với vertex
+  mask; kiến trúc/đá của cảnh cũ giữ vật liệu. **58,846 triangles / 7 batches**.
+- Hai sửa nhỏ để thông lối: góc tây sân đọc sách x=-36→-38.1 ở z9, đủ
+  bề ngang dốc4.2m (vá7.35m²); cây khối1 x=-17→-16.2,z=-11 để tránh lấn
+  lối phải cầu. Không đổi điểm đầu/cuối đường nối hay vị trí công trình.
+- Test raycast bắt các lỗi trước khi sửa; focused **19/19**. Bộ di chuyển
+  kiểm tra cả5 đường nối,2 chiều,3 làn. Đã đi thật toàn vòng và xuống dốc
+  theo mép x=-37.4; nhảy,portal round-trip đạt. Xem gần nền/dốc/bậc/chân đài,
+  overview/ngày/chiều/đêm/mobile390×844: không overflow, shader lỗi0.
+- Ba vòng public/personal GPU ổn định179 geometry/122 texture và93/29;
+  cảnh cũ/live/near=.2 khôi phục, page exception0. Tự rà riêng các mặt nối,
+  móng và mask vật liệu. Các chi tiết còn thô khác thuộc lượt sau.
+- **Bốn gate đạt**, chuỗi exit0: `pnpm typecheck`, `pnpm lint` (0 lỗi/26
+  warning QA cũ), `pnpm vitest run --maxWorkers=4` (**774 tests/86 files**),
+  `pnpm build` (**11/11**). Đã dừng đúng dev tree pnpm46484/Next47608/
+  server25524 và xác nhận port đóng trước build; dev đã bật lại loopback3004.
+- Evidence local/ignored `output/playwright/plaza-ground/`: `gates.log`,
+  `focused-green.log`, các log RED→GREEN, `navigation.log`, `visual.log`,
+  `final-browser.log`; ảnh `stair-side.jpg`, `ramp-side.jpg`, `paving.jpg`,
+  `overview-day.jpg`. Spec/plan: `2026-11-11-plaza-ground-refinement.md` dưới
+  `docs/superpowers/specs/` và `docs/superpowers/plans/`.
+- Smoke sau build: đi lên/xuống mép dốc x=-37.457, đạt4 m rồi về0 m,
+  trở lại overview. `restart-smoke.log`; QA đã đóng, preview vẫn chạy.
+- Mục tiếp theo có thể là tường/lan can/cầu thang về chi tiết kiến trúc,
+  rồi hoàn thiện từng công trình; chưa tự triển khai các mục này trong lượt1.
+
+---
+
+## Plaza quần thể sân vườn 03 — 2026-11-11, hiện hành
+
+**Đã được chủ dự án chốt làm bản thô ngày 2026-11-11.** Phản hồi: tổng quan
+khá đẹp; còn nhiều lỗi nhưng chấp nhận ở giai đoạn thô. Giữ bố cục, bốn cao độ,
+hệ đường nối và các khu chức năng của bản 03 làm cơ sở hoàn thiện tiếp.
+Đây là duyệt hướng thiết kế/bố cục, không phải xác nhận hết lỗi hay sẵn sàng
+production. Chủ dự án chưa chỉ rõ từng lỗi; cần rà và ghi nhận khi bắt đầu
+giai đoạn hoàn thiện, không tự coi các lỗi đó là đã sửa. Chưa có yêu cầu làm
+asset/fix mới hoặc commit/push trong lượt chốt này; chỉ cập nhật tài liệu.
+
+Chủ dự án muốn kiến trúc và các khu vực đẹp, phức tạp, đẳng cấp hơn. Tiếp tục
+bản polygon trong cùng worktree `.worktrees/plaza-landscape-v1`, không đổi
+checkpoint **`e3f606e`**, không commit/push/merge/deploy. Preview vẫn là
+**http://127.0.0.1:3004/world?plaza=study**; `/world` giữ cảnh đã duyệt.
+
+- Thêm hai cánh hành lang quanh đại đình đọc sách, đài thiên văn bát giác mở
+  trên tầng +7 với mô hình thiên cầu treo, giảng đường vườn ba hàng ghế cung,
+  hồ tĩnh trước cầu thang, bồn cây giật cấp hai bên, thác nước ba bậc ven hồ,
+  giàn cây/hành lang gỗ và cổng đón. Tinh chỉnh vì kèo, diềm mái, chân tường.
+- Giữ bốn cao độ và năm đường nối; không đổi terrain/physics lượt này.
+  Lối lên cầu đi qua giữa hành lang bắc; thêm nhánh vào giảng đường và hồ tĩnh.
+  Di chuyển giảng đường từ (-23,44) tới **(-23,42)** vì mép sân chéo cắt qua
+  móng ghế ngoài. Test foundation giữ tất cả ghế/cột trên đúng cao độ.
+- Tệp mới `src/lib/world/plaza-study-architecture.ts` chia sẻ vị trí vật thể
+  với colliders; `src/components/world/plaza-study-architecture.ts` dựng khối
+  vào cùng material batches. Không thêm dependency hay framework dựng cảnh.
+- Đã đi thật bằng phím qua các khu mới, cầu hai chiều, dốc, nhảy/hạ xuống,
+  cổng personal rồi về. Sau đó chỉ tinh chỉnh mái/ghế và dịch giảng đường.
+  Đã xem overview/ngang mắt, ngày/chiều/đêm, desktop1440×900/mobile390×844.
+  **60,611 triangles / 7 batches**, shader lỗi0, không overflow.
+- Ba vòng public/personal + cùng camera sweep: study179 geometry/122 texture,
+  personal93/29 ổn định. Cảnh cũ/live/near=.2 khôi phục đúng, page exceptions0.
+  Tự rà riêng collider/geometry, nền móng, headroom, dispose, scope.
+- Bằng chứng local/ignored: `output/playwright/plaza-academy/`, gồm ảnh
+  `before-overview.jpg`, `overview-day.jpg`, `lecture.jpg`, `cloister.jpg`,
+  `pergola.jpg`, logs `navigation.log`, `visual.log`, `final-browser.log`.
+  Spec `docs/superpowers/specs/2026-11-11-plaza-academy-study.md`.
+- Bố cục polygon đã chốt; chi tiết và chất lượng runtime còn cần hoàn thiện.
+  Ghế chưa có ngồi, thác nước tĩnh;
+  chưa làm asset final, âm thanh/chim/bướm/touch walking. Không benchmark
+  điện thoại thật hay xác minh auth/sync bằng bypass. Không stage `next-env.d.ts`.
+- Kiểm tra: typecheck đạt; lint0 lỗi/26 warning QA cũ; `pnpm vitest run
+  --maxWorkers=4` **767 tests / 85 files đạt**; `pnpm build` exit0, **11/11**.
+  Hai lượt `pnpm verify` worker mặc định gặp timeout5s ở các bài UI; không
+  được ghi là verify exit0. Không nới timeout/đổi runner config. Bài route
+  đã bỏ phép tính lại cao độ cho từng collider, giữ đầy đủ coverage.
+  Logs `verify-timeout.log`, `verify-default-workers.log`, `full-tests.log`,
+  `build.log`. Đã dừng đúng dev tree pnpm47916/Next4484/server26380 trước build.
+- Dev đã bật lại loopback3004. Browser smoke mới đi qua cổng, vào giảng đường
+  sau chỉnh cuối, va chạm hồ tĩnh dừng đúng z31.15, trở lại overview đạt.
+  `restart-smoke.log`; session QA đã đóng. Xác minh PID hiện tại trước khi dừng.
+
+---
+
+## Plaza giật cấp 02, tham khảo Inazuma — 2026-11-11, lịch sử
+
+Chủ dự án đã đồng ý hướng sân cao thấp và yêu cầu nâng cấp bản polygon,
+tham khảo “view of inazuma genshin impact city” ở quy mô plaza giáo dục.
+Đã xem ảnh city view HoYoLAB qua Bing: lấy cách chia sân, cầu thang/chiếu nghỉ,
+mái chòi nhiều lớp và các góc nhìn; không nhập asset của game.
+
+- Tiếp tục worktree `.worktrees/plaza-landscape-v1`, branch
+  `codex/plaza-landscape-v1`; checkpoint cảnh đã duyệt **`e3f606e`** còn nguyên.
+  Preview **http://127.0.0.1:3004/world?plaza=study**, `/world` là cảnh đã chốt.
+- Bốn cao độ: vườn hồ −2 m, sân chung 0 m, đại đình đọc sách +4 m,
+  đài ngắm cảnh +7 m. Cầu thang 20 bậc có chiếu nghỉ, đường dốc vườn,
+  cầu chéo lên đài và hai đường xuống hồ. Chân núi polygon bất quy tắc,
+  lan can thấp, 3 bàn đọc ngoài trời. Hồ hiện 15 × 22 m.
+- `plaza-study-terrain.ts` là nguồn chung cho sàn, vật thể, di chuyển và
+  camera. Physics/camera nhận sampler tùy chọn; map phẳng giữ hành vi cũ.
+  Chỉ một mặt sàn mỗi XZ; chưa hỗ trợ đi dưới cầu/tầng chồng nhau.
+- Đã đi thật bằng phím: lối vào → chiếu nghỉ +2 → đình +4 → nhảy/hạ xuống
+  → cầu lên +7 và trở về → dốc vườn 0 → hồ −2 → vòng đông → dốc bắc 0
+  → cổng personal rồi quay lại. Sửa khe tam giác ở đầu cầu chéo bằng cách
+  nối mép đài đúng toàn bộ bề ngang cầu; có regression RED→GREEN.
+- Đã xem 1440×900 overview và ngang mắt, ngày/chiều/đêm, 390×844 không tràn.
+  **46,819 triangles / 7 batches**, shader lỗi 0. Ba vòng public/personal:
+  GPU study **179 geometry / 122 texture**, personal **93/29**, ổn định.
+  Cảnh đã chốt khôi phục landscape cũ/live/near=.2; không page exception.
+  Hai warning Three.js Clock/shadow-map cũ vẫn còn.
+- **`pnpm verify` exit 0** sau khi dừng đúng cây dev và xác nhận port đóng:
+  typecheck đạt, lint **0 lỗi / 26 warning QA cũ**, **765 tests / 85 files**,
+  build **11/11**. Geometry/terrain focused **10/10** sau sửa đầu cầu.
+  Tự rà riêng diff, scope, đường đi, camera, geometry và resource lifecycle.
+  Detector đã chạy một lần trong lượt, `[]`; không chạy lại chỉ vì chỉnh nhỏ.
+- Bằng chứng local/ignored: `output/playwright/plaza-terraces/` gồm
+  `navigation.log`, `visual.log`, `final-browser.log`, `verify.log`,
+  `bridge-seam-{red,green}.log`, `overview-day.jpg`, `lake.jpg`.
+  Spec: `docs/superpowers/specs/2026-11-11-plaza-terraced-study.md`.
+- Vẫn là bản bố cục để chủ dự án đánh giá. Cây/hoa/kiến trúc/nước final,
+  âm thanh, chim/bướm, ngồi ghế và touch walking làm sau. Chưa benchmark
+  điện thoại thật; bypass local không xác minh auth/sync. Không commit/push/
+  merge/deploy lượt này. `next-env.d.ts` do dev tự đổi, không stage.
+- Dev đã khởi động lại trên loopback3004 sau build; browser smoke mới tải
+  avatar ready, di chuyển từ [0,0,40] tới [0,0,38.205], đổi về overview đạt.
+  Log `restart-smoke.log`; console chỉ favicon404 cũ và hai warning Three.js.
+  Session QA đã đóng. Kiểm tra ownership process hiện tại trước khi dừng dev.
+
+---
+
+## Bản thử bố cục Plaza phẳng — 2026-11-11, lịch sử (đã thay bằng bản 02)
+
+Sau checkpoint **`e3f606e`**, chủ dự án yêu cầu dựng thử plaza rộng trên núi:
+vườn/đường dạo, chòi hùng vĩ, hồ/đài nước, ghế và view đẹp. Cho phép polygon;
+asset chi tiết, tiếng môi trường và chim/bướm làm sau. Đây là bản thử phục vụ
+thảo luận, **chưa phải thiết kế được duyệt hay kế hoạch chính thức**.
+
+- Worktree `.worktrees/plaza-landscape-v1`, branch `codex/plaza-landscape-v1`.
+  Preview **http://127.0.0.1:3004/world?plaza=study**; `/world` giữ cảnh đã chốt.
+  Dev chỉ loopback, bypass local không authentication. Xác minh process trên
+  port 3004 thuộc checkout này trước khi dừng; không dùng PID lịch sử bên dưới.
+- Bố cục khoảng 80 × 80 m: sân tròn 25 m, đại đình tây, chòi nhỏ/hồ 18 × 26 m
+  phía đông, vườn tây nam, lối vào nam, view núi phía bắc; 13 ghế, 21 cây khối.
+  Có Toàn cảnh/Đi bộ, chọn ánh sáng. Sàn Y=0; vách núi/tường bậc nằm dưới sàn.
+- Tệp chính: `plaza-study-layout.ts`, `plaza-study-config.ts`,
+  `plaza-study-geometry.ts`, `public-plaza-study.tsx`. Query chỉ chọn study cho
+  public; personal giữ config cũ. Núi/đảo/sky đã duyệt giữ vị trí/vật liệu.
+- Browser đã đi thật qua sân, vào đại đình, cổng personal rồi về; va chạm hồ
+  và đài nước đúng. Test lấy đường cong render kiểm tra với radius nhân vật.
+  Đã xem desktop 1440 × 900, overview 390 × 844, ngày/hoàng hôn/đêm.
+- `pnpm verify` exit 0: typecheck đạt, lint 0 lỗi / 26 warning QA cũ,
+  **758 tests / 84 files**, build 11/11. Focused 15/15; detector `[]`.
+  Tự rà scope/navigation/geometry/resource/default-world. Bằng chứng
+  `output/playwright/plaza-study/`; mới 26,590 triangles / 7 batches.
+- Sau build, ba vòng public/personal + sweep camera giữ GPU ổn định:
+  study 180 geometry / 122 texture, personal 93 / 29. Link cảnh đã chốt trả về
+  landscape cũ, môi trường live, near=.2; không còn study. Không page exception;
+  console chỉ favicon404 cũ. Chi tiết `final-browser.log`. Dev đã chạy lại.
+- Spec tạm: `docs/superpowers/specs/2026-11-11-plaza-layout-study.md`.
+  Chưa làm âm thanh, sinh vật, cây/hoa/kiến trúc final, ngồi ghế hay slope
+  physics. Chưa benchmark điện thoại thật/touch walking. Chờ phản hồi bố cục.
+- Không commit/push/merge/deploy bản thử. `next-env.d.ts` do dev tự đổi path;
+  không đưa thay đổi incidental này vào commit sau.
+
+---
 
 ## Checkpoint cảnh đã duyệt; tiếp theo bàn ý tưởng Plaza — 2026-11-11
 

@@ -25,10 +25,12 @@ export function WorldCanvas({
   highlightedNpcId,
   highlightedPortalId,
   activeDialogueNpcId = null,
+  activeDialogueLineIndex = null,
   interactionWaveTrigger = 0,
   characterAssetUrl,
   environment,
-  callbacks
+  callbacks,
+  studyOverview = false
 }: {
   config: WorldMapConfig;
   ownerState: PersonalWorldOwnerState | null;
@@ -37,10 +39,12 @@ export function WorldCanvas({
   highlightedNpcId: string | null;
   highlightedPortalId: string | null;
   activeDialogueNpcId?: string | null;
+  activeDialogueLineIndex?: number | null;
   interactionWaveTrigger?: number;
   characterAssetUrl?: string;
   environment?: EffectiveEnvironmentSnapshot;
   callbacks: WorldSceneCallbacks;
+  studyOverview?: boolean;
 }) {
   const initialRig = createInitialCameraRig(config.spawn.position, config.camera);
 
@@ -58,6 +62,7 @@ export function WorldCanvas({
     >
       <WorldScene
         activeDialogueNpcId={activeDialogueNpcId}
+        activeDialogueLineIndex={activeDialogueLineIndex}
         callbacks={callbacks}
         cameraCommandRef={cameraCommandRef}
         characterAssetUrl={characterAssetUrl}
@@ -68,6 +73,7 @@ export function WorldCanvas({
         interactionWaveTrigger={interactionWaveTrigger}
         movementInputRef={movementInputRef}
         ownerState={ownerState}
+        studyOverview={studyOverview}
       />
     </Canvas>
   );

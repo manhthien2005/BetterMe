@@ -33,17 +33,22 @@ export interface WorldEnvironmentController {
 
 export function useWorldEnvironment({
   isPersonalSpace,
-  initialNowMs
+  initialNowMs,
+  initialPreset
 }: {
   isPersonalSpace: boolean;
   initialNowMs?: number;
+  /** Optional initial light for a design study; ordinary worlds remain live. */
+  initialPreset?: EnvironmentPresetId;
 }): WorldEnvironmentController {
   const [nowMs, setNowMs] = useState<number>(() => initialNowMs ?? Date.now());
   const [liveWeatherState, setLiveWeatherState] = useState<CachedHcmcWeatherState>(() =>
     getCachedHcmcWeatherState()
   );
   const [previewOverride, setPreviewOverride] = useState<EnvironmentPreviewOverride | null>(
-    null
+    () => initialPreset ? buildPreviewOverrideFromPreset(initialPreset, nowMs, {
+      weatherKind: "clear", cloudCoverPct: 8
+    }) : null
   );
 
   const mountedRef = useRef(true);

@@ -27,6 +27,7 @@ const bridge = vi.hoisted(() => ({
   config: null as WorldMapConfig | null,
   ownerState: null as PersonalWorldOwnerState | null,
   activeDialogueNpcId: null as string | null,
+  activeDialogueLineIndex: null as number | null,
   interactionWaveTrigger: 0,
   environment: null as EffectiveEnvironmentSnapshot | null
 }));
@@ -39,6 +40,7 @@ vi.mock("@/components/world/world-canvas", () => ({
     movementInputRef,
     cameraCommandRef,
     activeDialogueNpcId = null,
+    activeDialogueLineIndex = null,
     interactionWaveTrigger = 0,
     environment = null
   }: {
@@ -48,6 +50,7 @@ vi.mock("@/components/world/world-canvas", () => ({
     movementInputRef: MutableRefObject<MovementInput>;
     cameraCommandRef: MutableRefObject<CameraOrbitCommandBuffer>;
     activeDialogueNpcId?: string | null;
+    activeDialogueLineIndex?: number | null;
     interactionWaveTrigger?: number;
     environment?: EffectiveEnvironmentSnapshot | null;
   }) => {
@@ -57,6 +60,7 @@ vi.mock("@/components/world/world-canvas", () => ({
     bridge.movementInputRef = movementInputRef;
     bridge.cameraCommandRef = cameraCommandRef;
     bridge.activeDialogueNpcId = activeDialogueNpcId;
+    bridge.activeDialogueLineIndex = activeDialogueLineIndex;
     bridge.interactionWaveTrigger = interactionWaveTrigger;
     bridge.environment = environment;
 
@@ -67,6 +71,29 @@ vi.mock("@/components/world/world-canvas", () => ({
 const FIXED_INITIAL_NOW_MS = Date.parse("2026-11-07T07:30:00.000Z"); // 14:30 in Asia/Ho_Chi_Minh
 
 describe("WorldClientShell (V0.2)", () => {
+  it("pauses walking in the overview and restores the study after visiting personal space", async () => {
+    render(<WorldClientShell plazaStudy userEmail="study@betterme.vn" initialNowMs={FIXED_INITIAL_NOW_MS} />);
+    await screen.findByTestId("world-canvas-stub");
+    expect(screen.getByRole("heading", { name: "Núi quanh Plaza" })).toBeTruthy();
+    expect(screen.getByText("16 cụm núi · 3 lớp cảnh quan")).toBeTruthy();
+    expect(bridge.config?.plazaStudy).toBe(true);
+    expect(bridge.environment?.mode).toBe("preview");
+    expect(bridge.environment?.dayPhase).toBe("noon");
+    fireEvent.keyDown(window, { code: "KeyW" });
+    expect(bridge.movementInputRef?.current.forward).toBe(false);
+    fireEvent.keyUp(window, { code: "KeyW" });
+    fireEvent.click(screen.getByRole("button", { name: "Đi bộ" }));
+    fireEvent.keyDown(window, { code: "KeyW" });
+    expect(bridge.movementInputRef?.current.forward).toBe(true);
+    fireEvent.keyUp(window, { code: "KeyW" });
+    act(() => bridge.callbacks?.onNearbyPortalChange("portal-to-personal-world"));
+    fireEvent.keyDown(window, { code: "KeyE" });
+    expect(bridge.config?.spaceId).toBe("personal_world");
+    expect(bridge.config?.plazaStudy).toBeUndefined();
+    fireEvent.click(screen.getByRole("button", { name: "Về Quảng trường Chung" }));
+    expect(bridge.config?.plazaStudy).toBe(true);
+    expect(bridge.config?.spawn.position).toEqual([0, 0, 40]);
+  });
   beforeEach(() => {
     clearHcmcWeatherCacheForTests();
     clearHudR3fSampleForTests();
@@ -174,18 +201,21 @@ describe("WorldClientShell (V0.2)", () => {
     expect(dialog).toBeTruthy();
     expect(main.getAttribute("data-animation-state")).toBe("interact");
     expect(bridge.activeDialogueNpcId).toBe("npc-librarian-minh");
+    expect(bridge.activeDialogueLineIndex).toBe(0);
     expect(bridge.interactionWaveTrigger).toBeGreaterThan(0);
     expect(screen.getByText(/Chào mừng bạn về với Thư viện Cá nhân/)).toBeTruthy();
 
     // Press E to advance to line 2.
     fireEvent.keyDown(window, { code: "KeyE", key: "e" });
     expect(screen.getByText(/Không gian Cá nhân này thuộc quyền sở hữu của riêng bạn/)).toBeTruthy();
+    expect(bridge.activeDialogueLineIndex).toBe(1);
 
     // Press Escape to close dialogue immediately and return character to normal idle gameplay state.
     fireEvent.keyDown(window, { code: "Escape", key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(main.getAttribute("data-animation-state")).toBe("idle");
     expect(bridge.activeDialogueNpcId).toBeNull();
+    expect(bridge.activeDialogueLineIndex).toBeNull();
   });
 
   it("accumulates right-mouse drag orbit, wheel zoom, and KeyR camera reset while ignoring HUD pointer events", async () => {

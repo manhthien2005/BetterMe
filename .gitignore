@@ -28,3 +28,7 @@ output/floating-islands-qa/
 output/plaza-archipelago-qa/
 output/plaza-atmosphere-fix/
 output/world-plaza-summit-2026-11-09/
+
+# Authoring sources live in D:/Dev/ArtSources/BetterMe; recovery is documented
+# in docs/maintenance. Runtime assets and build/test fixtures remain tracked.
+/output/

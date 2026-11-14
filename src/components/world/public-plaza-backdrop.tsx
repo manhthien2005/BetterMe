@@ -654,9 +654,11 @@ export function createSoftAnnularMistSheetGeometry(
  * Public Plaza Summit Backdrop (`public_plaza` only).
  */
 export function PublicPlazaSummitBackdrop({
-  environment
+  environment,
+  plazaStudy = false
 }: {
   environment: EffectiveEnvironmentSnapshot;
+  plazaStudy?: boolean;
 }) {
   const { lighting } = environment;
 
@@ -1025,6 +1027,9 @@ export function PublicPlazaSummitBackdrop({
         geometry={geometries.nearCliffRockGeo}
         material={materials.cliffRockMat}
         name="plaza-summit-cliff-walls"
+        visible={!plazaStudy}
+        position={plazaStudy ? [0, 0, 16] : [0, 0, 0]}
+        scale={plazaStudy ? [40 / 28, 1.7, 40 / 24] : [1, 1, 1]}
         receiveShadow
       />
 

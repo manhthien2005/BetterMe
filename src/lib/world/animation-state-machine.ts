@@ -1,4 +1,7 @@
 import { DEFAULT_PLAYER_MOVEMENT_CONFIG } from "@/lib/world/map-config";
+import { decorateCharacterPose, type DetailBoneKey } from "./character-pose-details";
+import type { LocomotionIntent } from "./character-locomotion";
+import type { ActionMotionIntent } from "./character-action-motion";
 
 export type CharacterAnimationStateId =
   | "idle"
@@ -57,8 +60,22 @@ export const HUMANOID_BONE_KEYS: readonly HumanoidBoneKey[] = [
 ];
 
 export type HumanoidPose = {
+  /** World-space support height; visual contact never moves the physics root. */
+  readonly footGroundY?: number;
+  readonly action?: ActionMotionIntent;
+  readonly locomotion?: LocomotionIntent;
+  readonly authoredFeet?: { readonly weight: number };
   readonly bones: Readonly<Record<HumanoidBoneKey, EulerTuple>>;
   readonly hipsOffsetY: number;
+  readonly detailBones?: Partial<Record<DetailBoneKey, EulerTuple>>;
+  readonly footContacts?: { readonly left: boolean; readonly right: boolean };
+  readonly footGait?: {
+    readonly leftPhase: number;
+    readonly rightPhase: number;
+    readonly stance: number;
+    readonly frequency: number;
+    readonly lift: number;
+  };
 };
 
 export type CharacterExpressionWeights = {
@@ -142,8 +159,8 @@ export const LOCOMOTION_MIN_SPEED = 0.12;
 export const LOCOMOTION_MIN_SPEED_MPS = LOCOMOTION_MIN_SPEED;
 
 const APEX_TRANSITION_VELOCITY_Y = 0.15;
-const WALK_BASE_FREQ_HZ = 1.38;
-const RUN_BASE_FREQ_HZ = 2.08;
+const WALK_BASE_FREQ_HZ = 1.6;
+const RUN_BASE_FREQ_HZ = 2.4;
 
 const ZERO_EULER: EulerTuple = [0, 0, 0];
 
@@ -581,12 +598,10 @@ export function stepAnimationStateMachine(
   const isConversing = nextDialogueOpen && !effectivelyMoving;
   const isAirborne = state.currentState === "jump" || state.currentState === "fall";
 
-  const targetHappy = isGreeting ? 0.85 : isConversing ? 0.52 : 0;
+  const targetHappy = isGreeting ? 0.48 : isConversing ? 0.18 : 0;
   const targetRelaxed = !isGreeting && !isConversing && !isAirborne ? 0.18 : 0;
   const targetSurprised = isAirborne ? 0.25 : 0;
-  const targetMouthAa = isGreeting
-    ? 0.22 + Math.max(0, Math.sin(state.stateTime * 9.5)) * 0.25
-    : 0;
+  const targetMouthAa = 0; // Text dialogue is not recorded speech.
 
   state.expressions.happy = dampValue(state.expressions.happy, targetHappy, 12, dt);
   state.expressions.relaxed = dampValue(state.expressions.relaxed, targetRelaxed, 10, dt);
@@ -615,7 +630,7 @@ export function evaluateStatePose(
 ): HumanoidPose {
   const bones = createNeutralBoneMap();
 
-  if (reducedMotion) {
+  if (reducedMotion && (stateId === "idle" || stateId === "interact")) {
     if (stateId === "interact") {
       bones.rightShoulder = [0, 0, -0.1];
       bones.rightUpperArm = [0.35, 0.55, 0.25];
@@ -728,7 +743,7 @@ export function evaluateStatePose(
       const verticalWave = 0.5 * (1 + Math.cos(cyclePhase * 2));
       return {
         bones,
-        hipsOffsetY: (-0.034 + 0.028 * verticalWave) * strideScale
+        hipsOffsetY: (-0.034 + 0.028 * verticalWave) * strideScale - 0.09
       };
     }
 
@@ -791,7 +806,7 @@ export function evaluateStatePose(
       const aerialBounce = 0.5 * (1 + Math.cos(cyclePhase * 2 - 0.42));
       return {
         bones,
-        hipsOffsetY: (-0.026 + 0.046 * aerialBounce) * strideScale
+        hipsOffsetY: (-0.026 + 0.046 * aerialBounce) * strideScale - 0.09
       };
     }
 
@@ -1084,7 +1099,7 @@ export function evaluateStatePose(
  * Evaluates the inertialized humanoid pose using decaying pose-offset blending
  * so interrupted transitions remain continuous to floating-point precision.
  */
-export function evaluateBlendedPose(
+function evaluateCoreBlendedPose(
   machine: AnimationMachineState,
   reducedMotion = false
 ): HumanoidPose {
@@ -1121,4 +1136,29 @@ export function evaluateBlendedPose(
     bones: blendedBones,
     hipsOffsetY: currentPose.hipsOffsetY + offset.hipsOffsetY * decay
   };
+}
+
+export function evaluateBlendedPose(
+  machine: AnimationMachineState,
+  reducedMotion = false
+): HumanoidPose {
+  const contactState = machine.currentState === "land" && machine.isMovingOnGround
+    ? machine.isRunningOnGround ? "run" : "walk"
+    : machine.currentState;
+  const running = contactState === "run";
+  const frequency = (running ? RUN_BASE_FREQ_HZ : WALK_BASE_FREQ_HZ) *
+    Math.min(1.45, machine.groundSpeed / (running ? machine.runSpeed : machine.walkSpeed));
+  const decorated = decorateCharacterPose(
+    evaluateCoreBlendedPose(machine, reducedMotion),
+    contactState,
+    machine.cyclePhase,
+    frequency
+  );
+  const pose: HumanoidPose = { ...decorated, action: {
+    state: machine.currentState, stateTime: machine.stateTime, velocityY: machine.velocityY,
+    jumpSpeed: machine.jumpSpeed, moving: machine.isMovingOnGround
+  } };
+  return contactState === "walk" || contactState === "run"
+    ? { ...pose, locomotion: { kind: contactState, speed: machine.groundSpeed } }
+    : pose;
 }

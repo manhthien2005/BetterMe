@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { BoxGeometry, Group, Mesh, MeshStandardMaterial } from "three";
 import { GLTFLoader, type GLTF } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { loadFloatingIslands, FLOATING_ISLAND_PLACEMENTS } from "./plaza-floating-islands";
 
 function pendingLoads() {
@@ -14,15 +15,30 @@ function fixture() {
   return { gltf: { scene } as GLTF, release: vi.spyOn(geometry, "dispose") };
 }
 
+async function drain(requests: ReturnType<typeof pendingLoads>, offset = 0) {
+  const sources = [];
+  for (let i = 0; i < FLOATING_ISLAND_PLACEMENTS.length; i++) {
+    await vi.waitFor(() => expect(requests.length).toBeGreaterThan(offset + i));
+    const source = fixture(); sources.push(source);
+    requests[offset + i].resolve(source.gltf);
+  }
+  return sources;
+}
+
 describe("independent Plaza island loading", () => {
   it("keeps successful scenery when one asset fails, then disposes it once", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const requests = pendingLoads(), parent = new Group();
+    const decoder = vi.spyOn(GLTFLoader.prototype, "setMeshoptDecoder");
     const owned = loadFloatingIslands(parent);
-    expect(requests).toHaveLength(FLOATING_ISLAND_PLACEMENTS.length);
-    const sources = requests.slice(1).map(() => fixture());
+    expect(requests).toHaveLength(2);
+    expect(decoder).toHaveBeenCalledWith(MeshoptDecoder);
     requests[0].reject(new Error("unavailable"));
-    requests.slice(1).forEach((request, i) => request.resolve(sources[i].gltf));
+    const sources = [];
+    for (let i = 1; i < FLOATING_ISLAND_PLACEMENTS.length; i++) {
+      await vi.waitFor(() => expect(requests.length).toBeGreaterThan(i));
+      const source = fixture(); sources.push(source); requests[i].resolve(source.gltf);
+    }
     await owned.settled;
     expect(parent.userData.assetStatus).toBe("partial");
     expect(parent.children).toHaveLength(6);
@@ -38,13 +54,14 @@ describe("independent Plaza island loading", () => {
     const previous = loadFloatingIslands(parent);
     previous.dispose();
     const current = loadFloatingIslands(parent);
-    const late = requests.slice(0, 7).map(() => fixture());
-    requests.slice(0, 7).forEach((request, i) => request.resolve(late[i].gltf));
+    expect(requests).toHaveLength(4);
+    const late = requests.slice(0, 2).map(() => fixture());
+    requests.slice(0, 2).forEach((request, i) => request.resolve(late[i].gltf));
     await previous.settled;
     expect(parent.children).toHaveLength(0);
     expect(parent.userData.assetStatus).toBe("loading");
     late.forEach(source => expect(source.release).toHaveBeenCalledTimes(1));
-    requests.slice(7).forEach(request => request.resolve(fixture().gltf));
+    await drain(requests, 2);
     await current.settled;
     expect(parent.userData.assetStatus).toBe("ready");
     expect(parent.children).toHaveLength(7);

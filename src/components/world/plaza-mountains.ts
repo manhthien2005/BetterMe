@@ -5,30 +5,20 @@ import {
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import manifest from "../../../public/world/mountains/manifest.json";
-import { MOUNTAIN_LAYERS } from "./plaza-horizon";
+import { MOUNTAIN_PLACEMENTS, type MountainPlacement } from "./plaza-mountain-layout";
 import { disposeNatureResources } from "./plaza-nature-resources";
 
+export { MOUNTAIN_PLACEMENTS, type MountainPlacement } from "./plaza-mountain-layout";
 export const MOUNTAIN_MODELS = manifest.models;
-type MountainModel = typeof MOUNTAIN_MODELS[number];
-
-export const MOUNTAIN_PLACEMENTS = MOUNTAIN_LAYERS.flatMap((layer, band) => layer.map((peak, i) => {
-  const model = MOUNTAIN_MODELS[band * 2 + i % 2];
-  const width = model.bounds[1][0] - model.bounds[0][0];
-  const horizontalScale = peak.width / width;
-  const verticalScale = Math.min(peak.height * [1.2, 1.3, 1.35][band] / model.bounds[1][1], horizontalScale * 1.5);
-  return {
-    // Keep the skyline while extending the foot below the thinner valley haze.
-    model: model.id, band, position: [peak.position[0], [-54, -66, -82][band], peak.position[2]] as [number, number, number],
-    scale: [horizontalScale, verticalScale + 22 / model.bounds[1][1], horizontalScale] as [number, number, number],
-    yaw: peak.yaw + (i % 3 - 1) * .23,
-    snow: band === 1 && (i === 2 || i === 4) ? .85 : band === 2 && i % 4 === 1 ? 1 : 0
-  };
-}));
+type MountainModel = { id: string; bounds: number[][] };
+export type MountainCollection = {
+  models: MountainModel[]; placements: MountainPlacement[]; assetPath: string;
+};
 
 /** One GLTF owns all its shared instance resources for one Plaza visit. */
-export function createMountainInstances(source: Group, model: MountainModel) {
+export function createMountainInstances(source: Group, model: MountainModel, allPlacements: MountainPlacement[] = MOUNTAIN_PLACEMENTS) {
   const root = new Group(); root.name = `plaza-mountain-${model.id}`;
-  const placements = MOUNTAIN_PLACEMENTS.filter(p => p.model === model.id);
+  const placements = allPlacements.filter(p => p.model === model.id);
   const band = placements[0].band;
   const uniforms = {
     mountainHorizon: { value: new Color("#c9dce7") },
@@ -36,21 +26,22 @@ export function createMountainInstances(source: Group, model: MountainModel) {
     mountainHaze: { value: [.08, .2, .36][band] },
     mountainHeight: { value: model.bounds[1][1] }
   };
-  const batches = new Map<string, { material: MeshStandardMaterial; parts: BufferGeometry[] }>();
+  const batches = new Map<string, { material: MeshStandardMaterial; snowEligible: boolean; parts: BufferGeometry[] }>();
   source.updateMatrixWorld(true);
   try {
     source.traverse(object => {
       if (!(object instanceof Mesh)) return;
       if (!(object.material instanceof MeshStandardMaterial)) throw new Error("Unexpected mountain material");
-      const key = `${object.material.uuid}:${Object.keys(object.geometry.attributes).sort().join(",")}`;
+      const snowEligible = object.userData.mountainRole === "rock";
+      const key = `${snowEligible}:${object.material.uuid}:${Object.keys(object.geometry.attributes).sort().join(",")}`;
       let batch = batches.get(key);
-      if (!batch) { batch = { material: object.material, parts: [] }; batches.set(key, batch); }
+      if (!batch) { batch = { material: object.material, snowEligible, parts: [] }; batches.set(key, batch); }
       batch.parts.push(object.geometry.clone().applyMatrix4(object.matrixWorld));
     });
-    for (const { material, parts } of batches.values()) {
+    for (const { material, snowEligible, parts } of batches.values()) {
       const geometry = mergeGeometries(parts);
       if (!geometry) throw new Error("Cannot batch mountain geometry");
-      geometry.setAttribute("mountainSnow", new InstancedBufferAttribute(new Float32Array(placements.map(p => p.snow)), 1));
+      geometry.setAttribute("mountainSnow", new InstancedBufferAttribute(new Float32Array(placements.map(p => snowEligible ? p.snow : 0)), 1));
       const mesh = new InstancedMesh(geometry, material, placements.length);
       mesh.name = `mountain-batch-${model.id}`;
       mesh.castShadow = false; mesh.receiveShadow = false;
@@ -80,8 +71,12 @@ export function createMountainInstances(source: Group, model: MountainModel) {
             float valleyHaze = 1.0 - smoothstep(-48.0, -18.0, mountainWorldY);
             gl_FragColor.rgb = mix(gl_FragColor.rgb, mountainHorizon, valleyHaze);
             #include <colorspace_fragment>`);
+        if (/leaves/i.test(material.name)) {
+          shader.fragmentShader = shader.fragmentShader.replace("#include <normal_fragment_begin>",
+            "#include <normal_fragment_begin>\nnormal *= faceDirection;");
+        }
       };
-      material.customProgramCacheKey = () => "plaza-mountain-opaque-haze-v2";
+      material.customProgramCacheKey = () => `plaza-mountain-opaque-haze-v4-${/leaves/i.test(material.name)}`;
       const matrix = new Matrix4(), rotation = new Quaternion(), up = new Vector3(0, 1, 0);
       placements.forEach((p, i) => {
         matrix.compose(new Vector3(...p.position), rotation.setFromAxisAngle(up, p.yaw), new Vector3(...p.scale));
@@ -115,17 +110,20 @@ export function createMountainInstances(source: Group, model: MountainModel) {
   };
 }
 
-export function loadPlazaMountains(parent: Group) {
+export function loadPlazaMountains(parent: Group, collection: MountainCollection = {
+  models: MOUNTAIN_MODELS, placements: MOUNTAIN_PLACEMENTS, assetPath: "/world/mountains"
+}) {
   const mountains: ReturnType<typeof createMountainInstances>[] = [];
   let cancelled = false;
-  parent.userData.layers = MOUNTAIN_LAYERS.map(layer => layer.length);
+  const { models, placements, assetPath } = collection;
+  parent.userData.layers = [0, 1, 2].map(band => placements.filter(p => p.band === band).length);
   parent.userData.assetStatus = "loading"; parent.userData.failedAssets = [];
   const loader = new GLTFLoader();
-  const settled = Promise.all(MOUNTAIN_MODELS.map(async model => {
+  const settled = Promise.all(models.map(async model => {
     try {
-      const gltf = await loader.loadAsync(`/world/mountains/${model.id}.glb`);
+      const gltf = await loader.loadAsync(`${assetPath}/${model.id}.glb`);
       if (cancelled) { disposeNatureResources(gltf.scene); return; }
-      const owned = createMountainInstances(gltf.scene, model);
+      const owned = createMountainInstances(gltf.scene, model, placements);
       mountains.push(owned); parent.add(owned.root);
     } catch {
       if (!cancelled) {
@@ -134,7 +132,7 @@ export function loadPlazaMountains(parent: Group) {
       }
     }
   })).then(() => {
-    if (!cancelled) parent.userData.assetStatus = mountains.length === MOUNTAIN_MODELS.length ? "ready" : mountains.length ? "partial" : "failed";
+    if (!cancelled) parent.userData.assetStatus = mountains.length === models.length ? "ready" : mountains.length ? "partial" : "failed";
   });
   return {
     mountains, settled,

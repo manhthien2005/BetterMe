@@ -15,6 +15,10 @@ import {
   type HumanoidPose
 } from "@/lib/world/animation-state-machine";
 import { validateVrmWebDistributionLicense } from "@/lib/world/character-assets";
+import { DETAIL_BONE_KEYS } from "./character-pose-details";
+import { createVrmFootContact } from "./vrm-foot-contact";
+import { createLocomotionPlayer } from "./character-locomotion";
+import { createActionMotionPlayer } from "./character-action-motion";
 
 export type VrmSpringTuningSummary = {
   readonly hairLongJoints: number;
@@ -24,6 +28,12 @@ export type VrmSpringTuningSummary = {
 };
 
 export type LoadedVrmCharacterRig = {
+  locomotion?: ReturnType<typeof createLocomotionPlayer>;
+  actions?: ReturnType<typeof createActionMotionPlayer>;
+  readonly footContact: ReturnType<typeof createVrmFootContact>;
+  /** Uncorrected pose history: IK must never feed back into next frame's smoothing. */
+  readonly poseRotations: Map<string, Quaternion>;
+  readonly capabilities: ReturnType<typeof inspectVrmCapabilities>;
   readonly vrm: VRM;
   readonly scene: Object3D;
   readonly restHipsY: number;
@@ -81,6 +91,16 @@ const BONE_NAME_MAP: Readonly<Record<HumanoidBoneKey, VRMHumanBoneName>> = {
 const scratchEuler = new Euler(0, 0, 0, "XYZ");
 const scratchQuat = new Quaternion();
 const scratchVec3 = new Vector3();
+
+export function inspectVrmCapabilities(vrm: VRM) {
+  return {
+    detailBones: DETAIL_BONE_KEYS.filter(key =>
+      vrm.humanoid?.getNormalizedBoneNode(key as VRMHumanBoneName)),
+    missingCoreBones: HUMANOID_BONE_KEYS.filter(key =>
+      !vrm.humanoid?.getNormalizedBoneNode(BONE_NAME_MAP[key])),
+    expressions: vrm.expressionManager?.expressions.map(expression => expression.expressionName) ?? []
+  };
+}
 
 function nowMs(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -205,6 +225,7 @@ export function resetCharacterVrmSprings(
   rig: LoadedVrmCharacterRig | null | undefined
 ): void {
   if (!rig) return;
+  rig.footContact.reset();
   rig.scene.updateWorldMatrix(true, true);
   const sbm = rig.vrm.springBoneManager;
   if (!sbm) return;
@@ -238,6 +259,7 @@ export function prepareLoadedVrm(vrm: VRM, loadTimeMs: number): VrmLoadOutcome {
   });
 
   if (!licenseCheck.valid) {
+    disposeCharacterVrm(vrm);
     return {
       ok: false,
       reason: licenseCheck.reason ?? "VRM license validation failed.",
@@ -277,6 +299,9 @@ export function prepareLoadedVrm(vrm: VRM, loadTimeMs: number): VrmLoadOutcome {
   return {
     ok: true,
     rig: {
+      footContact: createVrmFootContact(vrm),
+      poseRotations: new Map(),
+      capabilities: inspectVrmCapabilities(vrm),
       vrm,
       scene: vrm.scene,
       restHipsY,
@@ -304,16 +329,19 @@ export function prepareLoadedVrm(vrm: VRM, loadTimeMs: number): VrmLoadOutcome {
  */
 export async function loadCharacterVrm(url: string): Promise<VrmLoadOutcome> {
   const start = nowMs();
+  let parsedScene: Object3D | undefined;
 
   try {
     const loader = new GLTFLoader();
     loader.register((parser) => new VRMLoaderPlugin(parser));
 
     const gltf = await loader.loadAsync(url);
+    parsedScene = gltf.scene;
     const loadTimeMs = Math.max(1, Math.round(nowMs() - start));
     const vrm = gltf.userData.vrm as VRM | undefined;
 
     if (!vrm || !vrm.humanoid) {
+      VRMUtils.deepDispose(gltf.scene);
       return {
         ok: false,
         reason: `Loaded asset "${url}" does not contain a valid VRM humanoid rig.`,
@@ -323,6 +351,7 @@ export async function loadCharacterVrm(url: string): Promise<VrmLoadOutcome> {
 
     return prepareLoadedVrm(vrm, loadTimeMs);
   } catch (error) {
+    if (parsedScene) VRMUtils.deepDispose(parsedScene);
     const loadTimeMs = Math.max(1, Math.round(nowMs() - start));
     const message = error instanceof Error ? error.message : String(error);
     return {
@@ -352,6 +381,8 @@ export function applyPoseToVrm(
   const slerpAlpha = poseDt > 0 ? 1 - Math.exp(-52 * poseDt) : 1;
   const { vrm } = rig;
   const humanoid = vrm.humanoid;
+  const authored = rig.locomotion?.sample(pose.locomotion, poseDt);
+  const action = pose.action && rig.actions?.sample(pose.action, poseDt);
 
   // Ensure parent Group transform (position + yaw) is reflected in matrixWorld before spring step
   rig.scene.updateWorldMatrix(true, false);
@@ -365,23 +396,57 @@ export function applyPoseToVrm(
       const [rx, ry, rz] = pose.bones[key];
       scratchEuler.set(rx, ry, rz, "XYZ");
       scratchQuat.setFromEuler(scratchEuler);
-      node.quaternion.slerp(scratchQuat, slerpAlpha);
+      if (authored) scratchQuat.slerp(authored.rotations[key], authored.weight);
+      if (action && action.bodyWeight > 0) scratchQuat.slerp(action.rotations[key], action.bodyWeight);
+      let smoothed = rig.poseRotations.get(key);
+      if (!smoothed) {
+        smoothed = node.quaternion.clone();
+        rig.poseRotations.set(key, smoothed);
+      }
+      smoothed.slerp(scratchQuat, slerpAlpha);
+      node.quaternion.copy(smoothed);
     }
 
     const hipsNode = humanoid.getNormalizedBoneNode(VRMHumanBoneName.Hips);
     if (hipsNode) {
-      const targetY = rig.restHipsY + pose.hipsOffsetY;
+      let hipOffset = authored ? pose.hipsOffsetY + (authored.hipsOffsetY - pose.hipsOffsetY) * authored.weight : pose.hipsOffsetY;
+      if (action) hipOffset += (action.hipsOffsetY - hipOffset) * action.bodyWeight;
+      const targetY = rig.restHipsY + hipOffset;
       hipsNode.position.y += (targetY - hipsNode.position.y) * slerpAlpha;
     }
+    for (const key of DETAIL_BONE_KEYS) {
+      const node = humanoid.getNormalizedBoneNode(key as VRMHumanBoneName);
+      if (!node) continue;
+      const angles = pose.detailBones?.[key] ?? [0, 0, 0];
+      scratchEuler.set(angles[0], angles[1], angles[2], "XYZ");
+      scratchQuat.setFromEuler(scratchEuler);
+      if (authored && (key === "leftToes" || key === "rightToes")) scratchQuat.slerp(authored.rotations[key], authored.weight);
+      if (action) {
+        if (key.endsWith("Toes")) scratchQuat.slerp(action.rotations[key], action.bodyWeight);
+        else if (!(pose.action?.state === "interact" && key.startsWith("right"))) scratchQuat.copy(action.rotations[key]);
+      }
+      node.quaternion.slerp(scratchQuat, slerpAlpha);
+    }
   }
+  rig.footContact.update(action && action.bodyWeight > .001 ? {
+    ...pose, footGait: undefined, footContacts: { left: false, right: false },
+    authoredFeet: { weight: 1 }
+  } : authored ? {
+    ...pose, footGait: undefined, footContacts: authored.contacts,
+    authoredFeet: { weight: authored.weight }
+  } : pose, rawDt);
 
   const expr = vrm.expressionManager;
   if (expr) {
-    expr.setValue(VRMExpressionPresetName.Blink, expressions.blink);
-    expr.setValue(VRMExpressionPresetName.Happy, expressions.happy);
-    expr.setValue(VRMExpressionPresetName.Relaxed, expressions.relaxed);
-    expr.setValue(VRMExpressionPresetName.Surprised, expressions.surprised);
-    expr.setValue(VRMExpressionPresetName.Aa, expressions.aa);
+    for (const [name, weight] of [
+      [VRMExpressionPresetName.Blink, expressions.blink],
+      [VRMExpressionPresetName.Happy, expressions.happy],
+      [VRMExpressionPresetName.Relaxed, expressions.relaxed],
+      [VRMExpressionPresetName.Surprised, expressions.surprised],
+      [VRMExpressionPresetName.Aa, expressions.aa]
+    ] as const) {
+      if (expr.getExpression(name)) expr.setValue(name, weight);
+    }
   }
 
   if (rawDt <= 0) {

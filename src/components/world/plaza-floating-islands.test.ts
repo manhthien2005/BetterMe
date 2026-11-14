@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Box3, BoxGeometry, Group, Mesh, MeshStandardMaterial, Texture, Vector3 } from "three";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import manifest from "../../../public/world/floating-islands/manifest.json";
+import manifest from "../../../public/world/floating-islands/lod/manifest.json";
 import { createFloatingIsland, FLOATING_ISLAND_PLACEMENTS } from "./plaza-floating-islands";
 
 describe("Plaza floating scenery", () => {
@@ -20,18 +20,18 @@ describe("Plaza floating scenery", () => {
     }
     expect(FLOATING_ISLAND_PLACEMENTS.every(p => p.position[2] < -24)).toBe(true);
     const tiers = find("thac-tang");
-    const terrainTop = manifest.models.find(m => m.id === tiers.id)!.mainBoundsBlender[1][2];
+    const terrainTop = manifest.models.find(m => m.id === tiers.id)!.groundTop;
     expect(tiers.position[1] + terrainTop * tiers.scale).toBeLessThan(0);
     expect(find("thien-vien").position[1] - tiers.position[1]).toBeGreaterThan(30);
   });
 
-  it("uses each approved model once, unchanged", () => {
+  it("uses each verified lightweight model once for Plaza review", () => {
     expect(FLOATING_ISLAND_PLACEMENTS.map(p => p.id).sort()).toEqual(
-      ["mach-nguon", ...manifest.models.map(m => m.id)].sort()
+      manifest.models.map(m => m.id).sort()
     );
     for (const placement of FLOATING_ISLAND_PLACEMENTS) {
-      const expectedHash = manifest.models.find(m => m.id === placement.id)?.sha256
-        ?? "7eb017b13db5ca909670d57f046db55a8994680c1c32682d0f29118710d2274b";
+      expect(placement.url).toBe(`/world/floating-islands/lod/${placement.id}.glb`);
+      const expectedHash = manifest.models.find(m => m.id === placement.id)!.sha256;
       expect(createHash("sha256").update(readFileSync(`public${placement.url}`)).digest("hex")).toBe(expectedHash);
     }
   });
@@ -72,11 +72,18 @@ describe("Plaza floating scenery", () => {
     const result = createFloatingIsland(source, FLOATING_ISLAND_PLACEMENTS[0]);
     const near = result.root.children[0] as Mesh;
     expect(result.root.children.filter(child => child instanceof Mesh)).toHaveLength(1);
-    expect(near.material).toBe(material);
+    expect((near.material as MeshStandardMaterial).map).toBe(texture);
     expect(near.geometry.getAttribute("uv").count).toBe(geo.getAttribute("uv").count * 2);
     near.geometry.computeBoundingBox();
-    expect(near.geometry.boundingBox?.min.x).toBe(-2.5);
-    expect(near.geometry.boundingBox?.max.x).toBe(2.5);
+    const placed = new Group();
+    const placement = FLOATING_ISLAND_PLACEMENTS[0];
+    placed.position.fromArray(placement.position);
+    placed.rotation.y = placement.yaw;
+    placed.scale.setScalar(placement.scale);
+    placed.updateMatrixWorld(true);
+    const expected = new Box3(new Vector3(-2.5, -.5, -.5), new Vector3(2.5, .5, .5)).applyMatrix4(placed.matrixWorld);
+    expect(near.geometry.boundingBox?.min.x).toBeCloseTo(expected.min.x, 4);
+    expect(near.geometry.boundingBox?.max.x).toBeCloseTo(expected.max.x, 4);
     expect(a.position.x).toBe(2);
     const releaseBatch = vi.spyOn(near.geometry, "dispose");
     result.dispose(); result.dispose();

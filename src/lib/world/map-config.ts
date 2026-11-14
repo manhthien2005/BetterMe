@@ -647,7 +647,7 @@ export const WORLD_MAP_CONFIG: WorldMapConfig = PUBLIC_PLAZA_MAP_CONFIG;
 export function collectMapColliders(config: WorldMapConfig = WORLD_MAP_CONFIG): Aabb2D[] {
   const colliders: Aabb2D[] = [];
 
-  if (config.spaceId === "public_plaza") {
+  if (config.spaceId === "public_plaza" && !config.plazaStudy) {
     colliders.push(...PLAZA_LANDSCAPE_COLLIDERS);
     colliders.push(...PLAZA_NATURE_COLLIDERS, ...PLAZA_PAVILION_COLLIDERS);
   }

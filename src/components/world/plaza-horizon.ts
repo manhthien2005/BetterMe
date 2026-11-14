@@ -9,20 +9,6 @@ const polar = (degrees: number, radius: number, y: number): [number, number, num
   return [Math.sin(angle) * radius, y, -Math.cos(angle) * radius];
 };
 
-// Authored bearings with deterministic variation: the horizon never reshuffles on a visit.
-export const MOUNTAIN_LAYERS = [
-  { angles: [-132, -68, 57, 118, 174], radius: 220, spread: 80, base: -32, width: 80, height: 35 },
-  { angles: [-171, -129, -88, -47, -10, 32, 73, 114, 151], radius: 400, spread: 140, base: -40, width: 165, height: 64 },
-  { angles: [-172, -151, -131, -108, -87, -66, -47, -25, -4, 18, 42, 65, 87, 108, 131, 151, 170], radius: 660, spread: 190, base: -48, width: 320, height: 85 }
-].map((layer, depth) => layer.angles.map((angle, i) => ({
-  position: polar(angle, layer.radius + ((i * 47 + depth * 13) % layer.spread), layer.base),
-  width: layer.width * (0.86 + ((i * 7) % 9) * 0.055),
-  depth: 30 + depth * 25 + (i % 3) * 12,
-  height: layer.height * (0.78 + ((i * 11 + 4) % 9) * 0.055),
-  yaw: -angle * Math.PI / 180,
-  seed: 1.3 + i * 2.71 + depth * 31
-})));
-
 export const DISTANT_ISLANDS = [
   [-158, 570, 54, 15], [-116, 430, 26, 12], [-79, 640, 72, 19],
   [-53, 370, 38, 10], [-30, 580, 64, 17], [-12, 690, 100, 15],

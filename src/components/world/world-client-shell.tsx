@@ -1,6 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import {
   useCallback,
   useEffect,
@@ -20,12 +22,14 @@ import type {
   WorldSceneCallbacks
 } from "@/components/world/world-scene";
 import type { CharacterAnimationStateId } from "@/lib/world/animation-state-machine";
+import type { EnvironmentPresetId } from "@/lib/world/environment-model";
 import {
   getZoneAtPosition,
   isDialogueStillInRange,
   stepDialogueInteraction
 } from "@/lib/world/interaction";
 import { WORLD_SPACE_TEMPLATES } from "@/lib/world/map-config";
+import { PLAZA_STUDY_MAP_CONFIG } from "@/lib/world/plaza-study-config";
 import { createPersonalWorldOwnerState } from "@/lib/world/ownership";
 import type {
   AuthenticatedWorldUser,
@@ -59,7 +63,8 @@ export function WorldClientShell({
   initialSpaceId = "public_plaza",
   initialNowMs,
   config: configOverride,
-  characterAssetUrl
+  characterAssetUrl,
+  plazaStudy = false
 }: {
   authenticatedUser?: AuthenticatedWorldUser;
   userEmail?: string;
@@ -67,6 +72,7 @@ export function WorldClientShell({
   initialNowMs?: number;
   config?: WorldMapConfig;
   characterAssetUrl?: string;
+  plazaStudy?: boolean;
 }) {
   const resolvedUser = useMemo<AuthenticatedWorldUser>(
     () => ({
@@ -86,13 +92,18 @@ export function WorldClientShell({
   );
 
   const activeConfig = useMemo<WorldMapConfig>(
-    () => configOverride ?? WORLD_SPACE_TEMPLATES[activeSpaceId],
-    [activeSpaceId, configOverride]
+    () => configOverride ?? (plazaStudy && activeSpaceId === "public_plaza"
+      ? PLAZA_STUDY_MAP_CONFIG : WORLD_SPACE_TEMPLATES[activeSpaceId]),
+    [activeSpaceId, configOverride, plazaStudy]
   );
+  const [overview, setOverview] = useState(plazaStudy);
+  const studyOverview = Boolean(activeConfig.plazaStudy && overview);
+  const pausedMovementRef = useRef({ forward: false, backward: false, left: false, right: false, sprint: false, jump: false });
 
   const worldEnvironment = useWorldEnvironment({
     isPersonalSpace: activeConfig.isPersonalSpace,
-    initialNowMs
+    initialNowMs,
+    initialPreset: plazaStudy ? "phase_noon" : undefined
   });
 
   const initialZoneId = useMemo(
@@ -181,7 +192,8 @@ export function WorldClientShell({
 
   const handleSwitchSpace = useCallback(
     (targetSpaceId: WorldSpaceId) => {
-      const targetConfig = configOverride ?? WORLD_SPACE_TEMPLATES[targetSpaceId];
+      const targetConfig = configOverride ?? (plazaStudy && targetSpaceId === "public_plaza"
+        ? PLAZA_STUDY_MAP_CONFIG : WORLD_SPACE_TEMPLATES[targetSpaceId]);
       const spawnZoneId = getZoneAtPosition(
         targetConfig.spawn.position[0],
         targetConfig.spawn.position[2],
@@ -203,7 +215,7 @@ export function WorldClientShell({
       setDialogueSession(null);
       setAnimationState("idle");
     },
-    [configOverride]
+    [configOverride, plazaStudy]
   );
 
   const handleUsePortal = useCallback(
@@ -214,6 +226,7 @@ export function WorldClientShell({
   );
 
   const handleInteract = useCallback(() => {
+    if (studyOverview) return;
     if (dialogueSessionRef.current) {
       const currentNearby = nearbyNpcRef.current
         ? (activeConfig.npcs.find((npc) => npc.id === nearbyNpcRef.current) ?? null)
@@ -257,7 +270,7 @@ export function WorldClientShell({
       setInteractionWaveTrigger((count) => count + 1);
       setAnimationState("interact");
     }
-  }, [activeConfig.npcs, activeConfig.portals, handleSwitchSpace]);
+  }, [activeConfig.npcs, activeConfig.portals, handleSwitchSpace, studyOverview]);
 
   const handleCloseDialogue = useCallback(() => {
     dialogueSessionRef.current = null;
@@ -276,6 +289,7 @@ export function WorldClientShell({
   });
 
   const handleMouseDown = useCallback((event: ReactMouseEvent<HTMLElement>) => {
+    if (studyOverview) return;
     if (event.button !== 2) return;
     if (isEventInsideHud(event.target)) return;
     dragStateRef.current = {
@@ -283,7 +297,7 @@ export function WorldClientShell({
       lastX: event.clientX,
       lastY: event.clientY
     };
-  }, []);
+  }, [studyOverview]);
 
   const handleMouseMove = useCallback((event: ReactMouseEvent<HTMLElement>) => {
     if (!dragStateRef.current.active) return;
@@ -306,11 +320,12 @@ export function WorldClientShell({
   }, []);
 
   const handleWheel = useCallback((event: ReactWheelEvent<HTMLElement>) => {
+    if (studyOverview) return;
     if (isEventInsideHud(event.target)) return;
     if (event.deltaY === 0) return;
     const step = Math.sign(event.deltaY) * 0.95;
     cameraCommandRef.current.deltaZoom += step;
-  }, []);
+  }, [studyOverview]);
 
   const sceneCallbacks = useMemo<WorldSceneCallbacks>(
     () => ({
@@ -365,6 +380,8 @@ export function WorldClientShell({
       data-space-id={activeSpaceId}
       data-weather-kind={worldEnvironment.snapshot.weatherKind}
       data-zone-id={activeZone.id}
+      data-plaza-study={Boolean(activeConfig.plazaStudy)}
+      data-study-overview={studyOverview}
       onContextMenu={handleContextMenu}
       onMouseDown={handleMouseDown}
       onMouseLeave={handleMouseUp}
@@ -374,6 +391,7 @@ export function WorldClientShell({
     >
       <DynamicWorldCanvas
         activeDialogueNpcId={dialogueSession?.npcId ?? null}
+        activeDialogueLineIndex={dialogueSession?.lineIndex ?? null}
         callbacks={sceneCallbacks}
         cameraCommandRef={cameraCommandRef}
         characterAssetUrl={characterAssetUrl}
@@ -382,11 +400,12 @@ export function WorldClientShell({
         highlightedNpcId={nearbyNpcId}
         highlightedPortalId={nearbyPortalId}
         interactionWaveTrigger={interactionWaveTrigger}
-        movementInputRef={movementInputRef}
+        movementInputRef={studyOverview ? pausedMovementRef : movementInputRef}
+        studyOverview={studyOverview}
         ownerState={activeSpaceId === "personal_world" ? ownerState : null}
       />
 
-      <WorldHud
+      {!studyOverview && <div className={activeConfig.plazaStudy ? "pointer-events-none absolute inset-x-0 bottom-16 top-0" : "contents"}><WorldHud
         activeSpaceId={activeSpaceId}
         activeZone={activeZone}
         allNpcs={activeConfig.npcs}
@@ -409,7 +428,35 @@ export function WorldClientShell({
         previewOverride={worldEnvironment.previewOverride}
         spaceTitle={activeConfig.title}
         visitedZones={visitedZones}
-      />
+      /></div>}
+      {activeConfig.plazaStudy && (
+        <>
+          {studyOverview && <div className="absolute left-4 top-4 max-w-xs rounded-card bg-surface-card p-4 text-ink shadow-card sm:left-6 sm:top-6" data-world-hud="true">
+            <h1 className="font-display text-xl font-bold">Núi quanh Plaza</h1>
+            <p className="mt-1 text-xs text-ink-soft">16 cụm núi · 3 lớp cảnh quan</p>
+            <p className="mt-2 text-sm text-ink-mid">Vách đá xanh ở gần, phế tích giữa mây và những đỉnh núi xa.</p>
+            <p className="mt-2 text-xs text-ink-soft">Chọn Đi bộ để xem từ sân Plaza; giữ chuột phải và kéo để xoay góc nhìn.</p>
+            <label className="mt-3 flex items-center gap-2 text-xs text-ink-mid">
+              Ánh sáng
+              <select aria-label="Ánh sáng bản thử" className="min-h-9 rounded border border-line-strong bg-surface-page px-2 text-ink focus-visible:outline-action"
+                value={worldEnvironment.snapshot.mode === "live" ? "live" : `phase_${worldEnvironment.snapshot.dayPhase}`}
+                onChange={(event) => event.target.value === "live" ? worldEnvironment.exitPreview() : worldEnvironment.applyPreset(event.target.value as EnvironmentPresetId)}>
+                <option value="phase_morning">Buổi sáng</option>
+                <option value="phase_noon">Ban ngày</option>
+                <option value="phase_afternoon">Buổi chiều</option>
+                <option value="phase_dusk">Hoàng hôn</option>
+                <option value="phase_night">Ban đêm</option>
+                <option value="live">Giờ thực tế</option>
+              </select>
+            </label>
+          </div>}
+          <div aria-label="Xem bản bố cục plaza" className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-card border border-line bg-surface-card p-1.5 shadow-card sm:bottom-6" data-world-hud="true">
+            <Button aria-pressed={studyOverview} onClick={() => setOverview(true)} size="sm" variant={studyOverview ? "primary" : "ghost"}>Toàn cảnh</Button>
+            <Button aria-pressed={!studyOverview} onClick={() => setOverview(false)} size="sm" variant={!studyOverview ? "primary" : "ghost"}>Đi bộ</Button>
+            <Button asChild size="sm" variant="ghost"><Link href="/world">Cảnh đã chốt</Link></Button>
+          </div>
+        </>
+      )}
     </main>
   );
 }

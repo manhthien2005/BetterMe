@@ -72,7 +72,9 @@ async function resolveWorldPageBootstrap(): Promise<
  * `StateProvider`, keeping frame-by-frame 3D state strictly isolated.
  * Owner identity is derived strictly from the server-authenticated Supabase user.
  */
-export default async function WorldPage() {
+export default async function WorldPage({ searchParams }: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+} = {}) {
   const bootstrap = await resolveWorldPageBootstrap();
 
   if (bootstrap.kind === "redirect") {
@@ -80,10 +82,14 @@ export default async function WorldPage() {
     return null;
   }
 
+  const plazaStudy = (await searchParams)?.plaza === "study";
+
   return (
     <WorldClientShell
+      key={plazaStudy ? "plaza-study" : "world"}
       authenticatedUser={bootstrap.authenticatedUser}
       initialNowMs={bootstrap.initialNowMs}
+      plazaStudy={plazaStudy}
     />
   );
 }

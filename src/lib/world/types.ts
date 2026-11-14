@@ -7,6 +7,8 @@ export type ZoneId =
   | "personal_library";
 
 export type Vec3Tuple = readonly [number, number, number];
+/** A single walkable surface per XZ position; null marks the safe outer boundary. */
+export type GroundHeightSampler = (x: number, z: number) => number | null;
 
 export type Aabb2D = {
   readonly id: string;
@@ -150,6 +152,9 @@ export type PlayerMovementConfig = {
 };
 
 export type WorldMapConfig = {
+  readonly groundHeight?: GroundHeightSampler;
+  /** Temporary, opt-in layout study; the default Plaza keeps its accepted scenery. */
+  readonly plazaStudy?: boolean;
   readonly id: string;
   readonly spaceId: WorldSpaceId;
   readonly title: string;

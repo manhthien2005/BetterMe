@@ -1,5 +1,6 @@
 import type {
   Aabb2D,
+  GroundHeightSampler,
   MovementInput,
   PlayerKinematicState,
   PlayerMovementConfig,
@@ -57,9 +58,10 @@ export function resolveCircleAabbCollision(
   x: number,
   z: number,
   radius: number,
-  box: Aabb2D
+  box: Aabb2D,
+  feetY = 0
 ): { x: number; z: number } {
-  if (box.cameraOnly || (box.minY ?? 0) > 2.2) {
+  if (box.cameraOnly || (box.minY ?? 0) > feetY + 2.2 || (box.maxY ?? Infinity) < feetY - .05) {
     return { x, z };
   }
   const closestX = Math.max(box.minX, Math.min(x, box.maxX));
@@ -110,7 +112,7 @@ export function createInitialPlayerState(config: WorldMapConfig): PlayerKinemati
     speed: 0,
     isMoving: false,
     isRunning: false,
-    isGrounded: y <= 0
+    isGrounded: y <= (config.groundHeight?.(x, z) ?? 0)
   };
 }
 
@@ -127,10 +129,13 @@ export function stepPlayerKinematics(
   bounds: WorldMapConfig["bounds"],
   movementConfig: PlayerMovementConfig,
   dtSeconds: number,
-  cameraYaw = 0
+  cameraYaw = 0,
+  groundHeight?: GroundHeightSampler
 ): PlayerKinematicState {
-  // shortcut: flat-ground y=0 vertical kinematics + 2D XZ circle-vs-AABB collision; upgrade to heightfield/BVH only when multi-floor stairs or slopes arrive.
+  // Single-surface terrain supports terraces; stacked interiors need a different solver.
   const dt = Math.min(Math.max(dtSeconds, 0), MAX_FRAME_DELTA_SECONDS);
+  const previousX = state.x, previousZ = state.z;
+  const previousGround = groundHeight?.(state.x, state.z) ?? 0;
 
   // 1. Grounded jump trigger — prevents infinite or mid-air double jumps.
   if (input.jump && state.isGrounded) {
@@ -138,13 +143,13 @@ export function stepPlayerKinematics(
     state.isGrounded = false;
   }
 
-  // 2. Vertical kinematics (gravity & landing on y = 0).
-  if (!state.isGrounded || state.velocityY !== 0 || state.y > 0) {
+  // 2. Vertical kinematics relative to the current terrace.
+  if (!state.isGrounded || state.velocityY !== 0 || state.y > previousGround) {
     state.y += state.velocityY * dt;
     state.velocityY -= movementConfig.gravity * dt;
 
-    if (state.y <= 0) {
-      state.y = 0;
+    if (state.y <= previousGround) {
+      state.y = previousGround;
       state.velocityY = 0;
       state.isGrounded = true;
     }
@@ -192,7 +197,8 @@ export function stepPlayerKinematics(
         state.x,
         state.z,
         movementConfig.radius,
-        colliders[i]
+        colliders[i],
+        groundHeight ? previousGround : 0
       );
       state.x = resolved.x;
       state.z = resolved.z;
@@ -207,6 +213,30 @@ export function stepPlayerKinematics(
     bounds.minZ + movementConfig.radius,
     Math.min(bounds.maxZ - movementConfig.radius, state.z)
   );
+
+  if (groundHeight) {
+    const safe = (x: number, z: number) => {
+      const y = groundHeight(x, z);
+      if (y === null) return false;
+      const radius = movementConfig.radius;
+      for (const [dx, dz] of [[radius, 0], [-radius, 0], [0, radius], [0, -radius]]) {
+        if (groundHeight(x + dx, z + dz) === null) return false;
+      }
+      // Walk ramps and 20 cm treads; abrupt terrace edges remain safe both ways.
+      return Math.abs(y - previousGround) <= .26 + Math.hypot(x - previousX, z - previousZ) * .7;
+    };
+    if (!safe(state.x, state.z)) {
+      if (safe(state.x, previousZ)) state.z = previousZ;
+      else if (safe(previousX, state.z)) state.x = previousX;
+      else { state.x = previousX; state.z = previousZ; }
+    }
+    const floor = groundHeight(state.x, state.z) ?? previousGround;
+    if (state.isGrounded || state.y <= floor) {
+      state.y = floor;
+      state.velocityY = 0;
+      state.isGrounded = true;
+    }
+  }
 
   return state;
 }

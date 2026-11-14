@@ -21,7 +21,9 @@ import {
 } from "@/components/world/character-avatar";
 import { PublicPlazaSummitBackdrop } from "@/components/world/public-plaza-backdrop";
 import { PublicPlazaLandscape } from "@/components/world/public-plaza-landscape";
+import { PublicPlazaStudy, PlazaStudyOverview } from "@/components/world/public-plaza-study";
 import { PublicPlazaFloatingIslands } from "@/components/world/public-plaza-floating-islands";
+import { NpcActor } from "./npc-actor";
 import { WorldSkyEnvironment } from "@/components/world/world-sky-environment";
 import {
   createInitialAnimationMachineState,
@@ -67,7 +69,6 @@ import {
 } from "@/lib/world/physics";
 import type {
   MovementInput,
-  NpcDefinition,
   PersonalWorldOwnerState,
   WorldMapConfig,
   WorldPortalDefinition,
@@ -161,16 +162,16 @@ function WorldGround({
     <group>
       {isPublicPlaza ? (
         <>
-          <PublicPlazaSummitBackdrop environment={environment} />
+          <PublicPlazaSummitBackdrop environment={environment} plazaStudy={config.plazaStudy} />
           {/* Summit stone terrace floor & weathered stone curb connecting directly to cliff walls */}
-          <mesh position={[0, -0.008, 0]} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
+          {!config.plazaStudy && <mesh position={[0, -0.008, 0]} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
             <planeGeometry args={[maxX - minX + 0.6, maxZ - minZ + 0.6]} />
             <meshStandardMaterial color="#7b806e" roughness={0.88} />
-          </mesh>
-          <mesh position={[0, -0.32, 0]} receiveShadow>
+          </mesh>}
+          {!config.plazaStudy && <mesh position={[0, -0.32, 0]} receiveShadow>
             <boxGeometry args={[maxX - minX + 1.0, 0.56, maxZ - minZ + 1.0]} />
             <meshStandardMaterial color="#9E9385" roughness={0.9} />
-          </mesh>
+          </mesh>}
         </>
       ) : (
         <>
@@ -503,142 +504,6 @@ function GrayboxProp({
   }
 }
 
-function NpcActor({
-  npc,
-  isHighlighted,
-  isTalking,
-  playerPositionRef
-}: {
-  npc: NpcDefinition;
-  isHighlighted: boolean;
-  isTalking: boolean;
-  playerPositionRef: MutableRefObject<readonly [number, number, number]>;
-}) {
-  const actorGroupRef = useRef<Group>(null);
-  const bodyBounceRef = useRef<Group>(null);
-  const headGroupRef = useRef<Group>(null);
-  const greetingArmRef = useRef<Group>(null);
-  const markerRef = useRef<Mesh>(null);
-  const currentYawRef = useRef(npc.rotationY);
-
-  useFrame(({ clock }, delta) => {
-    const t = clock.getElapsedTime();
-    const dt = Math.min(Math.max(delta, 0), 0.1);
-
-    // Rotate NPC toward player when conversing, or return smoothly to default rotationY
-    const targetYaw = isTalking
-      ? computeYawTowardPoint(
-          npc.position[0],
-          npc.position[2],
-          playerPositionRef.current[0],
-          playerPositionRef.current[2]
-        )
-      : npc.rotationY;
-
-    const turnAlpha = 1 - Math.exp(-10 * dt);
-    currentYawRef.current += shortestAngleDelta(currentYawRef.current, targetYaw) * turnAlpha;
-
-    if (actorGroupRef.current) {
-      actorGroupRef.current.rotation.y = currentYawRef.current;
-    }
-
-    if (bodyBounceRef.current) {
-      bodyBounceRef.current.position.y = isTalking
-        ? Math.abs(Math.sin(t * 5.2)) * 0.06
-        : Math.sin(t * 1.8) * 0.015;
-    }
-
-    if (headGroupRef.current) {
-      headGroupRef.current.rotation.x = isTalking ? Math.sin(t * 5.2) * 0.12 : 0;
-      headGroupRef.current.rotation.z = isTalking ? Math.cos(t * 2.6) * 0.05 : 0;
-    }
-
-    if (greetingArmRef.current) {
-      greetingArmRef.current.rotation.z = isTalking
-        ? -0.85 + Math.sin(t * 8.5) * 0.25
-        : -0.15;
-    }
-
-    if (markerRef.current) {
-      markerRef.current.position.y =
-        2.48 + Math.sin(t * (isTalking ? 5.2 : 2.8)) * (isTalking ? 0.15 : 0.1);
-      markerRef.current.rotation.y = t * (isTalking ? 2.8 : 1.4);
-      const scale = isTalking ? 1.25 : isHighlighted ? 1.1 : 1.0;
-      markerRef.current.scale.set(scale, scale, scale);
-    }
-  });
-
-  const ringColor = isTalking ? "#10B981" : isHighlighted ? "#F59E0B" : "#948877";
-  const ringOpacity = isTalking ? 0.92 : isHighlighted ? 0.85 : 0.32;
-
-  return (
-    <group
-      name={npc.assetSlot}
-      position={[npc.position[0], npc.position[1], npc.position[2]]}
-      ref={actorGroupRef}
-      rotation={[0, npc.rotationY, 0]}
-    >
-      <mesh position={[0, 0.035, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[npc.interactionRadius - 0.1, npc.interactionRadius, 40]} />
-        <meshBasicMaterial color={ringColor} opacity={ringOpacity} transparent />
-      </mesh>
-
-      <group ref={bodyBounceRef}>
-        <mesh castShadow position={[0, 0.68, 0]} receiveShadow>
-          <cylinderGeometry args={[0.34, 0.46, 1.36, 14]} />
-          <meshStandardMaterial color={npc.robeColor} roughness={0.75} />
-        </mesh>
-
-        <mesh castShadow position={[0, 1.18, 0]}>
-          <cylinderGeometry args={[0.36, 0.38, 0.2, 14]} />
-          <meshStandardMaterial color={npc.accentColor} roughness={0.65} />
-        </mesh>
-
-        {/* Left Arm holding tome */}
-        <mesh castShadow position={[0.26, 0.95, 0.34]} rotation={[0.3, -0.2, 0]}>
-          <boxGeometry args={[0.32, 0.4, 0.1]} />
-          <meshStandardMaterial color={npc.accentColor} roughness={0.6} />
-        </mesh>
-
-        {/* Right Greeting Arm (raises & waves when talking to player) */}
-        <group position={[-0.38, 1.18, 0.08]} ref={greetingArmRef} rotation={[0, 0, -0.15]}>
-          <mesh castShadow position={[-0.08, -0.22, 0.12]}>
-            <capsuleGeometry args={[0.075, 0.32, 6, 10]} />
-            <meshStandardMaterial color={npc.robeColor} roughness={0.75} />
-          </mesh>
-        </group>
-
-        {/* Head & Eyes */}
-        <group position={[0, 1.62, 0]} ref={headGroupRef}>
-          <mesh castShadow>
-            <sphereGeometry args={[0.32, 16, 16]} />
-            <meshStandardMaterial color="#FAD6B8" roughness={0.7} />
-          </mesh>
-
-          <mesh position={[-0.1, 0.03, 0.28]}>
-            <sphereGeometry args={[0.045, 8, 8]} />
-            <meshBasicMaterial color="#1C1917" />
-          </mesh>
-          <mesh position={[0.1, 0.03, 0.28]}>
-            <sphereGeometry args={[0.045, 8, 8]} />
-            <meshBasicMaterial color="#1C1917" />
-          </mesh>
-        </group>
-      </group>
-
-      <mesh position={[0, 2.48, 0]} ref={markerRef}>
-        <octahedronGeometry args={[0.18, 0]} />
-        <meshStandardMaterial
-          color={isTalking ? "#34D399" : isHighlighted ? "#FBBF24" : "#FEF3C7"}
-          emissive={isTalking ? "#059669" : isHighlighted ? "#D97706" : "#B45309"}
-          emissiveIntensity={isTalking ? 0.85 : isHighlighted ? 0.55 : 0.2}
-          roughness={0.3}
-        />
-      </mesh>
-    </group>
-  );
-}
-
 function PlayerRig({
   config,
   movementInputRef,
@@ -816,7 +681,8 @@ function PlayerRig({
       config.bounds,
       config.player,
       delta,
-      cameraRigRef.current.yaw
+      cameraRigRef.current.yaw,
+      config.groundHeight
     );
 
     const actualGroundSpeed = computeAnimationGroundSpeed(
@@ -864,9 +730,9 @@ function PlayerRig({
     }
 
     if (groundRingRef.current) {
-      // Keep ground shadow ring anchored at y=0.03 while character jumps upward.
-      groundRingRef.current.position.y = -p.y + 0.03;
-      const ringScale = 1 / (1 + p.y * 0.35);
+      const groundY = config.groundHeight?.(p.x, p.z) ?? 0;
+      groundRingRef.current.position.y = groundY - p.y + 0.03;
+      const ringScale = 1 / (1 + Math.max(0, p.y - groundY) * 0.35);
       groundRingRef.current.scale.set(ringScale, ringScale, 1);
     }
 
@@ -887,7 +753,7 @@ function PlayerRig({
       },
       delta
     );
-    poseRef.current = evaluateBlendedPose(machine, reducedMotionRef.current);
+    poseRef.current = { ...evaluateBlendedPose(machine, reducedMotionRef.current), footGroundY: config.groundHeight?.(p.x, p.z) ?? 0 };
     expressionsRef.current = machine.expressions;
 
     // Deterministically apply pose + expressions + springbones AFTER root matrixWorld & pose are ready
@@ -905,7 +771,8 @@ function PlayerRig({
       p.z,
       config.camera,
       delta,
-      colliders
+      colliders,
+      config.groundHeight
     );
 
     applyCameraRigToThreeCamera(frameState.camera, camRig);
@@ -1017,7 +884,7 @@ function PlayerRig({
         }
       };
     }
-  });
+  }, -2); // Finalize movement/camera before overview (-1), effects and water captures (0).
 
   return (
     <group
@@ -1032,6 +899,7 @@ function PlayerRig({
       </mesh>
 
       <CharacterAvatar
+        authoredLocomotion
         assetUrl={characterAssetUrl}
         cameraFadeRef={cameraFadeRef}
         expressionsRef={expressionsRef}
@@ -1052,10 +920,12 @@ export function WorldScene({
   highlightedNpcId,
   highlightedPortalId,
   activeDialogueNpcId = null,
+  activeDialogueLineIndex = null,
   interactionWaveTrigger = 0,
   characterAssetUrl,
   environment,
-  callbacks
+  callbacks,
+  studyOverview = false
 }: {
   config: WorldMapConfig;
   ownerState: PersonalWorldOwnerState | null;
@@ -1064,10 +934,12 @@ export function WorldScene({
   highlightedNpcId: string | null;
   highlightedPortalId: string | null;
   activeDialogueNpcId?: string | null;
+  activeDialogueLineIndex?: number | null;
   interactionWaveTrigger?: number;
   characterAssetUrl?: string;
   environment?: EffectiveEnvironmentSnapshot;
   callbacks: WorldSceneCallbacks;
+  studyOverview?: boolean;
 }) {
   const playerPositionRef = useRef<readonly [number, number, number]>(
     config.spawn.position
@@ -1094,7 +966,9 @@ export function WorldScene({
 
       <WorldGround config={config} environment={resolvedEnvironment} />
 
-      {config.spaceId === "public_plaza" && <PublicPlazaLandscape environment={resolvedEnvironment} />}
+      {config.spaceId === "public_plaza" && (config.plazaStudy
+        ? <PublicPlazaStudy environment={resolvedEnvironment} />
+        : <PublicPlazaLandscape environment={resolvedEnvironment} />)}
       {config.spaceId === "public_plaza" && <PublicPlazaFloatingIslands environment={resolvedEnvironment} />}
 
       {config.portals.map((portal) => (
@@ -1117,7 +991,7 @@ export function WorldScene({
       {config.npcs.map((npc) => (
         <NpcActor
           isHighlighted={npc.id === highlightedNpcId}
-          isTalking={npc.id === activeDialogueNpcId}
+          lineIndex={npc.id === activeDialogueNpcId ? activeDialogueLineIndex : null}
           key={npc.id}
           npc={npc}
           playerPositionRef={playerPositionRef}
@@ -1135,6 +1009,7 @@ export function WorldScene({
         movementInputRef={movementInputRef}
         playerPositionRef={playerPositionRef}
       />
+      {studyOverview && config.plazaStudy && <PlazaStudyOverview />}
     </>
   );
 }

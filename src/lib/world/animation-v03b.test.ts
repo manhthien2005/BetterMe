@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   createInitialAnimationMachineState,
   evaluateBlendedPose,
+  evaluateStatePose,
   HUMANOID_BONE_KEYS,
   LAND_RECOVERY_DURATION_SECONDS,
   stepAnimationStateMachine,
@@ -553,8 +554,9 @@ describe("Reading Quest V0.3-B — Animation Continuity, Ground-Speed Sync & Gai
     }
     expect(jumpMachine.currentState).toBe("walk");
     expect(guard).toBeLessThanOrEqual(Math.ceil((LAND_RECOVERY_DURATION_SECONDS / dt) * 1.1));
-    // Last frame of "land" before entering "walk" has already recovered close to standing/walking height (not -0.085m peak crouch!)
-    expect(Math.abs(lastLandHipsOffset)).toBeLessThan(0.038);
+    // Landing absorption recovers to the walking pose, whose hips now sit lower for foot reach.
+    const walkingHeight = evaluateStatePose('walk', jumpMachine.cyclePhase, jumpMachine.stateTime, false, { groundSpeed:5.8 }).hipsOffsetY;
+    expect(Math.abs(lastLandHipsOffset-walkingHeight)).toBeLessThan(0.038);
 
     // NPC wave cancelled by brief movement even if dialogue was still open -> never re-raises arm on stop
     const npcMachine = createInitialAnimationMachineState();

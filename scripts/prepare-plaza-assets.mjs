@@ -2,8 +2,8 @@
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { MeshoptSimplifier } from '../node_modules/.pnpm/meshoptimizer@1.1.1/node_modules/meshoptimizer/meshopt_simplifier.js';
-import sharp from '../node_modules/.pnpm/sharp@0.35.5_@types+node@24.13.2/node_modules/sharp/dist/index.mjs';
+import { MeshoptSimplifier } from 'meshoptimizer/simplifier';
+import sharp from 'sharp';
 import { Matrix4, Vector3, Quaternion, Matrix3 } from 'three';
 
 const root = path.resolve('public/world/plaza-nature');

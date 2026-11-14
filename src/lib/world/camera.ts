@@ -1,4 +1,4 @@
-import type { Aabb2D, CameraOrbitConfig, Vec3Tuple } from "@/lib/world/types";
+import type { Aabb2D, CameraOrbitConfig, GroundHeightSampler, Vec3Tuple } from "@/lib/world/types";
 
 export type CameraRigState = {
   yaw: number;
@@ -265,13 +265,15 @@ export function stepFollowCamera(
   playerZ: number,
   cameraConfig: CameraOrbitConfig,
   dtSeconds: number,
-  colliders: readonly Aabb2D[] = []
+  colliders: readonly Aabb2D[] = [],
+  groundHeight?: GroundHeightSampler
 ): CameraRigState {
   const clampedDt = Math.min(Math.max(dtSeconds, 0), 0.1);
   const alpha = 1 - Math.exp(-cameraConfig.smoothing * clampedDt);
 
   const desiredTargetX = playerX;
-  const desiredTargetY = playerY * 0.65 + cameraConfig.lookAtHeight;
+  const playerFloor = groundHeight?.(playerX, playerZ) ?? 0;
+  const desiredTargetY = playerFloor + (playerY - playerFloor) * 0.65 + cameraConfig.lookAtHeight;
   const desiredTargetZ = playerZ;
 
   rig.targetX += (desiredTargetX - rig.targetX) * alpha;
@@ -387,7 +389,22 @@ export function stepFollowCamera(
       : rig.distance;
 
   // Both walls and the floor shorten the same ray without consuming the player's zoom preference.
-  const safeDistance = computeGroundSafeDistance(rig.targetY, rig.pitch, unoccludedDistance);
+  let safeDistance = computeGroundSafeDistance(rig.targetY, rig.pitch, unoccludedDistance);
+  if (groundHeight) {
+    const targetFloor = groundHeight(rig.targetX, rig.targetZ);
+    if (targetFloor !== null) rig.targetY = Math.max(rig.targetY, targetFloor + CAMERA_GROUND_FLOOR_Y);
+    safeDistance = unoccludedDistance;
+    // Shorten the camera ray before it crosses a rising slope/terrace wall.
+    const samples = Math.ceil(unoccludedDistance / .15);
+    for (let i = 1; i <= samples; i++) {
+      const distance = i * unoccludedDistance / samples;
+      const floor = groundHeight(rig.targetX + unitOffset.ox * distance, rig.targetZ + unitOffset.oz * distance);
+      if (floor !== null && rig.targetY + unitOffset.oy * distance < floor + CAMERA_GROUND_FLOOR_Y) {
+        safeDistance = (i - 1) * unoccludedDistance / samples;
+        break;
+      }
+    }
+  }
   const prevEffective = rig.effectiveDistance ?? rig.distance;
   let effectiveDistance: number;
   if (safeDistance <= prevEffective) {
@@ -405,7 +422,7 @@ export function stepFollowCamera(
 
   rig.positionX = rig.targetX + unitOffset.ox * effectiveDistance;
   rig.positionY = Math.max(
-    CAMERA_GROUND_FLOOR_Y,
+    groundHeight ? -Infinity : CAMERA_GROUND_FLOOR_Y,
     rig.targetY + unitOffset.oy * effectiveDistance
   );
   rig.positionZ = rig.targetZ + unitOffset.oz * effectiveDistance;

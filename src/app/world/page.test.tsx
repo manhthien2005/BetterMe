@@ -34,6 +34,17 @@ describe("/world authenticated route", () => {
     envMocks.devBypass.mockReturnValue(false);
   });
 
+  it("only opts into the study through its query and keeps the authentication gate", async () => {
+    authMocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
+    const query = { searchParams: Promise.resolve({ plaza: "study" }) };
+    expect(await WorldPage(query)).toBeNull();
+    expect(redirect).toHaveBeenCalledWith("/login");
+    envMocks.devBypass.mockReturnValue(true);
+    expect((await WorldPage(query))?.props.plazaStudy).toBe(true);
+    expect((await WorldPage())?.props.plazaStudy).toBe(false);
+    expect((await WorldPage({ searchParams: Promise.resolve({ plaza: "other" }) }))?.props.plazaStudy).toBe(false);
+  });
+
   it("redirects unauthenticated guests to /login", async () => {
     authMocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
 

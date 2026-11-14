@@ -1,7 +1,8 @@
 "use client";
 
-import { useFrame } from "@react-three/fiber";
-import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from "react";
+import { createPortal, useFrame } from "@react-three/fiber";
+import { VRMHumanBoneName } from "@pixiv/three-vrm";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from "react";
 import type { Group } from "three";
 
 import type {
@@ -9,6 +10,8 @@ import type {
   HumanoidPose
 } from "@/lib/world/animation-state-machine";
 import { resolveCharacterAssetEntry } from "@/lib/world/character-assets";
+import { createLocomotionPlayer, loadLocomotionClips } from "@/lib/world/character-locomotion";
+import { createActionMotionPlayer, loadActionMotion } from "@/lib/world/character-action-motion";
 import {
   createCharacterCameraFade,
   type CharacterCameraFade
@@ -31,7 +34,10 @@ export type CharacterAvatarMetrics = {
   readonly primitiveCount: number;
   readonly humanoidBoneCount: number;
   readonly expressionCount: number;
+  readonly capabilities?: LoadedVrmCharacterRig["capabilities"];
   readonly fallbackReason?: string;
+  readonly locomotion?: "authored" | "procedural";
+  readonly actions?: "authored" | "procedural";
 };
 
 declare global {
@@ -42,10 +48,12 @@ declare global {
 
 function ArticulatedFallbackAvatar({
   poseRef,
-  expressionsRef
+  expressionsRef,
+  onRegisterStepController
 }: {
   poseRef: MutableRefObject<HumanoidPose>;
   expressionsRef: MutableRefObject<CharacterExpressionWeights>;
+  onRegisterStepController: (step: (() => void) | null) => void;
 }) {
   const hipsRef = useRef<Group>(null);
   const torsoRef = useRef<Group>(null);
@@ -55,80 +63,84 @@ function ArticulatedFallbackAvatar({
   const leftLegRef = useRef<Group>(null);
   const rightLegRef = useRef<Group>(null);
 
-  useFrame(() => {
-    const pose = poseRef.current;
-    const expr = expressionsRef.current;
+  useLayoutEffect(() => {
+    const step = () => {
+      const pose = poseRef.current;
+      const expr = expressionsRef.current;
 
-    if (hipsRef.current) {
-      hipsRef.current.position.y = 0.82 + pose.hipsOffsetY;
-      hipsRef.current.rotation.set(
-        pose.bones.hips[0],
-        pose.bones.hips[1],
-        pose.bones.hips[2]
-      );
-    }
+      if (hipsRef.current) {
+        hipsRef.current.position.y = 0.82 + pose.hipsOffsetY;
+        hipsRef.current.rotation.set(
+          pose.bones.hips[0],
+          pose.bones.hips[1],
+          pose.bones.hips[2]
+        );
+      }
 
-    if (torsoRef.current) {
-      torsoRef.current.rotation.set(
-        pose.bones.spine[0] + pose.bones.chest[0],
-        pose.bones.spine[1] + pose.bones.chest[1],
-        pose.bones.spine[2] + pose.bones.chest[2]
-      );
-    }
+      if (torsoRef.current) {
+        torsoRef.current.rotation.set(
+          pose.bones.spine[0] + pose.bones.chest[0],
+          pose.bones.spine[1] + pose.bones.chest[1],
+          pose.bones.spine[2] + pose.bones.chest[2]
+        );
+      }
 
-    if (headRef.current) {
-      headRef.current.rotation.set(
-        pose.bones.head[0] + pose.bones.neck[0],
-        pose.bones.head[1] + pose.bones.neck[1],
-        pose.bones.head[2] + pose.bones.neck[2]
-      );
-      const eyeOpen = Math.max(0.15, 1 - Math.max(expr.blink, expr.happy * 0.7));
-      headRef.current.scale.set(1, 0.96 + eyeOpen * 0.04, 1);
-    }
+      if (headRef.current) {
+        headRef.current.rotation.set(
+          pose.bones.head[0] + pose.bones.neck[0],
+          pose.bones.head[1] + pose.bones.neck[1],
+          pose.bones.head[2] + pose.bones.neck[2]
+        );
+        const eyeOpen = Math.max(0.15, 1 - Math.max(expr.blink, expr.happy * 0.7));
+        headRef.current.scale.set(1, 0.96 + eyeOpen * 0.04, 1);
+      }
 
-    if (leftArmRef.current) {
-      leftArmRef.current.rotation.set(
-        pose.bones.leftUpperArm[0],
-        pose.bones.leftUpperArm[1],
-        pose.bones.leftUpperArm[2] + 1.16
-      );
-    }
+      if (leftArmRef.current) {
+        leftArmRef.current.rotation.set(
+          pose.bones.leftUpperArm[0],
+          pose.bones.leftUpperArm[1],
+          pose.bones.leftUpperArm[2] + 1.16
+        );
+      }
 
-    if (rightArmRef.current) {
-      const waveWeight = Math.max(
-        0,
-        Math.min(1, (1.02 - pose.bones.rightUpperArm[2]) / 0.77)
-      );
-      const locoX = pose.bones.rightUpperArm[0];
-      const locoY = pose.bones.rightUpperArm[1];
-      const locoZ = pose.bones.rightUpperArm[2] - 1.16;
-      const waveX = -0.45;
-      const waveY = 0;
-      const waveZ = -2.35 + (pose.bones.rightLowerArm[2] + 1.22) * 1.1;
+      if (rightArmRef.current) {
+        const waveWeight = Math.max(
+          0,
+          Math.min(1, (1.02 - pose.bones.rightUpperArm[2]) / 0.77)
+        );
+        const locoX = pose.bones.rightUpperArm[0];
+        const locoY = pose.bones.rightUpperArm[1];
+        const locoZ = pose.bones.rightUpperArm[2] - 1.16;
+        const waveX = -0.45;
+        const waveY = 0;
+        const waveZ = -2.35 + (pose.bones.rightLowerArm[2] + 1.22) * 1.1;
 
-      rightArmRef.current.rotation.set(
-        locoX + (waveX - locoX) * waveWeight,
-        locoY + (waveY - locoY) * waveWeight,
-        locoZ + (waveZ - locoZ) * waveWeight
-      );
-    }
+        rightArmRef.current.rotation.set(
+          locoX + (waveX - locoX) * waveWeight,
+          locoY + (waveY - locoY) * waveWeight,
+          locoZ + (waveZ - locoZ) * waveWeight
+        );
+      }
 
-    if (leftLegRef.current) {
-      leftLegRef.current.rotation.set(
-        pose.bones.leftUpperLeg[0] + pose.bones.leftLowerLeg[0] * 0.35,
-        0,
-        0
-      );
-    }
+      if (leftLegRef.current) {
+        leftLegRef.current.rotation.set(
+          pose.bones.leftUpperLeg[0] + pose.bones.leftLowerLeg[0] * 0.35,
+          0,
+          0
+        );
+      }
 
-    if (rightLegRef.current) {
-      rightLegRef.current.rotation.set(
-        pose.bones.rightUpperLeg[0] + pose.bones.rightLowerLeg[0] * 0.35,
-        0,
-        0
-      );
-    }
-  });
+      if (rightLegRef.current) {
+        rightLegRef.current.rotation.set(
+          pose.bones.rightUpperLeg[0] + pose.bones.rightLowerLeg[0] * 0.35,
+          0,
+          0
+        );
+      }
+    };
+    onRegisterStepController(step);
+    return () => onRegisterStepController(null);
+  }, [expressionsRef, onRegisterStepController, poseRef]);
 
   return (
     <group name="character-fallback-avatar" position={[0, 0.82, 0]} ref={hipsRef}>
@@ -203,17 +215,21 @@ function ArticulatedFallbackAvatar({
  * poses + facial expressions each frame, falling back to `ArticulatedFallbackAvatar`
  * while loading or if the VRM asset fails to load.
  */
-export function CharacterAvatar({
+function CharacterAvatarInstance({
   assetUrl,
+  authoredLocomotion = false,
   cameraFadeRef,
   poseRef,
   expressionsRef,
+  bookColor,
   onRegisterStepController,
   onAvatarStatusChange,
   onBoneSnapshot
 }: {
   assetUrl?: string;
-  cameraFadeRef: MutableRefObject<CharacterCameraFade | null>;
+  authoredLocomotion?: boolean;
+  cameraFadeRef?: MutableRefObject<CharacterCameraFade | null>;
+  bookColor?: string;
   poseRef: MutableRefObject<HumanoidPose>;
   expressionsRef: MutableRefObject<CharacterExpressionWeights>;
   onRegisterStepController?: (
@@ -234,10 +250,14 @@ export function CharacterAvatar({
   const snapshotFrameCountRef = useRef(0);
   const pendingSpringResetRef = useRef(true);
   const avatarRootRef = useRef<Group>(null);
+  const fallbackStepRef = useRef<(() => void) | null>(null);
+  const registerFallbackStep = useCallback((step: (() => void) | null) => {
+    fallbackStepRef.current = step;
+  }, []);
 
   // Install before the first rendered frame when a loaded VRM replaces the fallback.
   useLayoutEffect(() => {
-    if (!avatarRootRef.current) return;
+    if (!avatarRootRef.current || !cameraFadeRef) return;
     const fade = createCharacterCameraFade(avatarRootRef.current);
     cameraFadeRef.current = fade;
     return () => {
@@ -262,6 +282,9 @@ export function CharacterAvatar({
     let cancelled = false;
     statusCallbackRef.current?.("loading");
 
+    // Clip loading never delays the avatar or its existing procedural fallback.
+    const motionPromise = authoredLocomotion ? loadLocomotionClips() : Promise.resolve(null);
+    const actionPromise = authoredLocomotion ? loadActionMotion() : Promise.resolve(null);
     loadCharacterVrm(resolvedUrl).then((outcome) => {
       if (cancelled) {
         if (outcome.ok) {
@@ -274,12 +297,31 @@ export function CharacterAvatar({
         rigRef.current = outcome.rig;
         pendingSpringResetRef.current = true;
         setLoadedRig(outcome.rig);
-        statusCallbackRef.current?.("ready", {
+        const metrics: CharacterAvatarMetrics = {
           loadTimeMs: outcome.rig.loadTimeMs,
           triangleCount: outcome.rig.triangleCount,
           primitiveCount: outcome.rig.primitiveCount,
           humanoidBoneCount: outcome.rig.humanoidBoneCount,
-          expressionCount: outcome.rig.expressionNames.length
+          expressionCount: outcome.rig.expressionNames.length,
+          capabilities: outcome.rig.capabilities,
+          locomotion: "procedural"
+        };
+        statusCallbackRef.current?.("ready", metrics);
+        void motionPromise.then(motion => {
+          if (cancelled || rigRef.current !== outcome.rig || !motion) return;
+          if (motion.ok) {
+            outcome.rig.locomotion = createLocomotionPlayer(motion.clips, outcome.rig.restHipsY);
+            statusCallbackRef.current?.("ready", { ...metrics, locomotion: "authored", actions: outcome.rig.actions ? "authored" : "procedural" });
+          } else {
+            console.warn("Locomotion clips unavailable; using procedural movement:", motion.reason);
+          }
+        });
+        void actionPromise.then(action => {
+          if (cancelled || rigRef.current !== outcome.rig || !action) return;
+          if (action.ok) {
+            outcome.rig.actions = createActionMotionPlayer(action.data, outcome.rig.restHipsY);
+            statusCallbackRef.current?.("ready", { ...metrics, actions: "authored", locomotion: outcome.rig.locomotion ? "authored" : "procedural" });
+          } else console.warn("Hand/jump clips unavailable; using existing poses:", action.reason);
         });
       } else {
         rigRef.current = null;
@@ -302,7 +344,7 @@ export function CharacterAvatar({
         rigRef.current = null;
       }
     };
-  }, [resolvedUrl]);
+  }, [resolvedUrl, authoredLocomotion]);
 
   useEffect(() => {
     if (!loadedRig) return;
@@ -320,49 +362,20 @@ export function CharacterAvatar({
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, []);
 
-  useEffect(() => {
-    if (!onRegisterStepController) return;
-
-    const stepAvatar = (delta: number, resetSprings = false) => {
-      if (resetSprings) {
-        pendingSpringResetRef.current = true;
-      }
-      const activeRig = rigRef.current;
-      if (!activeRig) return;
-
-      if (pendingSpringResetRef.current) {
-        pendingSpringResetRef.current = false;
-        applyPoseToVrm(activeRig, poseRef.current, expressionsRef.current, 0);
-        resetCharacterVrmSprings(activeRig);
-      } else {
-        applyPoseToVrm(activeRig, poseRef.current, expressionsRef.current, delta);
-      }
-
-      if (snapshotCallbackRef.current) {
-        snapshotFrameCountRef.current = (snapshotFrameCountRef.current + 1) % 12;
-        const fullTelemetry =
-          typeof window !== "undefined" &&
-          window.__READING_QUEST_ENABLE_DEBUG_TELEMETRY__ === true;
-        if (fullTelemetry || snapshotFrameCountRef.current === 1) {
-          snapshotCallbackRef.current(sampleVrmBoneWorldPositions(activeRig.vrm));
-        }
-      }
-    };
-
-    onRegisterStepController(stepAvatar);
-
-    return () => {
-      onRegisterStepController(null);
-    };
-  }, [expressionsRef, onRegisterStepController, poseRef]);
-
-  useFrame((_, delta) => {
-    if (registerStepControllerRef.current) return;
+  const stepAvatar = useCallback((delta: number, resetSprings = false) => {
+    if (resetSprings) {
+      pendingSpringResetRef.current = true;
+    }
     const activeRig = rigRef.current;
-    if (!activeRig) return;
+    if (!activeRig) {
+      fallbackStepRef.current?.();
+      return;
+    }
 
     if (pendingSpringResetRef.current) {
       pendingSpringResetRef.current = false;
+      activeRig.locomotion?.reset();
+      activeRig.actions?.reset();
       applyPoseToVrm(activeRig, poseRef.current, expressionsRef.current, 0);
       resetCharacterVrmSprings(activeRig);
     } else {
@@ -378,6 +391,20 @@ export function CharacterAvatar({
         snapshotCallbackRef.current(sampleVrmBoneWorldPositions(activeRig.vrm));
       }
     }
+  }, [expressionsRef, poseRef]);
+
+  useEffect(() => {
+    if (!onRegisterStepController) return;
+    onRegisterStepController(stepAvatar);
+
+    return () => {
+      onRegisterStepController(null);
+    };
+  }, [onRegisterStepController, stepAvatar]);
+
+  useFrame((_, delta) => {
+    if (registerStepControllerRef.current) return;
+    stepAvatar(delta);
   });
 
   return (
@@ -385,8 +412,22 @@ export function CharacterAvatar({
       {loadedRig ? (
         <primitive name="character-vrm-avatar" object={loadedRig.scene} />
       ) : (
-        <ArticulatedFallbackAvatar expressionsRef={expressionsRef} poseRef={poseRef} />
+        <ArticulatedFallbackAvatar expressionsRef={expressionsRef} poseRef={poseRef}
+          onRegisterStepController={registerFallbackStep} />
+      )}
+      {bookColor && loadedRig?.vrm.humanoid.getRawBoneNode(VRMHumanBoneName.LeftHand) && createPortal(
+        <group name="npc-reading-book" position={[0.04, 0.02, 0.015]} rotation={[0, 0, Math.PI / 2]}>
+          <mesh castShadow><boxGeometry args={[0.24, 0.035, 0.32]} /><meshStandardMaterial color={bookColor} /></mesh>
+          <mesh position={[0, 0.023, 0]}><boxGeometry args={[0.215, 0.018, 0.295]} /><meshStandardMaterial color="#F4E3C1" /></mesh>
+        </group>,
+        loadedRig.vrm.humanoid.getRawBoneNode(VRMHumanBoneName.LeftHand)!
       )}
     </group>
   );
+}
+
+/** A new URL gets a new owner, so an old disposed rig cannot remain visible while loading. */
+export function CharacterAvatar(props: Parameters<typeof CharacterAvatarInstance>[0]) {
+  const assetUrl = props.assetUrl ?? resolveCharacterAssetEntry().url;
+  return <CharacterAvatarInstance key={assetUrl} {...props} assetUrl={assetUrl} />;
 }

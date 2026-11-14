@@ -1,262 +1,176 @@
 {
-  "reference": "../floating-island-v1/glb/floating-island.glb",
-  "referenceMainFootprint": [
-    33,
-    24
-  ],
-  "sourceBlendSha256": "d46f0448ba851e6e5b8bece7b3bfc008538e08b237b6defee8a686adff91e299",
+  "name": "Approved Plaza islands V2",
+  "replacement": {
+    "mach-nguon": "vuon-gio"
+  },
   "models": [
+    {
+      "id": "vuon-gio",
+      "name": "Vườn Gió",
+      "version": "v18",
+      "size": "medium",
+      "triangles": 2036998,
+      "bytes": 40825800,
+      "sha256": "dd9f43ba6dc4dc19220d6f77b4b14e1dabdf420638a05984c17a9dec3b44f779",
+      "status": "approved",
+      "approvedOn": "2026-11-12",
+      "boundsBlender": [
+        [
+          -28.388776779174805,
+          -19.680301666259766,
+          -18.3799991607666
+        ],
+        [
+          26.569316864013672,
+          13.0120210647583,
+          12.003423690795898
+        ]
+      ],
+      "groundTop": 1.16
+    },
     {
       "id": "thien-vien",
       "name": "Thiên Viên",
-      "description": "Vườn cổ rộng, hàng cột cong và dòng thác dưới tán đại thụ.",
+      "version": "v2",
       "size": "large",
-      "glb": "glb/thien-vien.glb",
-      "blend": "source/thien-vien.blend",
+      "triangles": 2210891,
+      "bytes": 62387024,
+      "sha256": "4a74a76c5edf424542109a71dab68a30d0ecd4f2d2085c33cf165e87f6084deb",
+      "status": "approved",
+      "approvedOn": "2026-11-12",
       "boundsBlender": [
         [
-          -39.19182586669922,
-          -23.304555892944336,
-          -29.0
+          -39.45733642578125,
+          -23.922069549560547,
+          -30.3799991607666
         ],
         [
-          39.181087493896484,
-          19.74353790283203,
-          17.082359313964844
+          39.28326416015625,
+          21.281835556030273,
+          16.905235290527344
         ]
       ],
-      "mainBoundsBlender": [
-        [
-          -28.335187911987305,
-          -21.185874938964844,
-          -29.0
-        ],
-        [
-          29.13102912902832,
-          19.386018753051758,
-          2.2753407955169678
-        ]
-      ],
-      "landSpan": 57.466217041015625,
-      "rimRelief": 1.9773188032588305,
-      "landformCount": 3,
-      "trees": 5,
-      "grassBlades": 30529,
-      "revision": "reference-polish",
-      "vineStrands": 124,
-      "placedTriangles": 423628,
-      "bytes": 20124236,
-      "sha256": "55fafbe300b93a58c3c90c3e4835397c52067ccfb910efb118ec8d96f8c58ff6"
+      "groundTop": 2.030242443084717
     },
     {
       "id": "thac-tang",
       "name": "Thác Tầng",
-      "description": "Ba tầng đá lệch nhau, hồ nối thác và những cụm cây trên cao.",
+      "version": "v2",
       "size": "large",
-      "glb": "glb/thac-tang.glb",
-      "blend": "source/thac-tang.blend",
+      "triangles": 2482130,
+      "bytes": 76101456,
+      "sha256": "7bfeff350bcdadc99cf9f74b550150a6f03da8b86171fd46db484d520b03f6cb",
+      "status": "approved",
+      "approvedOn": "2026-11-12",
       "boundsBlender": [
         [
-          -29.723024368286133,
-          -30.446199417114258,
-          -27.0
+          -26.121519088745117,
+          -30.09287452697754,
+          -27.979999542236328
         ],
         [
-          25.09983253479004,
-          25.18085289001465,
-          22.190032958984375
+          24.975439071655273,
+          24.894001007080078,
+          21.208166122436523
         ]
       ],
-      "mainBoundsBlender": [
-        [
-          -25.10374641418457,
-          -28.588665008544922,
-          -27.0
-        ],
-        [
-          24.84097671508789,
-          23.12259292602539,
-          11.604148864746094
-        ]
-      ],
-      "landSpan": 51.71125793457031,
-      "rimRelief": 1.956984988930187,
-      "landformCount": 3,
-      "trees": 5,
-      "grassBlades": 31032,
-      "revision": "reference-polish",
-      "vineStrands": 152,
-      "placedTriangles": 442438,
-      "bytes": 20369732,
-      "sha256": "5f90e01d90e56bc9035737b3a6f45b14d0e77ccf6d5f4b30dee820b7fde07c88"
+      "groundTop": 10.988675117492676
     },
     {
       "id": "nguyet-ho",
       "name": "Nguyệt Hồ",
-      "description": "Bờ cỏ khuyết ôm hồ xanh, cổng đá vỡ soi bóng trên nước.",
+      "version": "v2",
       "size": "medium",
-      "glb": "glb/nguyet-ho.glb",
-      "blend": "source/nguyet-ho.blend",
+      "triangles": 1064911,
+      "bytes": 37772868,
+      "sha256": "cc06d3771a399b5503f020194d8f23c0c9980380cae99299f84f060e47be00c7",
+      "status": "approved",
+      "approvedOn": "2026-11-12",
       "boundsBlender": [
         [
-          -23.434917449951172,
-          -12.435227394104004,
-          -22.0
+          -20.083703994750977,
+          -13.572774887084961,
+          -22.979999542236328
         ],
         [
-          23.60415267944336,
-          15.37497615814209,
-          10.623525619506836
+          21.802370071411133,
+          16.017770767211914,
+          11.751738548278809
         ]
       ],
-      "mainBoundsBlender": [
-        [
-          -19.476163864135742,
-          -10.895244598388672,
-          -22.0
-        ],
-        [
-          19.3832950592041,
-          13.44537353515625,
-          1.6254944801330566
-        ]
-      ],
-      "landSpan": 38.859458923339844,
-      "rimRelief": 2.4344909378185435,
-      "landformCount": 1,
-      "trees": 3,
-      "grassBlades": 13724,
-      "revision": "reference-polish",
-      "vineStrands": 55,
-      "placedTriangles": 179411,
-      "bytes": 11657576,
-      "sha256": "d2230eb3209a124d46c0a59653bad538761ea73cfa8569d291dc33a5f870ab5f"
+      "groundTop": 0.9278454780578613
     },
     {
       "id": "song-dinh",
       "name": "Song Đỉnh",
-      "description": "Hai mỏm đá tách rời, nối bằng cầu cong qua khe trời.",
+      "version": "v2",
       "size": "medium",
-      "glb": "glb/song-dinh.glb",
-      "blend": "source/song-dinh.blend",
+      "triangles": 1245462,
+      "bytes": 38216960,
+      "sha256": "ef9d938ceaed7e3d63b6ba3420c95534c18278bb11d2ad5eca6345097c215bc0",
+      "status": "approved",
+      "approvedOn": "2026-11-12",
       "boundsBlender": [
         [
-          -22.04476547241211,
-          -13.608633995056152,
-          -22.0
+          -21.51140594482422,
+          -13.425837516784668,
+          -23.080001831054688
         ],
         [
-          19.764774322509766,
-          14.445876121520996,
-          11.483909606933594
+          20.146406173706055,
+          14.49901294708252,
+          12.76153564453125
         ]
       ],
-      "mainBoundsBlender": [
-        [
-          -19.607864379882812,
-          -12.04207706451416,
-          -22.0
-        ],
-        [
-          19.764774322509766,
-          12.083901405334473,
-          3.2657737731933594
-        ]
-      ],
-      "landSpan": 39.37263870239258,
-      "rimRelief": 2.2593063963153392,
-      "landformCount": 2,
-      "trees": 2,
-      "grassBlades": 13126,
-      "revision": "reference-polish",
-      "vineStrands": 56,
-      "placedTriangles": 205829,
-      "bytes": 12595152,
-      "sha256": "c17445f3d88f4f96c31396a8ccb82a990dadf88ec357b0eaf2c3fd365244f408"
+      "groundTop": 2.9961013793945312
     },
     {
       "id": "tan-may",
       "name": "Tán Mây",
-      "description": "Một tán cây nghiêng che bãi cỏ nhỏ và mạch nước ven đá.",
+      "version": "v2",
       "size": "small",
-      "glb": "glb/tan-may.glb",
-      "blend": "source/tan-may.blend",
+      "triangles": 516584,
+      "bytes": 18781696,
+      "sha256": "901fc1552ab7295290d72f3c06398e63b41ecefa374f5a6fdd2a8535eb949a11",
+      "status": "approved",
+      "approvedOn": "2026-11-12",
       "boundsBlender": [
         [
-          -11.114143371582031,
-          -8.733407974243164,
-          -15.0
+          -9.871870994567871,
+          -8.333168983459473,
+          -15.630000114440918
         ],
         [
-          11.819547653198242,
-          10.232172966003418,
-          9.512306213378906
+          11.469281196594238,
+          9.320244789123535,
+          9.353652954101562
         ]
       ],
-      "mainBoundsBlender": [
-        [
-          -8.942469596862793,
-          -7.030791282653809,
-          -15.0
-        ],
-        [
-          10.253782272338867,
-          7.048939228057861,
-          1.1526552438735962
-        ]
-      ],
-      "landSpan": 19.19625186920166,
-      "rimRelief": 2.2496672143876406,
-      "landformCount": 1,
-      "trees": 1,
-      "grassBlades": 4562,
-      "revision": "reference-polish",
-      "vineStrands": 25,
-      "placedTriangles": 87539,
-      "bytes": 8303364,
-      "sha256": "373ac70a582be7a74c5dbb8bba2e298d292556707ab74d80cc93a8c328819a67"
+      "groundTop": 1.0768992900848389
     },
     {
       "id": "phong-dang",
       "name": "Phong Đăng",
-      "description": "Mỏm đá cao thanh, đình đèn nhỏ và hàng cây đón gió.",
+      "version": "v2",
       "size": "small",
-      "glb": "glb/phong-dang.glb",
-      "blend": "source/phong-dang.blend",
+      "triangles": 529473,
+      "bytes": 20641132,
+      "sha256": "406260a9111d703861010ec96f64228fe63fd856cc2a2b3170deec8aeb09f101",
+      "status": "approved",
+      "approvedOn": "2026-11-12",
       "boundsBlender": [
         [
-          -7.7091240882873535,
-          -7.317024230957031,
-          -22.0
+          -7.911342144012451,
+          -7.21019983291626,
+          -23.029998779296875
         ],
         [
-          10.096598625183105,
-          8.166211128234863,
-          8.531442642211914
+          9.15873908996582,
+          7.039141654968262,
+          8.634719848632812
         ]
       ],
-      "mainBoundsBlender": [
-        [
-          -7.461355209350586,
-          -5.645413398742676,
-          -22.0
-        ],
-        [
-          8.485132217407227,
-          5.70920467376709,
-          2.1628012657165527
-        ]
-      ],
-      "landSpan": 15.946487426757812,
-      "rimRelief": 2.4074451344865464,
-      "landformCount": 1,
-      "trees": 2,
-      "grassBlades": 3196,
-      "revision": "reference-polish",
-      "vineStrands": 18,
-      "placedTriangles": 98401,
-      "bytes": 8113908,
-      "sha256": "8dbe86663005594c712f7485373ac2337588cc2a12b2e03b72065117b725d720"
+      "groundTop": 2.1379945278167725
     }
   ]
 }

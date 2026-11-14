@@ -1,0 +1,18 @@
+# Vườn Gió landscape v5 implementation plan
+
+**Goal:** Make the ruin visibly aged, diversify wildflowers/vines, and replace the flat rim/large rock bowl with an organic floating-island profile informed by Mạch Nguồn and Tiny Glade.
+**Spec:** `../specs/2026-11-12-tiny-glade-island-study-design.md`, v5.
+**Architecture:** Existing Blender 4.5 Python geometry → editable source and embedded GLBs → local Three viewer. Root integrates bounded modules; two workers never write the generator or shared exports.
+**Constraints:** Preserve v3 canopies/grass appearance, v4 water and small boulders. New topographic changes at rim only; original reference hash stays unchanged. No app/dependency/commit/deploy work. Files under output remain isolated from application work.
+
+- [x] Preserve v4 source, generator, module, viewer, manifest, GLB in `renders/landscape-v5/`; write scope and compact worker briefs.
+- [x] Root: inspect Mạch Nguồn rim and underside from several views plus official Tiny Glade image; record concrete cues. Change `build.py` rim height/ground-edge shape and cliff construction (or small `landform_assets.py` module). Integrate crest, exposed soil, fractured ledges and irregular lower masses with buried joins. Keep source tops continuous and stream mouth clear. Add geometric/source checks before final build.
+- [x] Ruin worker owns `structure_assets.py` and `renders/ruins-v5/`: broken wall shoulder / partial missing courses, real chips, weathered color, selective growth; keep open arch, groundable footing names and existing API. Tone birch and improve markings without changing branch anchors/canopy RNG. Check source and compact preview.
+- [x] Flower worker owns `flower_assets.py` and `renders/flowers-v5/`: `make_wildflowers(Mesh,MAT,P,rgb,mix,tint,tube,leaf,collection)` returns five new kit entries. Distinct bellflower, buttercup, clover, cornflower, poppy. Bent stems, shaped petals and natural low clumps, bounded geometry, existing materials. Check and render kit preview.
+- [x] Root owns `vine_assets.py` and `renders/vines-v5/`: `make_trailing_vines(Mesh,MAT,P,rgb,mix,tint,tube,collection,surface_point)` returns editable vine objects. Callback `surface_point(angle,drop)` provides a Vector on actual cliff at drop world units below rim. Design several clustered, tapered, branching curtains with lobed leaves and stem continuity; avoid waterfall at angle ~4.9 radians. Local deterministic RNG. Check compact preview.
+- [x] Root integrate modules into `build.py`; replace old narrow ivy strips, scatter new flowers in restrained colonies, update manifest-driven viewer kit labels/stats and regression export counts. Rebuild source/GLBs, inspect final views and iterate important visual defects.
+- [x] Verify source geometry/footings/planted bases/water/foliage, final kit exports, GPU water+botanical behavior, viewer desktop/mobile/resource lifecycle. Separate final self-review and compact QA/README/RESUME. Deliver preview and limitations.
+
+Review focus: no cracks between turf and cliff; grass remains grounded at modified edge; rock outcrops interlock and do not resemble detached spheres; vine leaves connect to stems and do not fly through water; ruined silhouette reads at island scale; new flowers are distinguishable without a crowded multicolor carpet; all kit choices load and dispose with dynamic count.
+
+Final evidence: `output/tiny-glade-island-v1/renders/landscape-v5/QA.md`. Vine work completed by root inline; only ruin and flower workers were dispatched. Final review fixed radial vine bridge, turf-face intersection, rubble seating, tip degeneracy and runtime glTF V inversion. No commits/app gates.

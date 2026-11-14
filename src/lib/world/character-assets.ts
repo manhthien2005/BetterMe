@@ -40,7 +40,7 @@ export type CharacterAssetManifest = {
 
 export const CHARACTER_ASSET_MANIFEST: CharacterAssetManifest = {
   schemaVersion: 1,
-  defaultCharacterId: "scholar-vrm1",
+  defaultCharacterId: "academy-scholar-v1",
   characters: [
     {
       id: "scholar-vrm1",
@@ -90,7 +90,186 @@ export const CHARACTER_ASSET_MANIFEST: CharacterAssetManifest = {
           "surprised"
         ]
       }
+    },
+    {
+      id: "academy-scholar-v1",
+      name: "Học viên phù thủy — đồng phục học viện",
+      url: "/models/characters/academy-scholar-v1.vrm",
+      format: "VRM-1.0",
+      sourceName: "VRM1_Constraint_Twist_Sample + Reading Quest academy outfit",
+      sourceRepository: "https://github.com/vrm-c/vrm-specification/tree/master/samples/VRM1_Constraint_Twist_Sample",
+      author: "pixiv Inc. (base); BetterMe project (outfit)",
+      copyright: "(c) 2022 pixiv Inc.; original outfit authored for BetterMe",
+      licenseName: "VRM Public License 1.0",
+      licenseUrl: "https://vrm.dev/licenses/1.0/",
+      permissions: {
+        avatarPermission: "everyone",
+        commercialUsage: "corporation",
+        allowRedistribution: true,
+        modification: "allowModificationRedistribution",
+        creditNotation: "unnecessary"
+      },
+      metrics: {
+        fileSizeBytes: 13_757_752,
+        sha256: "8c8225f3f1c934a9fc8b782f15dc70141795bd27e7bb948c3352659e4de5054f",
+        meshCount: 8,
+        primitiveCount: 26,
+        materialCount: 32,
+        triangleCount: 67_380,
+        humanoidBoneCount: 54,
+        expressions: [
+          "aa", "angry", "blink", "blinkLeft", "blinkRight", "ee", "happy", "ih",
+          "lookDown", "lookLeft", "lookRight", "lookUp", "neutral", "oh", "ou",
+          "relaxed", "sad", "surprised"
+        ]
+      }
+    },
+    // Academy NPC fittings: generated metrics; source and permission match the player base.
+    {
+      id: "academy-an-v1",
+      name: "Học giả An — áo choàng dẫn đường",
+      url: "/models/characters/academy-an-v1.vrm",
+      format: "VRM-1.0",
+      sourceName: "VRM1_Constraint_Twist_Sample + Reading Quest academy outfit",
+      sourceRepository: "https://github.com/vrm-c/vrm-specification/tree/master/samples/VRM1_Constraint_Twist_Sample",
+      author: "pixiv Inc. (base); BetterMe project (outfit and hair fitting)",
+      copyright: "(c) 2022 pixiv Inc.; original outfit authored for BetterMe",
+      licenseName: "VRM Public License 1.0",
+      licenseUrl: "https://vrm.dev/licenses/1.0/",
+      permissions: {
+        avatarPermission: "everyone",
+        commercialUsage: "corporation",
+        allowRedistribution: true,
+        modification: "allowModificationRedistribution",
+        creditNotation: "unnecessary"
+      },
+      metrics: {
+        fileSizeBytes: 12984340,
+        sha256: "0b02133a385983dc88fbc2d618a0b558f514f981b3980e7f53a76d7d7fb6210d",
+        meshCount: 10,
+        primitiveCount: 28,
+        materialCount: 25,
+        triangleCount: 63612,
+        humanoidBoneCount: 54,
+        expressions: [
+          "aa",
+          "angry",
+          "blink",
+          "blinkLeft",
+          "blinkRight",
+          "ee",
+          "happy",
+          "ih",
+          "lookDown",
+          "lookLeft",
+          "lookRight",
+          "lookUp",
+          "neutral",
+          "oh",
+          "ou",
+          "relaxed",
+          "sad",
+          "surprised"
+        ]
+      }
+    },
+    {
+      id: "academy-khoa-v1",
+      name: "Quản sự Khoa — áo choàng học viện",
+      url: "/models/characters/academy-khoa-v1.vrm",
+      format: "VRM-1.0",
+      sourceName: "VRM1_Constraint_Twist_Sample + Reading Quest academy outfit",
+      sourceRepository: "https://github.com/vrm-c/vrm-specification/tree/master/samples/VRM1_Constraint_Twist_Sample",
+      author: "pixiv Inc. (base); BetterMe project (Khoa face, hair, glasses and menswear)",
+      copyright: "(c) 2022 pixiv Inc.; original outfit authored for BetterMe",
+      licenseName: "VRM Public License 1.0",
+      licenseUrl: "https://vrm.dev/licenses/1.0/",
+      permissions: {
+        avatarPermission: "everyone",
+        commercialUsage: "corporation",
+        allowRedistribution: true,
+        modification: "allowModificationRedistribution",
+        creditNotation: "unnecessary"
+      },
+      metrics: {
+        fileSizeBytes: 17762116,
+        sha256: "ce7e1f46ced9613082cc4f1cd24c1e9f87618062fb14de35b7dc94e3f1b9c483",
+        meshCount: 8,
+        primitiveCount: 26,
+        materialCount: 32,
+        triangleCount: 75936,
+        humanoidBoneCount: 54,
+        expressions: [
+          "aa",
+          "angry",
+          "blink",
+          "blinkLeft",
+          "blinkRight",
+          "ee",
+          "happy",
+          "ih",
+          "lookDown",
+          "lookLeft",
+          "lookRight",
+          "lookUp",
+          "neutral",
+          "oh",
+          "ou",
+          "relaxed",
+          "sad",
+          "surprised"
+        ]
+      }
+    },
+    {
+      id: "academy-minh-v1",
+      name: "Thủ thư Minh — áo học giả",
+      url: "/models/characters/academy-minh-v1.vrm",
+      format: "VRM-1.0",
+      sourceName: "VRM1_Constraint_Twist_Sample + Reading Quest academy outfit",
+      sourceRepository: "https://github.com/vrm-c/vrm-specification/tree/master/samples/VRM1_Constraint_Twist_Sample",
+      author: "pixiv Inc. (base); BetterMe project (outfit and hair fitting)",
+      copyright: "(c) 2022 pixiv Inc.; original outfit authored for BetterMe",
+      licenseName: "VRM Public License 1.0",
+      licenseUrl: "https://vrm.dev/licenses/1.0/",
+      permissions: {
+        avatarPermission: "everyone",
+        commercialUsage: "corporation",
+        allowRedistribution: true,
+        modification: "allowModificationRedistribution",
+        creditNotation: "unnecessary"
+      },
+      metrics: {
+        fileSizeBytes: 12754468,
+        sha256: "346976316274c1f48be2383864b77f9157e259cacaaa47486f631c97246c8ee0",
+        meshCount: 9,
+        primitiveCount: 25,
+        materialCount: 25,
+        triangleCount: 57636,
+        humanoidBoneCount: 54,
+        expressions: [
+          "aa",
+          "angry",
+          "blink",
+          "blinkLeft",
+          "blinkRight",
+          "ee",
+          "happy",
+          "ih",
+          "lookDown",
+          "lookLeft",
+          "lookRight",
+          "lookUp",
+          "neutral",
+          "oh",
+          "ou",
+          "relaxed",
+          "sad",
+          "surprised"
+        ]
+      }
     }
+    // End academy NPC fittings.
   ]
 };
 
@@ -100,8 +279,20 @@ export function resolveCharacterAssetEntry(
 ): CharacterAssetManifestEntry {
   return (
     CHARACTER_ASSET_MANIFEST.characters.find((entry) => entry.id === characterId) ??
+    CHARACTER_ASSET_MANIFEST.characters.find((entry) => entry.id === CHARACTER_ASSET_MANIFEST.defaultCharacterId) ??
     CHARACTER_ASSET_MANIFEST.characters[0]
   );
+}
+
+/** Individually fitted academy cast; unknown slots retain the original sample fallback. */
+export const NPC_CHARACTER_ASSET_IDS: Readonly<Record<string, string>> = {
+  "character.npc.guide_an": "academy-an-v1",
+  "character.npc.steward_khoa": "academy-khoa-v1",
+  "character.npc.librarian_minh": "academy-minh-v1"
+};
+
+export function resolveNpcCharacterAsset(slot: string): CharacterAssetManifestEntry {
+  return resolveCharacterAssetEntry(NPC_CHARACTER_ASSET_IDS[slot] ?? "scholar-vrm1");
 }
 
 /**

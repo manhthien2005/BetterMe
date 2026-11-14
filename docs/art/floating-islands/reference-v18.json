@@ -1,0 +1,594 @@
+{
+  "schemaVersion": 1,
+  "referenceId": "vuon-gio-v18",
+  "approvalDate": "2026-11-12",
+  "approval": "Owner explicitly approved v18 and requested finalized standards for future assets.",
+  "status": "approved-art-reference",
+  "snapshotRoot": "output/tiny-glade-island-v1/approved/v18",
+  "workingRoot": "output/tiny-glade-island-v1",
+  "islandSha256": "dd9f43ba6dc4dc19220d6f77b4b14e1dabdf420638a05984c17a9dec3b44f779",
+  "metrics": {
+    "triangles": 2036998,
+    "bytes": 40825800,
+    "objects": 760,
+    "grassBlades": 28575,
+    "satelliteGrassBlades": 3526
+  },
+  "kitIds": [
+    "oak",
+    "birch",
+    "hazel",
+    "fern",
+    "grass-tuft",
+    "boulders",
+    "garden-arch",
+    "bellflower",
+    "buttercup",
+    "clover",
+    "cornflower",
+    "poppy",
+    "chamomile",
+    "foxglove"
+  ],
+  "toolchain": {
+    "blender": "4.5.10 LTS",
+    "three": "0.187.0",
+    "seed": 12112026
+  },
+  "externalReference": {
+    "path": "D:\\Dev\\Tools\\Blender\\assets\\floating-island-v1\\glb\\floating-island.glb",
+    "sha256": "7eb017b13db5ca909670d57f046db55a8994680c1c32682d0f29118710d2274b",
+    "included": false
+  },
+  "limits": [
+    "Local snapshot only; no remote backup or commit confirmed.",
+    "No LOD or real-phone GPU benchmark.",
+    "Dynamic water/wind/lights/fireflies require the accompanying runtime.",
+    "No other-island rollout or app asset replacement in this task."
+  ],
+  "files": [
+    {
+      "path": "CONTENTS.md",
+      "bytes": 1195,
+      "sha256": "de3c3fd0394f4928e5c6787c519d37c64bd685e899b9cb4b956e3c3ffae92467"
+    },
+    {
+      "path": "art/STYLE-RULES.md",
+      "bytes": 1463,
+      "sha256": "6ea4166c4cf8d62f1410dbe5c258c534fe598e3b83303ceab14cc1057c5cf363"
+    },
+    {
+      "path": "art/assets/bellflower.glb",
+      "bytes": 107316,
+      "sha256": "c779c744a8dbc0322995e5443b7a6cffb39c2c3e408b821a627c9d10c0863c07",
+      "workingPath": "assets/bellflower.glb"
+    },
+    {
+      "path": "art/assets/birch.glb",
+      "bytes": 2547452,
+      "sha256": "dd2b792a47b5329afb39ffd1fb0bf99ee5253a2df6b6b3248a6ec5b77e55013c",
+      "workingPath": "assets/birch.glb"
+    },
+    {
+      "path": "art/assets/boulders.glb",
+      "bytes": 41992,
+      "sha256": "5299629ecec612339f1a17e92d7794194467a84c4e2f7f9a2c182693d71dca76",
+      "workingPath": "assets/boulders.glb"
+    },
+    {
+      "path": "art/assets/buttercup.glb",
+      "bytes": 157572,
+      "sha256": "f23668909e92849b54cfb58fd857848447cb52128d549da6ec6999d0bfaf135e",
+      "workingPath": "assets/buttercup.glb"
+    },
+    {
+      "path": "art/assets/chamomile.glb",
+      "bytes": 137872,
+      "sha256": "7c132342219219a929853d194e638f46ff608997c6d3924673abbc241f58131e",
+      "workingPath": "assets/chamomile.glb"
+    },
+    {
+      "path": "art/assets/clover.glb",
+      "bytes": 258332,
+      "sha256": "a3624b100e80c798219dd1d55e099a535b70186af782be30ae4e0e7e2b83f21e",
+      "workingPath": "assets/clover.glb"
+    },
+    {
+      "path": "art/assets/cornflower.glb",
+      "bytes": 181356,
+      "sha256": "f06c030a136a7abc4b463cb60fca6b9118c3414fcd5067b02dd370f78264a674",
+      "workingPath": "assets/cornflower.glb"
+    },
+    {
+      "path": "art/assets/fern.glb",
+      "bytes": 81008,
+      "sha256": "b697cf038286930088942a39b0cf718bff5e16d14064a07e6416df9118d5f295",
+      "workingPath": "assets/fern.glb"
+    },
+    {
+      "path": "art/assets/foxglove.glb",
+      "bytes": 380408,
+      "sha256": "5e1fe3f6504ab7effd7715b41baf52e4d2d77f315ac91d2c03408faf43cb29da",
+      "workingPath": "assets/foxglove.glb"
+    },
+    {
+      "path": "art/assets/garden-arch.glb",
+      "bytes": 3081248,
+      "sha256": "ef68dcdd9921098d4ecadacb3c998770ee225044f0b271b0dbe3836f61fc5649",
+      "workingPath": "assets/garden-arch.glb"
+    },
+    {
+      "path": "art/assets/grass-tuft.glb",
+      "bytes": 14560,
+      "sha256": "80bece2b37a55a3bbffd9d0e2c9012d7e91f0a517810b99df0478b8e6bb58bee",
+      "workingPath": "assets/grass-tuft.glb"
+    },
+    {
+      "path": "art/assets/hazel.glb",
+      "bytes": 430132,
+      "sha256": "479de0d9ee0b8055035260a817a525905f0d89f9bb31dbe936f9b9f6766c5264",
+      "workingPath": "assets/hazel.glb"
+    },
+    {
+      "path": "art/assets/oak.glb",
+      "bytes": 4907840,
+      "sha256": "0610975f87d1f55c12cdcf494bd64ed2a50bae8b44f44e985a9f8f61bf3ec3f9",
+      "workingPath": "assets/oak.glb"
+    },
+    {
+      "path": "art/assets/poppy.glb",
+      "bytes": 116860,
+      "sha256": "e3f40d76c2636fabf115ff935f7c683509eacee093fef4a5ac47ce47aa741a1f",
+      "workingPath": "assets/poppy.glb"
+    },
+    {
+      "path": "art/assets/vuon-gio.glb",
+      "bytes": 40825800,
+      "sha256": "dd9f43ba6dc4dc19220d6f77b4b14e1dabdf420638a05984c17a9dec3b44f779",
+      "workingPath": "assets/vuon-gio.glb"
+    },
+    {
+      "path": "art/build.py",
+      "bytes": 28062,
+      "sha256": "562e70966c7527ea63d3cd0877ae0122d2ec3369678d15568e701100b6173c29",
+      "workingPath": "build.py"
+    },
+    {
+      "path": "art/details_assets.py",
+      "bytes": 22222,
+      "sha256": "eb7f21e2af5d261079584217514a56c2515cf86f0e9a1b7e2c13afd6f5b84d66",
+      "workingPath": "details_assets.py"
+    },
+    {
+      "path": "art/flower_assets.py",
+      "bytes": 22430,
+      "sha256": "0996520a11a9a76acfee85d0db5b8ccf025f5e973f1fab5d8868aa350efc3613",
+      "workingPath": "flower_assets.py"
+    },
+    {
+      "path": "art/fonts.css",
+      "bytes": 5527,
+      "sha256": "b32bfece25e1e0496cc3cad8c74d2bc864bd3f2b6147fba196715bed10d45703",
+      "workingPath": "fonts.css"
+    },
+    {
+      "path": "art/fonts/0b60d5f95c5f3f76-s.2e115y8-hourl.woff2",
+      "bytes": 18740,
+      "sha256": "a22c997a894377f36d81c904163e0c05fbbcd32f0ca2e7beedb86b39be1296a1",
+      "workingPath": "fonts/0b60d5f95c5f3f76-s.2e115y8-hourl.woff2"
+    },
+    {
+      "path": "art/fonts/1f6c95fdd7b08cc8-s.0jaqhc1tb-5xm.woff2",
+      "bytes": 7184,
+      "sha256": "83b86791eb0ebfca23daa3f70ee179f13638c69441b69a6d2deb6b96a95385ea",
+      "workingPath": "fonts/1f6c95fdd7b08cc8-s.0jaqhc1tb-5xm.woff2"
+    },
+    {
+      "path": "art/fonts/25d341d5876d8ede-s.p.2wu4yy186g04j.woff2",
+      "bytes": 13428,
+      "sha256": "14950d0af319bbc1f7a26ed08bf1ba7a9e18324111056bb0c81eef0983a931c0",
+      "workingPath": "fonts/25d341d5876d8ede-s.p.2wu4yy186g04j.woff2"
+    },
+    {
+      "path": "art/fonts/341181aba0db3eca-s.2bbpeapf-lbjw.woff2",
+      "bytes": 7164,
+      "sha256": "f446d28e986c5695283afcb13a7719dabd9f2cec28ab49ecb43a328efa009f05",
+      "workingPath": "fonts/341181aba0db3eca-s.2bbpeapf-lbjw.woff2"
+    },
+    {
+      "path": "art/fonts/3c61b7007b1b2764-s.0n_ln9vqskgts.woff2",
+      "bytes": 7152,
+      "sha256": "90c10a1f4fdd8aa634b70bfc22ca991f12bba15b1661ea2390443e31888e1f5b",
+      "workingPath": "fonts/3c61b7007b1b2764-s.0n_ln9vqskgts.woff2"
+    },
+    {
+      "path": "art/fonts/6ac706d910f2bd04-s.p.25pbmqxk8u2s7.woff2",
+      "bytes": 5124,
+      "sha256": "843908240371827470dd178e284ffbbeb85f1563bf47e5b9c9db58526fb7f6e0",
+      "workingPath": "fonts/6ac706d910f2bd04-s.p.25pbmqxk8u2s7.woff2"
+    },
+    {
+      "path": "art/fonts/6bf0d8dd0c866b9f-s.p.10uaeld2xxvpt.woff2",
+      "bytes": 5132,
+      "sha256": "141f6c45010274d7d3625d0554476ec1161274d9eb09a38135977ea1b2b84895",
+      "workingPath": "fonts/6bf0d8dd0c866b9f-s.p.10uaeld2xxvpt.woff2"
+    },
+    {
+      "path": "art/fonts/77d9a04c69f7b11b-s.p.1uklb5el4zgvl.woff2",
+      "bytes": 4720,
+      "sha256": "b0d9b8aec7f47207ce4065be34286203e0741c8329be6d05986b149f991f84c1",
+      "workingPath": "fonts/77d9a04c69f7b11b-s.p.1uklb5el4zgvl.woff2"
+    },
+    {
+      "path": "art/fonts/7f1976624c2b6255-s.p.1hvvd1t-trplq.woff2",
+      "bytes": 13324,
+      "sha256": "0336df67f25be86ea38a6f37b11ffb4901c1ed65ce06ba99d6a304913e997e52",
+      "workingPath": "fonts/7f1976624c2b6255-s.p.1hvvd1t-trplq.woff2"
+    },
+    {
+      "path": "art/fonts/8056169c9d560660-s.p.41rroleoq1br7.woff2",
+      "bytes": 41236,
+      "sha256": "4fd48b2c1ab27220e71f15f990550261b35245c3bdfd8d8025b4bdac0459ee2d",
+      "workingPath": "fonts/8056169c9d560660-s.p.41rroleoq1br7.woff2"
+    },
+    {
+      "path": "art/fonts/83940f62350fcaa7-s.p.13y-iz2lazqtb.woff2",
+      "bytes": 13348,
+      "sha256": "cf841d2b615f068e77a918114f44c17d51d0b73314fdff81eae95f528387c391",
+      "workingPath": "fonts/83940f62350fcaa7-s.p.13y-iz2lazqtb.woff2"
+    },
+    {
+      "path": "art/fonts/b4fb5dfe9580f890-s.p.1zvg0ggiaivzo.woff2",
+      "bytes": 5100,
+      "sha256": "e83829fe40a88cff1c6ee213801661468bfed922771d1c382b4c1fdc269a5648",
+      "workingPath": "fonts/b4fb5dfe9580f890-s.p.1zvg0ggiaivzo.woff2"
+    },
+    {
+      "path": "art/fonts/d81b50f8e1aba043-s.05i4gb4p0piv4.woff2",
+      "bytes": 6880,
+      "sha256": "c2ae124f149371e1b6209cbba234852310caeee3c32990a56ccb93ac1c7edb9a",
+      "workingPath": "fonts/d81b50f8e1aba043-s.05i4gb4p0piv4.woff2"
+    },
+    {
+      "path": "art/fonts/dd018b41519c2d93-s.p.2g-0we2o5_ngd.woff2",
+      "bytes": 12908,
+      "sha256": "d25f70ff7404fddbeb150c9c687bf37069468a5cdf59117b2a30226d1ebfa5c0",
+      "workingPath": "fonts/dd018b41519c2d93-s.p.2g-0we2o5_ngd.woff2"
+    },
+    {
+      "path": "art/fonts/f4b234103afdc32a-s.p.197tvtifbphtu.woff2",
+      "bytes": 8652,
+      "sha256": "ea16948d4a91b77221f119ad27d4ac7a7581c98cf990712047f89a531a49ef28",
+      "workingPath": "fonts/f4b234103afdc32a-s.p.197tvtifbphtu.woff2"
+    },
+    {
+      "path": "art/grass_assets.py",
+      "bytes": 7984,
+      "sha256": "d783a16cd49a8f014c8ebbaf8eb3f908c969d9f8233056f28ed32077d2789043",
+      "workingPath": "grass_assets.py"
+    },
+    {
+      "path": "art/index.html",
+      "bytes": 4434,
+      "sha256": "7a2e6cc40f81cba5e6ef0b037aed551704fe08e07c866bfd20f8f2392186c0ff",
+      "workingPath": "index.html"
+    },
+    {
+      "path": "art/landform_assets.py",
+      "bytes": 7532,
+      "sha256": "13a3d2be99472e1bbcfcfc94d5421fade0a6762609f6934de62c29c186dccbc3",
+      "workingPath": "landform_assets.py"
+    },
+    {
+      "path": "art/manifest.json",
+      "bytes": 61840,
+      "sha256": "e6df074babe64d557c1c7966d773b3c2f500b1c5d7f7356594e1bbc2d274589d",
+      "workingPath": "manifest.json"
+    },
+    {
+      "path": "art/references/official-background.png",
+      "bytes": 3432078,
+      "sha256": "f8849212dbacffbb8fac63e2e44f71974f3292fa8a4027a364b0f509742005a4"
+    },
+    {
+      "path": "art/renders/landscape-v18/capture.js",
+      "bytes": 1022,
+      "sha256": "96a319e30f9f186e1c9f61b688e24b88e496bfb0c71c348ace7f4533d327d4a2"
+    },
+    {
+      "path": "art/renders/landscape-v18/verify-additions.js",
+      "bytes": 4604,
+      "sha256": "32d66ee1491ccb46f6d1fb9977e840c29c393e862db13229429400bf8b69de92"
+    },
+    {
+      "path": "art/renders/landscape-v18/verify-fall.js",
+      "bytes": 2173,
+      "sha256": "046bd34dc96d161cd4f63d6208491b45ee1733c944b7c0b5c39616fb5fcbd608"
+    },
+    {
+      "path": "art/renders/landscape-v18/verify-runtime.js",
+      "bytes": 6604,
+      "sha256": "2a7fe0cf3fd03bf3bcce26def16d64d8eef70e2618df01113aeebc4f5e7867b5"
+    },
+    {
+      "path": "art/renders/landscape-v18/verify-water-gpu.js",
+      "bytes": 5034,
+      "sha256": "d23244e2d3658f355ca606673ca1986810746c44f945b567724a1460f82b7a5d"
+    },
+    {
+      "path": "art/renders/landscape-v7/verify-water-contact.js",
+      "bytes": 3105,
+      "sha256": "0f25201a8d66f5173dec944634ef90ca549a5b6961df7f535031a2db6deb10d2"
+    },
+    {
+      "path": "art/riverbed_assets.py",
+      "bytes": 1600,
+      "sha256": "675d6f24951fae5223950b70d4288c9a3e5150376f7a78a5a6a293d0989e1908",
+      "workingPath": "riverbed_assets.py"
+    },
+    {
+      "path": "art/rock_assets.py",
+      "bytes": 4493,
+      "sha256": "4e26bec18761799832bd0c418ced83e72b777d31ca929ab873973bdee0af01e6",
+      "workingPath": "rock_assets.py"
+    },
+    {
+      "path": "art/satellite_assets.py",
+      "bytes": 10904,
+      "sha256": "0090422261d7a1378de6b20c3773703e1cc268ed17f65d3812cad779bd6e572d",
+      "workingPath": "satellite_assets.py"
+    },
+    {
+      "path": "art/scene-effects.js",
+      "bytes": 8238,
+      "sha256": "4b89665ae6b68005e1b280212a1137f6c53adf0578807fa27f49f68de37eba0f",
+      "workingPath": "scene-effects.js"
+    },
+    {
+      "path": "art/serve.py",
+      "bytes": 2751,
+      "sha256": "7fef46ed157a91aaf463a770f24daddb4ecda5f40a3a5b2e37de8cb31ca45699",
+      "workingPath": "serve.py"
+    },
+    {
+      "path": "art/source/vuon-gio.blend",
+      "bytes": 69702845,
+      "sha256": "822d7c467cd103bcd4939775e50b39d084e4866840b7d1d1b7e9ffd4b086aac5",
+      "workingPath": "source/vuon-gio.blend"
+    },
+    {
+      "path": "art/structure_assets.py",
+      "bytes": 19855,
+      "sha256": "02df15d4d6f9e4af0ae3df57d5dc54454ba14dd9603b6ce837619649e8cc068b",
+      "workingPath": "structure_assets.py"
+    },
+    {
+      "path": "art/textures/cliff-color.png",
+      "bytes": 503132,
+      "sha256": "9b657fa8c545d41a1b85cbfa9b19950544533abb6212036a96feb2a9b5ea0900",
+      "workingPath": "textures/cliff-color.png"
+    },
+    {
+      "path": "art/textures/cliff-normal.png",
+      "bytes": 1660547,
+      "sha256": "ce3f26d766de4ce4da6809e2c5e41bef17d32b47af90ece7a3c5e286dcced35b",
+      "workingPath": "textures/cliff-normal.png"
+    },
+    {
+      "path": "art/verify-foliage-viewer.js",
+      "bytes": 4113,
+      "sha256": "7b18d41db037ba9531eaf7a2800b57dafc800ee0041a6d0e2dc00b383cf7c206",
+      "workingPath": "verify-foliage-viewer.js"
+    },
+    {
+      "path": "art/verify-foliage.py",
+      "bytes": 3072,
+      "sha256": "6a955bdfd9e52352d47251549ab8c7c7486acca36088399b1a5830a744bed2e2",
+      "workingPath": "verify-foliage.py"
+    },
+    {
+      "path": "art/verify-landscape.py",
+      "bytes": 2473,
+      "sha256": "8cabfdb9f7f70a5cde76b0a4f93d4a51501e0cacbacbd833d1db389efc4cc6af",
+      "workingPath": "verify-landscape.py"
+    },
+    {
+      "path": "art/verify-viewer.js",
+      "bytes": 4929,
+      "sha256": "1f165e7af61206147676dac2b9265176b97dbcbf93ae466715c2f108106c1c3e",
+      "workingPath": "verify-viewer.js"
+    },
+    {
+      "path": "art/verify-water.py",
+      "bytes": 2150,
+      "sha256": "4cd7d150c6fef4441e017751fc7c7b6f30ee2fd1567ae95e4fc9bbd599daf45c",
+      "workingPath": "verify-water.py"
+    },
+    {
+      "path": "art/verify_source.py",
+      "bytes": 2920,
+      "sha256": "0a10d14e99c515928ad5bd7d7afc648e831be7c38b82b0b0a5dc4cb904022f48",
+      "workingPath": "verify_source.py"
+    },
+    {
+      "path": "art/viewer.css",
+      "bytes": 4320,
+      "sha256": "0a31944bc11e7cf9e9a572b7facbf1f4385cb8b97919a6fac580b707c26419ba",
+      "workingPath": "viewer.css"
+    },
+    {
+      "path": "art/viewer.js",
+      "bytes": 16329,
+      "sha256": "c8edd1d330abafbb6a09f632525f598e3cffda8af23ba18a51d33f3d312a565d",
+      "workingPath": "viewer.js"
+    },
+    {
+      "path": "art/vine_assets.py",
+      "bytes": 5257,
+      "sha256": "313601571c57d6ab053a9c89284af2105b9326352083872705407db12b3cc799",
+      "workingPath": "vine_assets.py"
+    },
+    {
+      "path": "art/water-surface.js",
+      "bytes": 8275,
+      "sha256": "5a3a265f60ec1cc3ddeff0618afe18d6251ce599a6e4ce861a158bda072b09a7",
+      "workingPath": "water-surface.js"
+    },
+    {
+      "path": "art/water_assets.py",
+      "bytes": 2892,
+      "sha256": "b6f2510b823168f0d18d43bf96f3c99c12dadc5ca8cb1053ab3f79083eb19cb9",
+      "workingPath": "water_assets.py"
+    },
+    {
+      "path": "evidence/QA.md",
+      "bytes": 4568,
+      "sha256": "95f54e31d3d65ea4d672b951ca9a2bbec5169257ff038c969b17380750b92411"
+    },
+    {
+      "path": "evidence/additions-gpu.log",
+      "bytes": 6069,
+      "sha256": "4fd8ac9e7a160a9ac555db60521d02b93960e5ffa4adf7ac0faa82530d8e2a59"
+    },
+    {
+      "path": "evidence/build.log",
+      "bytes": 31153,
+      "sha256": "5f92713f545d39c13ae21024d6fe52acd29cb098541c546810cc485ea3c0fa90"
+    },
+    {
+      "path": "evidence/capture.log",
+      "bytes": 1683,
+      "sha256": "848ce22b6b3ff6d0d19d63cc7af981347c337463f97f79cfa17bcc906ae54558"
+    },
+    {
+      "path": "evidence/fall-gpu.log",
+      "bytes": 2429,
+      "sha256": "26feeecac25fa08e42ae16c91ed8a491a82bb5330a33b7679f5109ff7bdce5f2"
+    },
+    {
+      "path": "evidence/front-day-preview.jpg",
+      "bytes": 42656,
+      "sha256": "fb96cc70de38db0811d79b7362e5e3952768fae921fc4c6cfdcb4c3dabf31e9c"
+    },
+    {
+      "path": "evidence/front-night-preview.jpg",
+      "bytes": 29947,
+      "sha256": "d7118163f476d4d70c590afaa45703ee0bb9ae42b51fe1e6140e01f0a8eb738c"
+    },
+    {
+      "path": "evidence/fruit-day-preview.jpg",
+      "bytes": 136587,
+      "sha256": "cb59d84b240d645d646cac6a3937f44ad1ccc475e9994a62f576b98944ec6931"
+    },
+    {
+      "path": "evidence/fruit-night-preview.jpg",
+      "bytes": 85972,
+      "sha256": "dc3be7824d2f2620f2941d2633aa87cc896e2e34ea002194ac7dcc4cb8205e77"
+    },
+    {
+      "path": "evidence/interface-detect.log",
+      "bytes": 530,
+      "sha256": "1fc92a4b2cc8ab46673eca3e25d31a3aa31345882472eb32291c290ff1bab901"
+    },
+    {
+      "path": "evidence/lantern-day-preview.jpg",
+      "bytes": 123437,
+      "sha256": "67c55bf6548352402ad1a094801f4e869ccc05439aebc7c30622eb6ab4cdf9d5"
+    },
+    {
+      "path": "evidence/lantern-night-preview.jpg",
+      "bytes": 131028,
+      "sha256": "f73537790c0cd8045dd3cef9873e1e450cbeb7cfff6f5602542e6064b99d8777"
+    },
+    {
+      "path": "evidence/phone-night-preview.jpg",
+      "bytes": 38131,
+      "sha256": "fd2de338acb29a418daf1db7d4b2d33a4efb7291c7108d765b5ffd33f3021395"
+    },
+    {
+      "path": "evidence/runtime.log",
+      "bytes": 7902,
+      "sha256": "7bf285bc3a1fc04b1b236a393d179ffa632f6b77fa9febf5bce203cd3d00c25e"
+    },
+    {
+      "path": "evidence/source.log",
+      "bytes": 1572,
+      "sha256": "7abe7b6041b9c9629012f4dc3959353e9e38d998a84e89681567aca0def9f880"
+    },
+    {
+      "path": "evidence/spray-day-preview.jpg",
+      "bytes": 48055,
+      "sha256": "e912294a7ea509637666c3f3ef27bff24af244b80d8dd76213a3e197d191eb3d"
+    },
+    {
+      "path": "evidence/spray-moving-day-preview.jpg",
+      "bytes": 48162,
+      "sha256": "c9759e254799aea48728049ffd900f17f9b48e4de2bab8db9eceb8594c5d90b6"
+    },
+    {
+      "path": "evidence/spray-night-preview.jpg",
+      "bytes": 26871,
+      "sha256": "347f3ee5dfdd9d37906cad8cfacdc70ed725366c4abfcfc481521ea1da0988ab"
+    },
+    {
+      "path": "evidence/v17-QA.md",
+      "bytes": 5264,
+      "sha256": "61ca840f3127f93246e0cdd8eeca130fc492f81a8ee3ea738d5aca8e8c742d20"
+    },
+    {
+      "path": "evidence/v17-blue-fruit-day-preview.jpg",
+      "bytes": 141498,
+      "sha256": "543aefc64cc5ef06983c2f84c8f5882566b7359cab16e7ba525907f74ebe9300"
+    },
+    {
+      "path": "evidence/v17-cliff-plants-day-preview.jpg",
+      "bytes": 118231,
+      "sha256": "f1612db47912c6445ad1fb996c6e483733c7d857f57278a8d98617ae5afb6bf7"
+    },
+    {
+      "path": "evidence/v17-column-day-preview.jpg",
+      "bytes": 107183,
+      "sha256": "439a1fa3c0c061cf907a01b39b453457d8c84830caacb14389a697d15795d5f8"
+    },
+    {
+      "path": "evidence/v17-grapes-day-preview.jpg",
+      "bytes": 110062,
+      "sha256": "39007ec4060d9f0c891af5430cd46127dbffd3cc92b0e3d78e9e31e70c5352f1"
+    },
+    {
+      "path": "evidence/v17-red-fruit-day-preview.jpg",
+      "bytes": 136549,
+      "sha256": "a5a778f78271bc28b06f706dbcbb4249b795d35fc3a672ed60671262e3846bf5"
+    },
+    {
+      "path": "evidence/v17-ruins-day-preview.jpg",
+      "bytes": 141860,
+      "sha256": "b42de23a305a71599e141ea76d5c6591614deb960394d0fa2b71e4db0446138f"
+    },
+    {
+      "path": "evidence/viewer.log",
+      "bytes": 6192,
+      "sha256": "c11328c8d71fca95c37f2f5603313d1308aa0d62628f0caf42926a1a018aa863"
+    },
+    {
+      "path": "evidence/water-contact.log",
+      "bytes": 3330,
+      "sha256": "6ae74a250a9cb3d9716bd4a37fc90d829dbe04ac2cb5df25f90393d20084143b"
+    },
+    {
+      "path": "evidence/water-gpu.log",
+      "bytes": 5383,
+      "sha256": "e61dcd7e02ddb01cf3a3e2cb79dd3acb8613f1c2ce30062e2ac69ea0bc143d7b"
+    },
+    {
+      "path": "evidence/waterfall-day-preview.jpg",
+      "bytes": 72284,
+      "sha256": "0638ff67f8b5accb0b6932cca4fd0f27ba4f9c3ef459d4b4093d5173dca8f3a2"
+    },
+    {
+      "path": "evidence/waterfall-night-preview.jpg",
+      "bytes": 41814,
+      "sha256": "dcf96aa38938bbe4a573ff879d30d2a1c01e0e355eb7e269b0c9cb1d6901e462"
+    }
+  ]
+}

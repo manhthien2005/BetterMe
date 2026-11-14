@@ -1,24 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { Vector3 } from "three";
 import {
-  createDistantIslandGeometry, DISTANT_ISLANDS, MOUNTAIN_LAYERS,
+  createDistantIslandGeometry, DISTANT_ISLANDS,
   PLAZA_VIEW_FAR, PLAZA_SKY_SCALE, PLAZA_REFLECTION_FAR
 } from "./plaza-horizon";
 
 describe("Plaza horizon composition", () => {
-  it("separates mountain depth bands and keeps their full bounds inside the sky", () => {
-    let previousMax = 140;
-    for (const layer of MOUNTAIN_LAYERS) {
-      const radii = layer.map(p => Math.hypot(p.position[0], p.position[2]));
-      expect(Math.min(...radii)).toBeGreaterThan(previousMax);
-      previousMax = Math.max(...radii);
-      expect(layer.length).toBeGreaterThanOrEqual(5);
-      for (const peak of layer) {
-        const fullRadius = Math.hypot(...peak.position) + Math.hypot(peak.width / 2, peak.height, peak.depth / 2);
-        expect(fullRadius + 60).toBeLessThan(112 * PLAZA_SKY_SCALE);
-      }
-    }
-    expect(previousMax).toBeGreaterThan(700);
+  it("keeps the sky and its reflection inside the camera range", () => {
     expect(126 * PLAZA_SKY_SCALE + 60).toBeLessThan(PLAZA_VIEW_FAR);
     expect(PLAZA_REFLECTION_FAR).toBeGreaterThan(2 * 126 * PLAZA_SKY_SCALE);
   });

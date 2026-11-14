@@ -1,6 +1,129 @@
 # Plaza asset provenance and verification
 
-## Atmosphere and terrain occlusion correction — current, 2026-11-11
+## Water capture visibility — 2026-11-14
+
+Island water now skips its reflection/refraction pair when all of that land's
+pools, streams and falls are outside the current camera frustum, hidden through
+an ancestor, or excluded by camera layers. The existing round-robin slot is left
+empty, preserving visible-water cadence and the 512px capture limit. Walking
+camera updates run at -2, overview at -1, water/effects at 0, then R3F renders.
+Detailed/LOD assets, geometry, shaders and placement are unchanged.
+This is capture culling, not asset streaming or distance-based LOD switching.
+See [spec](superpowers/specs/2026-11-14-plaza-water-visibility-design.md) and
+[QA](../output/plaza-water-visibility/QA.md) for measured results and limits.
+
+## Lightweight islands active in Plaza review — 2026-11-13
+
+Owner promoted the optimized collection into both `/world` and `/world?plaza=study`.
+`plaza-floating-islands.ts` selects all seven `/world/floating-islands/lod/*.glb`
+URLs and registers Three's existing Meshopt decoder. Relative shared textures stay
+beside these assets. Original detailed GLBs and their manifest remain unchanged.
+Placement, materials, effects, two-load concurrency and disposal are preserved.
+This is a fixed lightweight selection; view-based loading and distance switching
+remain deferred. Water capture culling was added on 2026-11-14 above. See [integration QA](../output/plaza-lod-integration/QA.md)
+and [plan](superpowers/plans/2026-11-13-plaza-lod-integration.md).
+
+## Separate distant island LOD — 2026-11-13
+
+Owner requested optimization while keeping detailed originals, then narrowed the
+current step to assets first. `public/world/floating-islands/lod/` adds seven
+lightweight GLBs plus shared pixel-identical textures. Detailed GLBs/manifest one
+directory above remain byte-identical. They served the app during the asset-only
+step; the owner promotion above supersedes that selection.
+
+Bundle294,726,936→35,794,311bytes(-87.9%); placed triangles10,086,449→1,661,757
+(-83.5%). Original node transforms, anchors, materials and all30water primitives
+are preserved. Terrain borders are locked; canopy detail was increased after
+visual review. Float encoding is bounded to2mm local position /0.0002attribute
+error. `scripts/optimize-plaza-islands.mjs` uses existing Meshoptimizer1.1.1;
+manifest records parent hashes and `optimized-preview` status. Sources untouched.
+
+Integration uses GLTFLoader's existing Meshopt decoder and keeps the relative
+`textures/` directory. No product loading/LOD/water scheduler was changed in the
+asset-only step. [Comparison gallery](http://127.0.0.1:8786/compare.html),
+[orbit viewer](http://127.0.0.1:8786/viewer.html),
+[full evidence and limits](../output/plaza-performance/QA.md).
+
+## Current mountain collection — V6, 2026-11-13
+
+Both Plaza routes use the ten V6 models from
+`D:/Dev/Projects/BetterMe/output/rock-mountains-v6/`: Sơn Trụ, Thạch Linh, Khe Rêu,
+Bàn Thạch (near); Vân Sơn, Thiên Mạch, Cổng Mây, Dốc Vân (mid); Thanh Sơn, Viễn Phong
+(far). Runtime files/compact hashes live in `public/world/mountains/`. Download
+size is **10,741,224 bytes** after the owner-requested Cổng Mây correction below;
+the other nine GLBs are byte-identical and all 21 immutable upstream hashes rechecked.
+The old six files were replaced, four added, and the separate Vân Sơn trial runtime
+removed. Historical source assets and evidence remain read-only.
+
+`plaza-mountain-layout.ts` authors 16 placements (4/4/8), uniform scales and
+staggered bearings. Radii 235–285m / 420–480m / 660–820m, **532,602 placed triangles**,
+51 material/attribute batches; rotated bounds clear all seven islands with 12m
+padding. No new textures, shadows, reflection cameras or packages. Three far
+instances use rock-only snow; leaf normals, opaque terrain depth, cutout masks,
+atmospheric haze and unmount/late-load ownership remain enforced.
+
+Both routes, day/dusk/night/rain/mobile, four walking angles and near rock detail
+were visually inspected. Three map swaps and one failed-model/reload case passed.
+Final overview submitted **19 mountain calls / 208,468 mountain triangles**;
+entire scene ~10.7M triangles / ~115ms RAF intervals. This is a bounded mountain
+integration, not a claim that the existing high-detail island scene achieves 60FPS.
+Latest gates: typecheck/lint/build exit0 (28 existing scratch lint warnings),
+823 tests in94 files passed; restart smoke passed, QA browser closed.
+No physical-phone benchmark. Detailed [QA](../output/mountain-v6-integration/QA.md)
+and [spec](superpowers/specs/2026-11-13-plaza-mountains-v6-design.md).
+
+### Cổng Mây silhouette correction — 2026-11-13
+
+The owner identified two cylindrical upper masses in the lecture-court view.
+Only Cổng Mây is now an offline derivative: upper rock tapers, broad crests slope
+asymmetrically, and upper ivy/debris follow the surface. Geometry/transforms of
+all trees, shrubs, ferns, ruins and lower rock supports stay unchanged. The
+original V6 directory remains read-only. No runtime deformation was added.
+
+Runtime Cổng Mây is971,152bytes /41,880triangles; SHA256
+`279799d31d6585102ecd537a0fef813c66dc2e39821be9d934cad5565638ad68`, parent
+`7cd4e1ac89423b47bf767ec7fde2b5cf9b186f3644f741162e59c7488a5d962e`.
+Manifest revision is `upper-rock-silhouette-01`. Reproduction and independent
+export validation: `output/mountain-v6-silhouette/build-shape.py` and
+`verify-export.py`; seven closed rock solids,18 preserved plant/ruin meshes.
+Final placement retains bearing176°/radius420m, with base-50, scale5, turn+.1.
+
+Viewed same-camera before/after, eight eye-level and eight elevated directions,
+day/dusk/night and390×844. [Correction QA](../output/mountain-v6-silhouette/QA.md)
+records checks and limits; [surroundings gallery](http://127.0.0.1:8785/overview.html)
+contains full-resolution captures. Geometry cost is unchanged; previous full-scene
+performance limits still apply. No fresh FPS or physical-phone benchmark.
+
+## Current floating islands — Vườn Gió + six V2, 2026-11-12
+
+Owner approved the new collection and requested replacing all active old islands.
+`public/world/floating-islands/` now contains the exact seven approved GLBs and
+their compact manifest: Vườn Gió v18, Thiên Viên, Thác Tầng, Nguyệt Hồ, Song Đỉnh,
+Tán Mây and Phong Đăng v2. Vườn Gió replaces Mạch Nguồn; the old
+`public/world/floating-island/owner-rim-v4.glb` was deleted. All six former GLBs
+were overwritten, and the unused legacy water runtime/test were removed.
+
+Sources: `D:/Dev/Projects/BetterMe/output/floating-islands-v2/`. Approved Vườn Gió
+GLB SHA-256 remains `dd9f43ba6dc4dc19220d6f77b4b14e1dabdf420638a05984c17a9dec3b44f779`.
+Historical Blender/source snapshots remain read-only build dependencies; they are
+not shipped as active old alternatives. Other Plaza assets are outside this change.
+
+The typed adapter in `src/components/world/island-v2/` preserves authored normals,
+wind UVs, botanical shading, per-land water planes and anchors before batching.
+Transforms are baked once for placed geometry/effects. Nine lanterns, shrub
+fireflies, waterfall spray and two receiving-basin impacts follow the app clock
+and night state. Global water visibility and renderer state are restored after
+captures. One capture pair is scheduled per 100ms, capped to 512 pixels; capture
+camera matrices remain bound to the texture while the player camera moves.
+Only two GLBs parse/batch concurrently; late arrivals are disposed after unmount.
+
+See [integration QA](../../output/island-v2-integration/QA.md) and the
+[spec](superpowers/specs/2026-11-12-island-v2-integration-design.md).
+Preview: [Plaza overview](http://127.0.0.1:3004/world?plaza=study) or
+[walking Plaza](http://127.0.0.1:3004/world). Local auth bypass only, no sync/social
+verification or deployment. Sections below are historical records.
+
+## Atmosphere and terrain occlusion correction — retained history, 2026-11-11
 
 Owner's screenshot correction: less dense mist, no rectangular mountain
 artifacts, readable far relief and organic distant islands. Source asset files
